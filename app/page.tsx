@@ -1,1619 +1,1168 @@
 "use client";
-import React, { useRef, useEffect, useState, useCallback } from "react";
-import * as THREE from "three";
-import {
-  MdRefresh,
-  MdVisibility,
-  MdVisibilityOff,
-  MdWbSunny,
-  MdDarkMode,
-  MdExpandMore,
-  MdExpandLess,
-  MdFlashOn,
-} from "react-icons/md";
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiRefreshCw, FiShuffle, FiPlus, FiMinus, FiMenu, FiInfo, FiActivity, FiTarget, FiMousePointer } from 'react-icons/fi';
 
-interface PhysicsBody {
-  mesh: THREE.Mesh;
-  velocity: THREE.Vector3;
-  mass: number;
-  radius: number;
-  type: "sphere" | "cube";
+interface Charge {
   id: string;
-  collidingWith: Set<string>;
+  x: number;
+  y: number;
+  magnitude: number;
+  isPositive: boolean;
 }
 
-function App() {
-  const mountRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const bodiesRef = useRef<PhysicsBody[]>([]);
-  const animationRef = useRef<number | null>(null);
-  const raycasterRef = useRef<THREE.Raycaster | null>(null);
-  const mouseRef = useRef<THREE.Vector2 | null>(null);
-  const draggedBodyRef = useRef<PhysicsBody | null>(null);
+interface Vector {
+  x: number;
+  y: number;
+}
 
-  const dragOffsetRef = useRef<THREE.Vector3 | null>(null);
-  const lastDragPositionRef = useRef<THREE.Vector3 | null>(null);
-  const dragPlaneRef = useRef<THREE.Plane | null>(null);
-  const groundRef = useRef<THREE.Mesh | null>(null);
-  const lightsRef = useRef<{
-    ambient: THREE.AmbientLight;
-    directional: THREE.DirectionalLight;
-  } | null>(null);
+interface FloatingParticle {
+  id: string;
+  x: number;
+  y: number;
+  size: number;
+  speedX: number;
+  speedY: number;
+  opacity: number;
+}
 
+interface InteractionState {
+  isDragging: boolean;
+  startDistance: number | null;
+  isTouchDevice: boolean;
+}
 
-  const [gravity, setGravity] = useState(0.5);
-  const [collisionCount, setCollisionCount] = useState(0);
-  const [isWireframe, setIsWireframe] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showUI, setShowUI] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
+const CoulombLawDemo: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [charges, setCharges] = useState<Charge[]>([]);
+  const [selectedCharge, setSelectedCharge] = useState<string | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const [showInfo, setShowInfo] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number; time: number } | null>(null);
+  const [hasDraggedSignificantly, setHasDraggedSignificantly] = useState(false);
+  const [floatingParticles, setFloatingParticles] = useState<FloatingParticle[]>([]);
+  const [interactionState, setInteractionState] = useState<InteractionState>({
+    isDragging: false,
+    startDistance: null,
+    isTouchDevice: false
+  });
+  const [isMobile, setIsMobile] = useState(false);
+  const [chargePlacementMode, setChargePlacementMode] = useState<'positive' | 'negative' | 'random'>('positive');
+  const animationFrameRef = useRef<number>(0);
 
-  
-  const initScene = useCallback(() => {
-    if (!mountRef.current) return;
+  const k = 8.99e9;
 
-    
-    if (
-      rendererRef.current &&
-      mountRef.current.contains(rendererRef.current.domElement)
-    ) {
-      mountRef.current.removeChild(rendererRef.current.domElement);
-    }
-
-    
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(isDarkMode ? 0x1e293b : 0xf0f8ff);
-    sceneRef.current = scene;
-
-    
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      mountRef.current.clientWidth / mountRef.current.clientHeight,
-      0.1,
-      1000
-    );
-    camera.position.set(0, 0, 10);
-    cameraRef.current = camera;
-
-    
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(
-      mountRef.current.clientWidth,
-      mountRef.current.clientHeight
-    );
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    rendererRef.current = renderer;
-
-    mountRef.current.appendChild(renderer.domElement);
-
-    
-    const ambientLight = new THREE.AmbientLight(
-      isDarkMode ? 0x64748b : 0x606060,
-      isDarkMode ? 0.5 : 0.6
-    );
-    scene.add(ambientLight);
-
-    const directionalLight = new THREE.DirectionalLight(
-      isDarkMode ? 0xe2e8f0 : 0xffffff,
-      isDarkMode ? 1.0 : 0.8
-    );
-    
-    directionalLight.position.set(isDarkMode ? 5 : 3, 20, isDarkMode ? 15 : 10);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
-    
-    
-    directionalLight.shadow.camera.left = -100;
-    directionalLight.shadow.camera.right = 100;
-    directionalLight.shadow.camera.top = 100;
-    directionalLight.shadow.camera.bottom = -100;
-    directionalLight.shadow.camera.near = 0.1;
-    directionalLight.shadow.camera.far = 50;
-    directionalLight.shadow.bias = -0.0001;
-    
-    scene.add(directionalLight);
-
-    let rimLight: THREE.DirectionalLight | null = null;
-    if (isDarkMode) {
-      rimLight = new THREE.DirectionalLight(0x4a90e2, 0.3);
-      rimLight.position.set(-10, 5, -5);
-      scene.add(rimLight);
-    }
-
-    lightsRef.current = {
-      ambient: ambientLight,
-      directional: directionalLight,
+  useEffect(() => {
+    const checkDeviceAndSize = () => {
+      if (typeof window !== 'undefined') {
+        setInteractionState(prev => ({
+          ...prev,
+          isTouchDevice: 'ontouchstart' in window || navigator.maxTouchPoints > 0
+        }));
+        setIsMobile(window.innerWidth < 768);
+      }
     };
 
+    checkDeviceAndSize();
     
-    raycasterRef.current = new THREE.Raycaster();
-    mouseRef.current = new THREE.Vector2();
+    const particles: FloatingParticle[] = [];
+    for (let i = 0; i < 15; i++) {
+      particles.push({
+        id: `particle-${i}`,
+        x: typeof window !== 'undefined' ? Math.random() * window.innerWidth : Math.random() * 800,
+        y: typeof window !== 'undefined' ? Math.random() * window.innerHeight : Math.random() * 600,
+        size: Math.random() * 3 + 1,
+        speedX: (Math.random() - 0.5) * 0.3,
+        speedY: (Math.random() - 0.5) * 0.3,
+        opacity: Math.random() * 0.4 + 0.1
+      });
+    }
+    setFloatingParticles(particles);
 
-    
-    createInitialBodies();
+    const handleResize = () => {
+      if (typeof window !== 'undefined') {
+        setIsMobile(window.innerWidth < 768);
+      }
+    };
 
-    
-    const groundGeometry = new THREE.PlaneGeometry(200, 200); 
-    const groundMaterial = new THREE.MeshLambertMaterial({
-      color: isDarkMode ? 0x44403c : 0xcccccc,
-      transparent: true,
-      opacity: isDarkMode ? 0.7 : 0.3,
-    });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -5;
-    ground.receiveShadow = true;
-    scene.add(ground);
-    groundRef.current = ground;
+    const handleKeyPress = (e: KeyboardEvent) => {
+      switch (e.key.toLowerCase()) {
+        case 'p':
+          setChargePlacementMode('positive');
+          break;
+        case 'n':
+          setChargePlacementMode('negative');
+          break;
+        case 'r':
+          setChargePlacementMode('random');
+          break;
+      }
+    };
 
-    setTimeout(() => {
-      setIsLoading(false);
-    },2000);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      window.addEventListener('keydown', handleKeyPress);
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('keydown', handleKeyPress);
+      };
+    }
   }, []);
 
-  
-  const updateThemeColors = useCallback(() => {
-    if (!sceneRef.current || !lightsRef.current || !groundRef.current) return;
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setCanvasSize({ width, height });
+      }
+    };
 
-    sceneRef.current.background = new THREE.Color(
-      isDarkMode ? 0x1e293b : 0xf0f8ff
-    );
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+    return () => window.removeEventListener('resize', updateCanvasSize);
+  }, []);
 
-    lightsRef.current.ambient.color.setHex(isDarkMode ? 0x64748b : 0x606060);
-    lightsRef.current.ambient.intensity = isDarkMode ? 0.5 : 0.6;
-    lightsRef.current.directional.color.setHex(
-      isDarkMode ? 0xe2e8f0 : 0xffffff
-    );
-    lightsRef.current.directional.intensity = isDarkMode ? 1.0 : 0.8;
+  const calculateElectricField = useCallback((x: number, y: number): Vector => {
+    let Ex = 0;
+    let Ey = 0;
 
-    (groundRef.current.material as THREE.MeshLambertMaterial).color.setHex(
-      isDarkMode ? 0x44403c : 0xcccccc
-    );
-    (groundRef.current.material as THREE.MeshLambertMaterial).opacity = isDarkMode ? 0.7 : 0.3;
-
-    bodiesRef.current.forEach((body, index) => {
-      const material = body.mesh.material as THREE.MeshPhongMaterial;
+    charges.forEach(charge => {
+      const dx = x - charge.x;
+      const dy = y - charge.y;
+      const r = Math.sqrt(dx * dx + dy * dy);
       
-      if (body.type === "sphere") {
-        const subtleColors = isDarkMode ? [
-          0x6b9bd2, // Soft Blue
-          0xb392ac, // Muted Purple
-          0x7db383, // Sage Green
-          0xc19a6b, // Warm Beige
-          0x9370db, // Medium Slate Blue
-          0xcd919e, // Dusty Rose
-        ] : [
-          0x5a7bb8, // Steel Blue
-          0x8b7ca6, // Lavender Gray
-          0x6b8e6b, // Forest Green
-          0xa67c52, // Bronze
-          0x8b5a8c, // Plum
-          0x7a8cb8, // Periwinkle
-        ];
-        const colorIndex = index % subtleColors.length;
-        material.color.setHex(subtleColors[colorIndex]);
-        material.emissive.copy(new THREE.Color(subtleColors[colorIndex]).multiplyScalar(isDarkMode ? 0.05 : 0));
+      if (r > 5) {
+        const force = (k * Math.abs(charge.magnitude)) / (r * r);
+        const sign = charge.isPositive ? 1 : -1;
+        Ex += sign * force * (dx / r);
+        Ey += sign * force * (dy / r);
+      }
+    });
+
+    return { x: Ex, y: Ey };
+  }, [charges]);
+
+  const drawField = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const gridSize = isMobile ? 35 : 30;
+    const arrowScale = 0.000000001;
+    const minArrowLength = isMobile ? 8 : 10;
+    const maxArrowLength = isMobile ? 20 : 25;
+
+    for (let x = gridSize / 2; x < canvas.width; x += gridSize) {
+      for (let y = gridSize / 2; y < canvas.height; y += gridSize) {
+        const field = calculateElectricField(x, y);
+        const magnitude = Math.sqrt(field.x * field.x + field.y * field.y);
+        
+        if (magnitude > 0) {
+          const normalizedMagnitude = Math.min(magnitude * arrowScale, 1);
+          const adjustedMagnitude = Math.max(normalizedMagnitude, 0.1);
+          
+          const hue = 260 - adjustedMagnitude * 120;
+          const saturation = 70 + adjustedMagnitude * 30;
+          const lightness = 60 + adjustedMagnitude * 20;
+          const alpha = Math.max(0.4, adjustedMagnitude * 0.6 + 0.4);
+          
+          ctx.strokeStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+          ctx.fillStyle = ctx.strokeStyle;
+          ctx.lineWidth = isMobile ? 1.5 : 2;
+          
+          const arrowLength = minArrowLength + (maxArrowLength - minArrowLength) * adjustedMagnitude;
+          const angle = Math.atan2(field.y, field.x);
+          
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(arrowLength, 0);
+          ctx.stroke();
+          
+          const headSize = isMobile ? 4 : 5;
+          ctx.beginPath();
+          ctx.moveTo(arrowLength, 0);
+          ctx.lineTo(arrowLength - headSize, -headSize/2);
+          ctx.lineTo(arrowLength - headSize, headSize/2);
+          ctx.closePath();
+          ctx.fill();
+          
+          ctx.restore();
+        }
+      }
+    }
+
+    charges.forEach(charge => {
+      const baseRadius = (isMobile ? 12 : 15) + Math.abs(charge.magnitude) * (isMobile ? 6 : 8);
+      
+      const outerGradient = ctx.createRadialGradient(charge.x, charge.y, 0, charge.x, charge.y, baseRadius * 2);
+      if (charge.isPositive) {
+        outerGradient.addColorStop(0, 'rgba(59, 130, 246, 0.15)');
+        outerGradient.addColorStop(0.5, 'rgba(59, 130, 246, 0.08)');
+        outerGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
       } else {
-        const subtleCubeColors = isDarkMode ? [
-          0xb8860b, // Dark Goldenrod
-          0x8fbc8f, // Dark Sea Green
-          0xd2691e, // Chocolate
-          0x4682b4, // Steel Blue
-          0xbc8f8f, // Rosy Brown
-          0x9370db, // Medium Purple
-        ] : [
-          0xa0522d, // Sienna
-          0x2e8b57, // Sea Green
-          0x8b4513, // Saddle Brown
-          0x4169e1, // Royal Blue
-          0x8b5a2b, // Dark Goldenrod
-          0x9932cc, // Dark Orchid
-        ];
-        const colorIndex = (index - 3) % subtleCubeColors.length;
-        material.color.setHex(subtleCubeColors[colorIndex]);
-        material.emissive.copy(new THREE.Color(subtleCubeColors[colorIndex]).multiplyScalar(isDarkMode ? 0.04 : 0));
+        outerGradient.addColorStop(0, 'rgba(147, 51, 234, 0.15)');
+        outerGradient.addColorStop(0.5, 'rgba(147, 51, 234, 0.08)');
+        outerGradient.addColorStop(1, 'rgba(147, 51, 234, 0)');
       }
       
-      material.shininess = isDarkMode ? (body.type === "sphere" ? 60 : 70) : (body.type === "sphere" ? 30 : 40);
-    });
-  }, [isDarkMode]);
-
-  
-  const createInitialBodies = useCallback(() => {
-    const bodies: PhysicsBody[] = [];
-
-    
-    for (let i = 0; i < 3; i++) {
-      const radius = 0.3 + Math.random() * 0.4;
-      const geometry = new THREE.SphereGeometry(radius, 32, 32);
-      const subtleColors = isDarkMode ? [
-        0x6b9bd2, // Soft Blue
-        0xb392ac, // Muted Purple
-        0x7db383, // Sage Green
-        0xc19a6b, // Warm Beige
-        0x9370db, // Medium Slate Blue
-        0xcd919e, // Dusty Rose
-      ] : [
-        0x5a7bb8, // Steel Blue
-        0x8b7ca6, // Lavender Gray
-        0x6b8e6b, // Forest Green
-        0xa67c52, // Bronze
-        0x8b5a8c, // Plum
-        0x7a8cb8, // Periwinkle
-      ];
+      ctx.fillStyle = outerGradient;
+      ctx.beginPath();
+      ctx.arc(charge.x, charge.y, baseRadius * 2, 0, Math.PI * 2);
+      ctx.fill();
       
-      const material = new THREE.MeshPhongMaterial({
-        color: subtleColors[i % subtleColors.length],
-        wireframe: false,
-        shininess: isDarkMode ? 60 : 30,
-        emissive: isDarkMode ? new THREE.Color(subtleColors[i % subtleColors.length]).multiplyScalar(0.05) : new THREE.Color(0x000000),
-      });
-
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.set(
-        (Math.random() - 0.5) * 8, 
-        Math.random() * 3 + radius, 
-        (Math.random() - 0.5) * 3
-      );
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-
-      sceneRef.current?.add(mesh);
-
-      bodies.push({
-        mesh,
-        velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 4, 
-          (Math.random() - 0.5) * 3, 
-          (Math.random() - 0.5) * 4  
-        ),
-        mass: radius * 2,
-        radius,
-        type: "sphere",
-        id: `sphere-${i}`,
-        collidingWith: new Set(),
-      });
-    }
-
-    
-    for (let i = 0; i < 2; i++) {
-      const size = 0.4 + Math.random() * 0.6;
-      const geometry = new THREE.BoxGeometry(size, size, size);
-      const subtleCubeColors = isDarkMode ? [
-        0xb8860b, // Dark Goldenrod
-        0x8fbc8f, // Dark Sea Green
-        0xd2691e, // Chocolate
-        0x4682b4, // Steel Blue
-        0xbc8f8f, // Rosy Brown
-        0x9370db, // Medium Purple
-      ] : [
-        0xa0522d, // Sienna
-        0x2e8b57, // Sea Green
-        0x8b4513, // Saddle Brown
-        0x4169e1, // Royal Blue
-        0x8b5a2b, // Dark Goldenrod
-        0x9932cc, // Dark Orchid
-      ];
+      const gradient = ctx.createRadialGradient(charge.x, charge.y, 0, charge.x, charge.y, baseRadius);
+      if (charge.isPositive) {
+        gradient.addColorStop(0, 'rgba(99, 179, 237, 0.95)');
+        gradient.addColorStop(0.7, 'rgba(59, 130, 246, 0.85)');
+        gradient.addColorStop(1, 'rgba(37, 99, 235, 0.7)');
+      } else {
+        gradient.addColorStop(0, 'rgba(196, 181, 253, 0.95)');
+        gradient.addColorStop(0.7, 'rgba(147, 51, 234, 0.85)');
+        gradient.addColorStop(1, 'rgba(126, 34, 206, 0.7)');
+      }
       
-      const material = new THREE.MeshPhongMaterial({
-        color: subtleCubeColors[i % subtleCubeColors.length],
-        wireframe: false,
-        shininess: isDarkMode ? 70 : 40,
-        emissive: isDarkMode ? new THREE.Color(subtleCubeColors[i % subtleCubeColors.length]).multiplyScalar(0.04) : new THREE.Color(0x000000),
-      });
-
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.set(
-        (Math.random() - 0.5) * 8, 
-        Math.random() * 3 + size / 2, 
-        (Math.random() - 0.5) * 3
-      );
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-
-      sceneRef.current?.add(mesh);
-
-      bodies.push({
-        mesh,
-        velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 4, 
-          (Math.random() - 0.5) * 3, 
-          (Math.random() - 0.5) * 4  
-        ),
-        mass: size * 1.5,
-        radius: size / 2,
-        type: "cube",
-        id: `cube-${i}`,
-        collidingWith: new Set(),
-      });
-    }
-
-    bodiesRef.current = bodies;
-  }, []);
-
-  
-  const toggleWireframe = useCallback(() => {
-    setIsWireframe((prev) => {
-      const newWireframe = !prev;
-      bodiesRef.current.forEach((body) => {
-        (body.mesh.material as THREE.MeshPhongMaterial).wireframe = newWireframe;
-      });
-      return newWireframe;
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(charge.x, charge.y, baseRadius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      if (selectedCharge === charge.id) {
+        ctx.strokeStyle = charge.isPositive ? '#60a5fa' : '#c084fc';
+        ctx.lineWidth = isMobile ? 2 : 3;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(charge.x, charge.y, baseRadius + 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      
+      ctx.strokeStyle = charge.isPositive ? '#1d4ed8' : '#7c3aed';
+      ctx.lineWidth = isMobile ? 1.5 : 2;
+      ctx.beginPath();
+      ctx.arc(charge.x, charge.y, baseRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${Math.max(14, baseRadius * 0.7)}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+      ctx.shadowBlur = 2;
+      ctx.fillText(charge.isPositive ? '+' : '-', charge.x, charge.y);
+      ctx.shadowBlur = 0;
     });
-  }, []);
+  }, [charges, selectedCharge, calculateElectricField, isMobile]);
 
-  
-  const calculatePhysicsBounds = useCallback(() => {
-    if (!cameraRef.current || !mountRef.current) {
-      return { x: 6, y: 3, z: 2 }; 
-    }
-
-    const camera = cameraRef.current;
-    const aspect = mountRef.current.clientWidth / mountRef.current.clientHeight;
-
-    
-    const distance = Math.abs(camera.position.z);
-    const vFOV = (camera.fov * Math.PI) / 180; 
-
-    
-    const visibleHeight = 2 * Math.tan(vFOV / 2) * distance;
-    const visibleWidth = visibleHeight * aspect;
-
-    
-    const boundsMultiplier = 0.95; 
-    
-    
-    const isMobile = mountRef.current.clientWidth < 768;
-    const mobileAdjustment = isMobile ? 0.98 : 1.0; 
-
-    const finalBounds = {
-      x: (visibleWidth / 2) * boundsMultiplier * mobileAdjustment,
-      y: (visibleHeight / 2) * boundsMultiplier * mobileAdjustment,
-      z: 3, 
+  useEffect(() => {
+    const animate = () => {
+      drawField();
+      animationFrameRef.current = requestAnimationFrame(animate);
     };
+    animate();
+    
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [drawField]);
 
-
-
-    return finalBounds;
+  const getCanvasPosition = useCallback((clientX: number, clientY: number) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
   }, []);
 
-  
-  const updatePhysics = useCallback(
-    (deltaTime: number) => {
-      if (!sceneRef.current) return;
+  const findChargeAtPosition = useCallback((x: number, y: number) => {
+    return charges.find(charge => {
+      const distance = Math.sqrt((charge.x - x) ** 2 + (charge.y - y) ** 2);
+      const baseRadius = (isMobile ? 12 : 15) + Math.abs(charge.magnitude) * (isMobile ? 6 : 8);
+      return distance < baseRadius + 10;
+    });
+  }, [charges, isMobile]);
 
-      const bodies = bodiesRef.current;
-      const bounds = calculatePhysicsBounds();
+  const constrainToCanvas = useCallback((x: number, y: number, magnitude: number = 1) => {
+    const radius = (isMobile ? 12 : 15) + Math.abs(magnitude) * (isMobile ? 6 : 8);
+    return {
+      x: Math.max(radius, Math.min(canvasSize.width - radius, x)),
+      y: Math.max(radius, Math.min(canvasSize.height - radius, y))
+    };
+  }, [canvasSize, isMobile]);
 
-      bodies.forEach((body) => {
-        
-        if (draggedBodyRef.current === body) return;
-
-        
-        const gravityForce = gravity * 9.81 * deltaTime; 
-        body.velocity.y -= gravityForce;
-
-        
-        const time = Date.now() * 0.001; 
-        const forceMultiplier = 0.1 * deltaTime;
-        
-        
-        body.velocity.x += Math.sin(time * 0.5 + body.mesh.position.x * 0.1) * forceMultiplier;
-        body.velocity.z += Math.cos(time * 0.3 + body.mesh.position.z * 0.1) * forceMultiplier;
-        
-        
-        if (Math.random() < 0.005) { 
-          body.velocity.add(new THREE.Vector3(
-            (Math.random() - 0.5) * 1.5,
-            (Math.random() - 0.5) * 1.0,
-            (Math.random() - 0.5) * 1.5
-          ));
-        }
-
-        
-        const airResistance = 0.998 - (gravity * 0.001); 
-        body.velocity.multiplyScalar(Math.max(airResistance, 0.995)); 
-        
-        
-        const newPosition = body.mesh.position.clone().add(body.velocity.clone().multiplyScalar(deltaTime));
-        
-        
-        const boundX = bounds.x - body.radius;
-        const boundY = bounds.y - body.radius;  
-        const boundZ = bounds.z - body.radius;
-        
-        
-        if (newPosition.x > boundX) {
-          newPosition.x = boundX;
-          body.velocity.x = -Math.abs(body.velocity.x) * 0.8; 
-        } else if (newPosition.x < -boundX) {
-          newPosition.x = -boundX;
-          body.velocity.x = Math.abs(body.velocity.x) * 0.8; 
-        }
-        
-        if (newPosition.y > boundY) {
-          newPosition.y = boundY;
-          body.velocity.y = -Math.abs(body.velocity.y) * 0.7; 
-        } else if (newPosition.y < -boundY) {
-          newPosition.y = -boundY;
-          body.velocity.y = Math.abs(body.velocity.y) * 0.7; 
-        }
-        
-        if (newPosition.z > boundZ) {
-          newPosition.z = boundZ;
-          body.velocity.z = -Math.abs(body.velocity.z) * 0.8; 
-        } else if (newPosition.z < -boundZ) {
-          newPosition.z = -boundZ;
-          body.velocity.z = Math.abs(body.velocity.z) * 0.8; 
-        }
-
-        
-        body.mesh.position.copy(newPosition);
-
-        
-        
-        const maxX = bounds.x - body.radius;
-        if (body.mesh.position.x > maxX) {
-          body.mesh.position.x = maxX;
-          body.velocity.x = -Math.abs(body.velocity.x) * 0.75; 
-        } else if (body.mesh.position.x < -maxX) {
-          body.mesh.position.x = -maxX;
-          body.velocity.x = Math.abs(body.velocity.x) * 0.75; 
-        }
-        
-        
-        const maxZ = bounds.z - body.radius;
-        if (body.mesh.position.z > maxZ) {
-          body.mesh.position.z = maxZ;
-          body.velocity.z = -Math.abs(body.velocity.z) * 0.75; 
-        } else if (body.mesh.position.z < -maxZ) {
-          body.mesh.position.z = -maxZ;
-          body.velocity.z = Math.abs(body.velocity.z) * 0.75; 
-        }
-        
-        
-        
-        const groundLevel = -5;
-        const bottomPosition = body.mesh.position.y - body.radius;
-        
-        if (bottomPosition <= groundLevel) {
-          
-          body.mesh.position.y = groundLevel + body.radius + 0.001;
-          
-          
-          const baseRestitution = 0.8; 
-          const gravityDamping = Math.min(gravity / 3, 0.3); 
-          const dynamicRestitution = Math.max(baseRestitution - gravityDamping, 0.3); 
-          
-          
-          body.velocity.y *= -dynamicRestitution;
-          
-          
-          const settlingThreshold = 0.15 - (gravity * 0.05); 
-          if (Math.abs(body.velocity.y) < Math.max(settlingThreshold, 0.05)) {
-            body.velocity.y = 0;
-            
-            
-            const friction = 0.92 + (gravity * 0.02); 
-            body.velocity.x *= friction;
-            body.velocity.z *= friction;
-          }
-          
-          
-          if (gravity > 1.0) {
-            body.velocity.multiplyScalar(0.98); 
-          }
-        }
-        
-        const maxY = bounds.y - body.radius;
-        if (body.mesh.position.y > maxY) {
-          body.mesh.position.y = maxY;
-          body.velocity.y = Math.min(body.velocity.y, 0) * 0.6; 
-        }
-
-        
-        const speed = body.velocity.length();
-        const sleepThreshold = 0.02 + (gravity * 0.01); 
-        
-        if (speed < sleepThreshold && Math.abs(body.mesh.position.y - (-5 + body.radius)) < 0.1) {
-          
-          body.velocity.multiplyScalar(0.95); 
-          
-          if (speed < sleepThreshold * 0.3) {
-            body.velocity.set(0, 0, 0); 
-          }
-        }
-        
-        
-        const rotationSpeed = Math.max(speed * 0.1, 0.01);
-        body.mesh.rotation.x += rotationSpeed * deltaTime;
-        body.mesh.rotation.y += rotationSpeed * deltaTime;
-      });
-
-      
-      for (let i = 0; i < bodies.length; i++) {
-        for (let j = i + 1; j < bodies.length; j++) {
-          const bodyA = bodies[i];
-          const bodyB = bodies[j];
-
-          if (draggedBodyRef.current === bodyA || draggedBodyRef.current === bodyB) {
-            continue;
-          }
-
-          const positionA = bodyA.mesh.position;
-          const positionB = bodyB.mesh.position;
-          const distance = positionA.distanceTo(positionB);
-          const minDistance = bodyA.radius + bodyB.radius;
-          const isColliding = distance < minDistance && distance > 0.001;
-          
-          const wasColliding = bodyA.collidingWith.has(bodyB.id);
-
-          if (isColliding) {
-            if (!wasColliding) {
-              setCollisionCount((prev) => prev + 1);
-              bodyA.collidingWith.add(bodyB.id);
-              bodyB.collidingWith.add(bodyA.id);
-            }
-
-            const normal = positionB.clone().sub(positionA);
-            
-            if (normal.length() < 0.001) {
-              normal.set(1, 0, 0);
-            } else {
-              normal.normalize();
-            }
-
-            const overlap = minDistance - distance;
-            const separationFactor = 1.1;
-            const totalSeparation = overlap * separationFactor;
-
-            const totalMass = bodyA.mass + bodyB.mass;
-            const moveA = totalSeparation * (bodyB.mass / totalMass);
-            const moveB = totalSeparation * (bodyA.mass / totalMass);
-
-            positionA.sub(normal.clone().multiplyScalar(moveA));
-            positionB.add(normal.clone().multiplyScalar(moveB));
-
-            const relativeVelocity = bodyA.velocity.clone().sub(bodyB.velocity);
-            const velocityAlongNormal = relativeVelocity.dot(normal);
-
-            if (velocityAlongNormal < 0) {
-              const baseRestitution = 0.9;
-              const gravityReduction = Math.min(gravity * 0.1, 0.3);
-              const restitution = Math.max(baseRestitution - gravityReduction, 0.4);
-              
-              const massRatio = 2 / (bodyA.mass + bodyB.mass);
-              const impulseScalar = -(1 + restitution) * velocityAlongNormal * massRatio;
-              const impulse = normal.clone().multiplyScalar(impulseScalar);
-
-              bodyA.velocity.add(impulse.clone().multiplyScalar(bodyB.mass));
-              bodyB.velocity.sub(impulse.clone().multiplyScalar(bodyA.mass));
-
-              const baseDamping = 0.995;
-              const gravityDamping = Math.min(gravity * 0.005, 0.01);
-              const dynamicDamping = baseDamping - gravityDamping;
-              
-              bodyA.velocity.multiplyScalar(dynamicDamping);
-              bodyB.velocity.multiplyScalar(dynamicDamping);
-
-              const randomFactor = 0.1;
-              const randomVelocityA = new THREE.Vector3(
-                (Math.random() - 0.5) * randomFactor,
-                (Math.random() - 0.5) * randomFactor * 0.5,
-                (Math.random() - 0.5) * randomFactor
-              );
-              const randomVelocityB = new THREE.Vector3(
-                (Math.random() - 0.5) * randomFactor,
-                (Math.random() - 0.5) * randomFactor * 0.5,
-                (Math.random() - 0.5) * randomFactor
-              );
-              
-              bodyA.velocity.add(randomVelocityA);
-              bodyB.velocity.add(randomVelocityB);
-
-              const spinFactor = 0.02;
-              bodyA.mesh.rotation.x += (Math.random() - 0.5) * spinFactor;
-              bodyA.mesh.rotation.z += (Math.random() - 0.5) * spinFactor;
-              bodyB.mesh.rotation.x += (Math.random() - 0.5) * spinFactor;
-              bodyB.mesh.rotation.z += (Math.random() - 0.5) * spinFactor;
-            }
-          } else if (wasColliding) {
-            bodyA.collidingWith.delete(bodyB.id);
-            bodyB.collidingWith.delete(bodyA.id);
-          }
-        }
-      }
-
-      bodies.forEach((body) => {
-        if (body.collidingWith.size > 0) {
-          const collisionStates = Array.from(body.collidingWith);
-          collisionStates.forEach((otherId) => {
-            const otherBody = bodies.find(b => b.id === otherId);
-            if (otherBody) {
-              const distance = body.mesh.position.distanceTo(otherBody.mesh.position);
-              const minDistance = body.radius + otherBody.radius;
-              
-              if (distance >= minDistance + 0.01) {
-                body.collidingWith.delete(otherId);
-                otherBody.collidingWith.delete(body.id);
-              }
-            }
-          });
-        }
-      });
-
-      
-      bodies.forEach((body) => {
-        const pos = body.mesh.position;
-        const vel = body.velocity;
-        
-        
-        if (!isFinite(pos.x) || !isFinite(pos.y) || !isFinite(pos.z)) {
-          pos.set(
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 1,
-            (Math.random() - 0.5) * 1
-          );
-        }
-        
-        if (!isFinite(vel.x) || !isFinite(vel.y) || !isFinite(vel.z)) {
-          vel.set(0, 0, 0);
-        }
-
-        
-        const safeBounds = calculatePhysicsBounds();
-        const radius = body.radius;
-        let needsCorrection = false;
-        
-        
-        if (pos.x > safeBounds.x - radius) {
-          pos.x = safeBounds.x - radius;
-          vel.x = Math.min(vel.x, 0);
-          needsCorrection = true;
-        } else if (pos.x < -safeBounds.x + radius) {
-          pos.x = -safeBounds.x + radius;
-          vel.x = Math.max(vel.x, 0);
-          needsCorrection = true;
-        }
-        
-        
-        if (pos.y > safeBounds.y - radius) {
-          pos.y = safeBounds.y - radius;
-          vel.y = Math.min(vel.y, 0);
-          needsCorrection = true;
-        } else if (pos.y < -safeBounds.y + radius) {
-          pos.y = -safeBounds.y + radius;
-          vel.y = Math.max(vel.y, 0);
-          needsCorrection = true;
-        }
-        
-        
-        if (pos.z > safeBounds.z - radius) {
-          pos.z = safeBounds.z - radius;
-          vel.z = Math.min(vel.z, 0);
-          needsCorrection = true;
-        } else if (pos.z < -safeBounds.z + radius) {
-          pos.z = -safeBounds.z + radius;
-          vel.z = Math.max(vel.z, 0);
-          needsCorrection = true;
-        }
-        
-        
-        if (needsCorrection) {
-          vel.multiplyScalar(0.5);
-        }
-
-        
-        const maxVelocity = 15; 
-        if (vel.length() > maxVelocity) {
-          vel.normalize().multiplyScalar(maxVelocity);
-        }
-      });
-    },
-    [gravity, calculatePhysicsBounds]
-  );
-
-  
-  const animate = useCallback(() => {
-    if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
-
-    const deltaTime = 0.016; 
-    updatePhysics(deltaTime);
-
-    rendererRef.current.render(sceneRef.current, cameraRef.current);
-    animationRef.current = requestAnimationFrame(animate);
-  }, [updatePhysics]);
-
-  
-  const resolveDragCollisions = useCallback((draggedBody: PhysicsBody, targetPosition: THREE.Vector3): THREE.Vector3 => {
-    let correctedPosition = targetPosition.clone();
-    const draggedRadius = draggedBody.radius;
-    let hasCollision = false;
+  const createNewCharge = useCallback((x: number, y: number) => {
+    let isPositive: boolean;
     
-    
-    for (let pass = 0; pass < 3; pass++) {
-      let passHasCollision = false;
-      
-      
-      for (const otherBody of bodiesRef.current) {
-        if (otherBody === draggedBody) continue;
-        
-        const otherPosition = otherBody.mesh.position;
-        const distance = correctedPosition.distanceTo(otherPosition);
-        const minDistance = draggedRadius + otherBody.radius;
-        
-        if (distance < minDistance) {
-          passHasCollision = true;
-          hasCollision = true;
-          
-          
-          const separationDirection = correctedPosition.clone().sub(otherPosition);
-          
-          
-          if (separationDirection.length() < 0.001) {
-            
-            const angle = (draggedBody.id.charCodeAt(0) + otherBody.id.charCodeAt(0)) * 0.1;
-            separationDirection.set(Math.cos(angle), 0, Math.sin(angle));
-          } else {
-            separationDirection.normalize();
-          }
-          
-          const overlap = minDistance - distance;
-          
-          
-          const pushForce = Math.min(overlap * 0.1, 0.05); 
-          otherBody.mesh.position.add(
-            separationDirection.clone().multiplyScalar(-pushForce)
-          );
-          
-          
-          const pushVelocity = separationDirection.clone().multiplyScalar(-pushForce * 5);
-          otherBody.velocity.add(pushVelocity);
-          
-          
-          correctedPosition.copy(otherPosition).add(
-            separationDirection.multiplyScalar(minDistance + 0.05)
-          );
-        }
-      }
-      
-      
-      if (!passHasCollision) break;
+    switch (chargePlacementMode) {
+      case 'positive':
+        isPositive = true;
+        break;
+      case 'negative':
+        isPositive = false;
+        break;
+      case 'random':
+      default:
+        isPositive = Math.random() > 0.5;
+        break;
     }
     
+    const magnitude = Math.random() * 1.5 + 0.5;
+    const constrainedPos = constrainToCanvas(x, y, magnitude);
     
-    const material = draggedBody.mesh.material as THREE.MeshPhongMaterial;
-    if (hasCollision) {
-      
-      material.emissive.setHex(0x220000); 
+    const newCharge: Charge = {
+      id: Date.now().toString(),
+      x: constrainedPos.x,
+      y: constrainedPos.y,
+      magnitude,
+      isPositive
+    };
+    setCharges(prev => [...prev, newCharge]);
+  }, [chargePlacementMode, constrainToCanvas]);
+
+  // Mouse Event Handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const position = getCanvasPosition(e.clientX, e.clientY);
+    if (!position) return;
+
+    const clickedCharge = findChargeAtPosition(position.x, position.y);
+    const currentTime = Date.now();
+    
+    // Set drag start position and reset drag flag
+    setDragStart({ x: position.x, y: position.y, time: currentTime });
+    setHasDraggedSignificantly(false);
+    
+    if (clickedCharge) {
+      // If there's a selected charge, start dragging immediately
+      if (selectedCharge) {
+        setInteractionState(prev => ({ ...prev, isDragging: true }));
+      }
+      // Note: Selection toggle will happen on mouseup if it's a click (not drag)
     } else {
-      material.emissive.setHex(0x000000); 
+      // Deselect any selected charge when clicking on empty space
+      setSelectedCharge(null);
+      setInteractionState(prev => ({ ...prev, isDragging: false }));
+      createNewCharge(position.x, position.y);
     }
-    
-            
-        const groundLevel = -5;
-        const bottomPosition = correctedPosition.y - draggedRadius;
-        if (bottomPosition <= groundLevel) {
-          correctedPosition.y = groundLevel + draggedRadius + 0.01;
-        }
-    
-    
-    const bounds = calculatePhysicsBounds();
-    
-    
-    const maxX = bounds.x - draggedRadius;
-    correctedPosition.x = Math.max(-maxX, Math.min(maxX, correctedPosition.x));
-    
-    
-    const maxY = bounds.y - draggedRadius;
-    correctedPosition.y = Math.max(-maxY, Math.min(maxY, correctedPosition.y));
-    
-    
-    const maxZ = bounds.z - draggedRadius;
-    correctedPosition.z = Math.max(-maxZ, Math.min(maxZ, correctedPosition.z));
-    
-    return correctedPosition;
-  }, [calculatePhysicsBounds]);
+  };
 
-  
-  const handlePointerDown = useCallback((event: React.PointerEvent) => {
-    if (!raycasterRef.current || !mouseRef.current || !cameraRef.current)
-      return;
-
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
-    mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
-    const intersects = raycasterRef.current.intersectObjects(
-      bodiesRef.current.map((body) => body.mesh)
-    );
-
-    if (intersects.length > 0) {
-      const intersectedObject = intersects[0].object;
-      const body = bodiesRef.current.find((b) => b.mesh === intersectedObject);
-      if (body) {
-        draggedBodyRef.current = body;
-        body.velocity.set(0, 0, 0);
-
-        
-        const cameraDirection = new THREE.Vector3();
-        cameraRef.current.getWorldDirection(cameraDirection);
-        dragPlaneRef.current = new THREE.Plane(cameraDirection, -body.mesh.position.z);
-
-        
-        const clickPoint = intersects[0].point;
-        dragOffsetRef.current = body.mesh.position.clone().sub(clickPoint);
-        
-        
-        lastDragPositionRef.current = body.mesh.position.clone();
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const position = getCanvasPosition(e.clientX, e.clientY);
+    if (!position) return;
+    
+    // Check if we've dragged significantly
+    if (dragStart && !hasDraggedSignificantly) {
+      const dragDistance = Math.sqrt(
+        Math.pow(position.x - dragStart.x, 2) + Math.pow(position.y - dragStart.y, 2)
+      );
+      if (dragDistance > 5) { // 5px threshold
+        setHasDraggedSignificantly(true);
       }
     }
-  }, []);
-
-  const handlePointerMove = useCallback((event: React.PointerEvent) => {
-    if (
-      !draggedBodyRef.current ||
-      !raycasterRef.current ||
-      !mouseRef.current ||
-      !cameraRef.current ||
-      !dragPlaneRef.current ||
-      !dragOffsetRef.current ||
-      !lastDragPositionRef.current
-    )
-      return;
-
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
-    mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
     
+    if (!interactionState.isDragging || !selectedCharge) return;
     
-    const intersectPoint = new THREE.Vector3();
-    const hasIntersection = raycasterRef.current.ray.intersectPlane(dragPlaneRef.current, intersectPoint);
+    setCharges(charges.map(charge => {
+      if (charge.id === selectedCharge) {
+        const constrainedPos = constrainToCanvas(position.x, position.y, charge.magnitude);
+        return { ...charge, x: constrainedPos.x, y: constrainedPos.y };
+      }
+      return charge;
+    }));
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    const position = getCanvasPosition(e.clientX, e.clientY);
+    if (!position) return;
     
-    if (hasIntersection) {
-      
-      const targetPosition = intersectPoint.add(dragOffsetRef.current);
-      
-      
-      const currentPosition = draggedBodyRef.current.mesh.position;
-      let newPosition = currentPosition.clone().lerp(targetPosition, 0.3);
-      
-      
-      newPosition = resolveDragCollisions(draggedBodyRef.current, newPosition);
-      
-      
-      const velocity = newPosition.clone().sub(lastDragPositionRef.current).multiplyScalar(15);
-      
-      
-      draggedBodyRef.current.mesh.position.copy(newPosition);
-    draggedBodyRef.current.velocity.copy(velocity);
-      
-      
-      lastDragPositionRef.current.copy(newPosition);
+    const clickedCharge = findChargeAtPosition(position.x, position.y);
+    
+    // If we didn't drag significantly and clicked on a charge, toggle selection
+    if (!hasDraggedSignificantly && clickedCharge && dragStart) {
+      if (selectedCharge === clickedCharge.id) {
+        // Deselect if already selected
+        setSelectedCharge(null);
+      } else {
+        // Select the new charge
+        setSelectedCharge(clickedCharge.id);
+      }
     }
-  }, []);
+    
+    setInteractionState(prev => ({ ...prev, isDragging: false }));
+    setDragStart(null);
+    setHasDraggedSignificantly(false);
+  };
 
-  const handlePointerUp = useCallback(() => {
-    if (draggedBodyRef.current && lastDragPositionRef.current) {
+  const handleWheel = (e: React.WheelEvent) => {
+    if (!selectedCharge) return;
+    
+    e.preventDefault();
+    const scaleFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    
+    setCharges(charges.map(charge => 
+      charge.id === selectedCharge 
+        ? { ...charge, magnitude: Math.max(0.1, Math.min(5, charge.magnitude * scaleFactor)) }
+        : charge
+    ));
+  };
+
+  // Touch Event Handlers
+    const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      const position = getCanvasPosition(touch.clientX, touch.clientY);
+      if (!position) return;
       
-      const currentVelocity = draggedBodyRef.current.velocity.clone();
+      const clickedCharge = findChargeAtPosition(position.x, position.y);
+      const currentTime = Date.now();
       
+      // Set drag start position and reset drag flag
+      setDragStart({ x: position.x, y: position.y, time: currentTime });
+      setHasDraggedSignificantly(false);
       
-      draggedBodyRef.current.velocity.copy(currentVelocity.multiplyScalar(1.5));
+      if (clickedCharge) {
+        // If there's a selected charge, start dragging immediately
+        if (selectedCharge) {
+          setInteractionState(prev => ({ ...prev, isDragging: true }));
+        }
+        // Note: Selection toggle will happen on touchend if it's a tap (not drag)
+      } else {
+        // Deselect any selected charge when touching empty space
+        setSelectedCharge(null);
+        setInteractionState(prev => ({ ...prev, isDragging: false }));
+        createNewCharge(position.x, position.y);
+      }
+    } else if (e.touches.length === 2) {
+      const distance = Math.sqrt(
+        (e.touches[0].clientX - e.touches[1].clientX) ** 2 +
+        (e.touches[0].clientY - e.touches[1].clientY) ** 2
+      );
+      setInteractionState(prev => ({ ...prev, startDistance: distance }));
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      const position = getCanvasPosition(touch.clientX, touch.clientY);
+      if (!position) return;
       
+      // Check if we've dragged significantly
+      if (dragStart && !hasDraggedSignificantly) {
+        const dragDistance = Math.sqrt(
+          Math.pow(position.x - dragStart.x, 2) + Math.pow(position.y - dragStart.y, 2)
+        );
+        if (dragDistance > 5) { // 5px threshold
+          setHasDraggedSignificantly(true);
+        }
+      }
       
-      const throwRandomness = 0.5;
-      draggedBodyRef.current.velocity.add(new THREE.Vector3(
-        (Math.random() - 0.5) * throwRandomness,
-        Math.random() * throwRandomness * 0.5, 
-        (Math.random() - 0.5) * throwRandomness
+      if (interactionState.isDragging && selectedCharge) {
+        setCharges(charges.map(charge => {
+          if (charge.id === selectedCharge) {
+            const constrainedPos = constrainToCanvas(position.x, position.y, charge.magnitude);
+            return { ...charge, x: constrainedPos.x, y: constrainedPos.y };
+          }
+          return charge;
+        }));
+      }
+    } else if (e.touches.length === 2 && selectedCharge && interactionState.startDistance) {
+      const newDistance = Math.sqrt(
+        (e.touches[0].clientX - e.touches[1].clientX) ** 2 +
+        (e.touches[0].clientY - e.touches[1].clientY) ** 2
+      );
+      
+      const scale = newDistance / interactionState.startDistance;
+      
+      setCharges(charges.map(charge => 
+        charge.id === selectedCharge 
+          ? { ...charge, magnitude: Math.max(0.1, Math.min(5, charge.magnitude * scale)) }
+          : charge
       ));
       
-      
-      const spinStrength = currentVelocity.length() * 0.01;
-      draggedBodyRef.current.mesh.rotation.x += (Math.random() - 0.5) * spinStrength;
-      draggedBodyRef.current.mesh.rotation.y += (Math.random() - 0.5) * spinStrength;
-      draggedBodyRef.current.mesh.rotation.z += (Math.random() - 0.5) * spinStrength;
-      
-      
-      const material = draggedBodyRef.current.mesh.material as THREE.MeshPhongMaterial;
-      material.emissive.setHex(0x000000);
+      setInteractionState(prev => ({ ...prev, startDistance: newDistance }));
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.changedTouches.length === 1) {
+      const touch = e.changedTouches[0];
+      const position = getCanvasPosition(touch.clientX, touch.clientY);
+      if (position) {
+        const clickedCharge = findChargeAtPosition(position.x, position.y);
+        
+        // If we didn't drag significantly and tapped on a charge, toggle selection
+        if (!hasDraggedSignificantly && clickedCharge && dragStart) {
+          if (selectedCharge === clickedCharge.id) {
+            // Deselect if already selected
+            setSelectedCharge(null);
+          } else {
+            // Select the new charge
+            setSelectedCharge(clickedCharge.id);
+          }
+        }
+      }
     }
     
-    
-    draggedBodyRef.current = null;
-    dragOffsetRef.current = null;
-    lastDragPositionRef.current = null;
-    dragPlaneRef.current = null;
-  }, []);
-
-  
-  const forceCollision = useCallback(() => {
-    const bodies = bodiesRef.current;
-    if (bodies.length === 0) return;
-
-    const centerPoint = new THREE.Vector3(0, 0, 0);
-    
-    bodies.forEach((body) => {
-      const direction = centerPoint.clone().sub(body.mesh.position).normalize();
-      const distance = body.mesh.position.distanceTo(centerPoint);
-      
-      const forceStrength = Math.min(8 + (distance * 2), 15);
-      
-      body.velocity.add(direction.multiplyScalar(forceStrength));
-      
-      const randomTwist = new THREE.Vector3(
-        (Math.random() - 0.5) * 3,
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 3
-      );
-      body.velocity.add(randomTwist);
-      
-      body.mesh.rotation.x += (Math.random() - 0.5) * 0.3;
-      body.mesh.rotation.y += (Math.random() - 0.5) * 0.3;
-      body.mesh.rotation.z += (Math.random() - 0.5) * 0.3;
+    setInteractionState({
+      isDragging: false,
+      startDistance: null,
+      isTouchDevice: interactionState.isTouchDevice
     });
-  }, []);
+    setDragStart(null);
+    setHasDraggedSignificantly(false);
+  };
 
-  const resetSimulation = useCallback(() => {
-    setCollisionCount(0);
-    bodiesRef.current.forEach((body) => {
-      body.collidingWith.clear();
-      sceneRef.current?.remove(body.mesh);
-    });
-    bodiesRef.current = [];
-    createInitialBodies();
+  const resetCharges = () => {
+    setCharges([]);
+    setShowMenu(false);
+    setSelectedCharge(null);
+  };
+
+  const randomizeCharges = () => {
+    const newCharges: Charge[] = [];
+    const count = Math.floor(Math.random() * 4) + 3;
     
-    setTimeout(() => {
-      bodiesRef.current.forEach((body) => {
-        body.velocity.add(new THREE.Vector3(
-          (Math.random() - 0.5) * 2,
-          Math.random() * 1,
-          (Math.random() - 0.5) * 2
-        ));
-      });
-    }, 100);
-  }, [createInitialBodies]);
-
-  
-  const handleResize = useCallback(() => {
-    if (!mountRef.current || !cameraRef.current || !rendererRef.current) return;
-
-    const width = mountRef.current.clientWidth;
-    const height = mountRef.current.clientHeight;
-
-    cameraRef.current.aspect = width / height;
-    cameraRef.current.updateProjectionMatrix();
-    rendererRef.current.setSize(width, height);
-    
-    
-    setTimeout(() => {
-      if (!bodiesRef.current) return;
+    for (let i = 0; i < count; i++) {
+      const magnitude = Math.random() * 2.5 + 0.5;
+      const x = Math.random() * canvasSize.width;
+      const y = Math.random() * canvasSize.height;
+      const constrainedPos = constrainToCanvas(x, y, magnitude);
       
-      const newBounds = calculatePhysicsBounds();
-      bodiesRef.current.forEach((body) => {
-        const pos = body.mesh.position;
-        const radius = body.radius;
-        
-        
-        pos.x = Math.max(-newBounds.x + radius, Math.min(newBounds.x - radius, pos.x));
-        pos.y = Math.max(-newBounds.y + radius, Math.min(newBounds.y - radius, pos.y));
-        pos.z = Math.max(-newBounds.z + radius, Math.min(newBounds.z - radius, pos.z));
+      newCharges.push({
+        id: `${Date.now()}-${i}`,
+        x: constrainedPos.x,
+        y: constrainedPos.y,
+        magnitude,
+        isPositive: Math.random() > 0.5
       });
-    }, 100); 
-  }, [calculatePhysicsBounds]);
+    }
+    
+    setCharges(newCharges);
+    setShowMenu(false);
+  };
 
-  
+  const toggleChargeSign = () => {
+    if (selectedCharge) {
+      setCharges(charges.map(charge => 
+        charge.id === selectedCharge 
+          ? { ...charge, isPositive: !charge.isPositive }
+          : charge
+      ));
+    }
+  };
+
+  const toggleInfo = () => {
+    setShowInfo(!showInfo);
+    setShowMenu(false);
+  };
+
   useEffect(() => {
-    initScene();
-
-    
-    setTimeout(() => {
-      handleResize();
-    }, 100);
-
-    const handleResizeEvent = () => handleResize();
-    window.addEventListener("resize", handleResizeEvent);
+    if (showInfo) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
 
     return () => {
-      window.removeEventListener("resize", handleResizeEvent);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      if (
-        rendererRef.current &&
-        mountRef.current &&
-        mountRef.current.contains(rendererRef.current.domElement)
-      ) {
-        mountRef.current.removeChild(rendererRef.current.domElement);
-      }
+      document.body.style.overflow = 'unset';
     };
-  }, []); 
+  }, [showInfo]);
 
-  
-  useEffect(() => {
-    updateThemeColors();
-  }, [isDarkMode, updateThemeColors]);
+  const getTotalFieldStrength = () => {
+    if (charges.length === 0) return 0;
+    
+    let totalStrength = 0;
+    const samplePoints = 20;
+    
+    for (let i = 0; i < samplePoints; i++) {
+      const x = Math.random() * canvasSize.width;
+      const y = Math.random() * canvasSize.height;
+      const field = calculateElectricField(x, y);
+      const magnitude = Math.sqrt(field.x * field.x + field.y * field.y);
+      totalStrength += magnitude;
+    }
+    
+    return (totalStrength / samplePoints) * 0.0000000001;
+  };
 
-  
-  useEffect(() => {
-    animate();
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [animate]);
+  const selectedChargeData = charges.find(c => c.id === selectedCharge);
 
   return (
-    <div
-      className="min-h-screen relative overflow-hidden"
-      style={{
-        fontFamily: "Poppins, sans-serif",
-        background: isDarkMode
-          ? "linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #475569 75%, #64748b 100%)"
-          : "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)",
-      }}
-    >
-      <div
-        ref={mountRef}
-        className="w-full h-screen relative"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-        style={{ 
-          touchAction: "none", 
-          cursor: "pointer",
-          userSelect: "none",
-          WebkitUserSelect: "none"
-        }}
-      />
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-
-
-
-
-        <div className="sm:hidden absolute top-4 right-4 z-20">
-          <button
-            onClick={() => setShowUI(!showUI)}
-            className="backdrop-blur-md rounded-full p-2.5 pointer-events-auto transition-all duration-300 hover:scale-110 active:scale-95"
-            style={{
-              background: isDarkMode
-                ? "linear-gradient(135deg, rgba(168,85,247,0.25) 0%, rgba(168,85,247,0.15) 100%)"
-                : "linear-gradient(135deg, rgba(168,85,247,0.3) 0%, rgba(168,85,247,0.1) 100%)",
-              border: "1px solid rgba(168,85,247,0.3)",
-              cursor: "pointer",
-              minWidth: "40px",
-              minHeight: "40px",
-            }}
-            title={showUI ? "Hide Controls" : "Show Controls"}
-          >
-            {showUI ? (
-              <MdVisibilityOff className="w-4 h-4 text-purple-400" />
-            ) : (
-              <MdVisibility className="w-4 h-4 text-purple-400" />
-            )}
-          </button>
-        </div>
-
-        <div 
-          className={`sm:hidden transition-all duration-500 ease-in-out ${
-            showUI 
-              ? "opacity-100 translate-y-0 pointer-events-auto" 
-              : "opacity-0 -translate-y-4 pointer-events-none"
-          }`}
+    <div className="w-full h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-800 overflow-hidden relative">
+      {floatingParticles.map(particle => (
+        <motion.div
+          key={particle.id}
+          className="absolute rounded-full bg-gradient-to-r from-blue-400/40 to-purple-400/40 pointer-events-none"
+          style={{
+            width: particle.size,
+            height: particle.size,
+            opacity: particle.opacity,
+          }}
+          animate={{
+            x: [particle.x - 40, particle.x + 40, particle.x - 40],
+            y: [particle.y - 25, particle.y + 25, particle.y - 25],
+          }}
+          transition={{
+            duration: Math.random() * 12 + 8,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        />
+      ))}
+      
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-purple-900/25 to-slate-900/30" />
+      
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="relative w-full h-full"
+      >        
+        <motion.div
+          initial={{ y: -50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
+          className="relative z-10 px-4 py-2 md:px-6 md:py-3 bg-gradient-to-r from-slate-900/95 to-slate-800/95 backdrop-blur-xl border-b border-slate-700/50 shadow-lg"
         >
-          <div className="absolute top-4 left-4 right-4 flex flex-col space-y-3 z-10">
-            <div className="flex items-center justify-start space-x-2">
-              <div
-                className="backdrop-blur-md rounded-xl px-3 py-2 pointer-events-auto flex-shrink-0 transition-all duration-300 flex items-center justify-center"
-                style={{
-                  background: isDarkMode
-                    ? "linear-gradient(135deg, rgba(147,51,234,0.25) 0%, rgba(147,51,234,0.15) 100%)"
-                    : "linear-gradient(135deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.25) 100%)",
-                  border: `1px solid ${
-                    isDarkMode ? "rgba(147,51,234,0.3)" : "rgba(0,0,0,0.1)"
-                  }`,
-                  color: isDarkMode ? "#ffffff" : "#1a1a1a",
-                  minWidth: "70px",
-                  height: "40px",
-                }}
-              >
-                <div className="flex flex-col items-center justify-center">
-                  <div className={`text-xs font-medium ${isDarkMode ? 'opacity-60' : 'opacity-85'} leading-none`}>
-                    Collisions
-                  </div>
-                  <div className="text-sm font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent leading-none mt-0.5">
-                    {collisionCount}
-                  </div>
-                </div>
+          {isMobile && (
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="p-1 rounded-lg bg-indigo-500/20 border border-indigo-500/30">
+                <FiActivity className="text-indigo-400 text-base" />
               </div>
-
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={forceCollision}
-                  className="rounded-full p-2.5 transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
-                  style={{
-                    background: isDarkMode
-                      ? "linear-gradient(135deg, rgba(239,68,68,0.25) 0%, rgba(239,68,68,0.15) 100%)"
-                      : "linear-gradient(135deg, rgba(239,68,68,0.3) 0%, rgba(239,68,68,0.1) 100%)",
-                    border: "1px solid rgba(239,68,68,0.3)",
-                    cursor: "pointer",
-                    minWidth: "40px",
-                    minHeight: "40px",
-                  }}
-                  title="Force Collision"
-                >
-                  <MdFlashOn className="w-4 h-4 text-red-400" />
-                </button>
-
-                <button
-                  onClick={toggleWireframe}
-                  className="rounded-full p-2.5 transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
-                  style={{
-                    background: isDarkMode
-                      ? "linear-gradient(135deg, rgba(59,130,246,0.25) 0%, rgba(59,130,246,0.15) 100%)"
-                      : "linear-gradient(135deg, rgba(59,130,246,0.3) 0%, rgba(59,130,246,0.1) 100%)",
-                    border: "1px solid rgba(59,130,246,0.3)",
-                    cursor: "pointer",
-                    minWidth: "40px",
-                    minHeight: "40px",
-                  }}
-                >
-                  {isWireframe ? (
-                    <MdVisibilityOff className="w-4 h-4 text-blue-400" />
-                  ) : (
-                    <MdVisibility className="w-4 h-4 text-blue-400" />
-                  )}
-                </button>
-
-                <button
-                  onClick={resetSimulation}
-                  className="rounded-full p-2.5 transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
-                  style={{
-                    background: isDarkMode
-                      ? "linear-gradient(135deg, rgba(249,115,22,0.25) 0%, rgba(249,115,22,0.15) 100%)"
-                      : "linear-gradient(135deg, rgba(249,115,22,0.3) 0%, rgba(249,115,22,0.1) 100%)",
-                    border: "1px solid rgba(249,115,22,0.3)",
-                    cursor: "pointer",
-                    minWidth: "40px",
-                    minHeight: "40px",
-                  }}
-                >
-                  <MdRefresh className="w-4 h-4 text-orange-400" />
-                </button>
-
-                <button
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                  className="rounded-full p-2.5 transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
-                  style={{
-                    background: isDarkMode
-                      ? "linear-gradient(135deg, rgba(251,191,36,0.25) 0%, rgba(251,191,36,0.15) 100%)"
-                      : "linear-gradient(135deg, rgba(251,191,36,0.3) 0%, rgba(251,191,36,0.1) 100%)",
-                    border: "1px solid rgba(251,191,36,0.3)",
-                    cursor: "pointer",
-                    minWidth: "40px",
-                    minHeight: "40px",
-                  }}
-                >
-                  {isDarkMode ? (
-                    <MdWbSunny className="w-4 h-4" style={{ color: "#fbbf24" }} />
-                  ) : (
-                    <MdDarkMode className="w-4 h-4" style={{ color: "#4338ca" }} />
-                  )}
-                </button>
-              </div>
-
-
-            </div>
-
-            <div
-              className="backdrop-blur-md rounded-xl p-3 w-full pointer-events-auto transition-all duration-300"
-                            style={{
-                background: isDarkMode
-                  ? "linear-gradient(135deg, rgba(20,184,166,0.25) 0%, rgba(20,184,166,0.15) 100%)"
-                  : "linear-gradient(135deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.25) 100%)",
-                border: `1px solid ${
-                  isDarkMode ? "rgba(20,184,166,0.3)" : "rgba(0,0,0,0.12)"
-                }`,
-                color: isDarkMode ? "#ffffff" : "#1a1a1a",
-              }}
-            >
-              <div className={`flex justify-between items-center ${showSettings ? 'mb-2' : 'mb-0'}`}>
-                <span className={`text-sm font-medium ${isDarkMode ? 'opacity-75' : 'opacity-90'} leading-none`}>Gravity</span>
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm font-bold bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent leading-none">
-                    {gravity.toFixed(1)}
-                  </span>
-                  <button
-                    onClick={() => setShowSettings(!showSettings)}
-                    className="rounded-full p-1 transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
-                    style={{
-                      background: isDarkMode
-                        ? "rgba(20,184,166,0.15)"
-                        : "rgba(0,0,0,0.1)",
-                      cursor: "pointer",
-                      minWidth: "24px",
-                      minHeight: "24px",
-                    }}
-                  >
-                    {showSettings ? (
-                      <MdExpandLess className="w-4 h-4" style={{ color: isDarkMode ? "#ffffff" : "#1a1a1a" }} />
-                    ) : (
-                      <MdExpandMore className="w-4 h-4" style={{ color: isDarkMode ? "#ffffff" : "#1a1a1a" }} />
-                    )}
-                  </button>
-                </div>
-              </div>
-              {showSettings && (
-                <div className="space-y-2">
-                  <input
-                    type="range"
-                    min="0"
-                    max="2"
-                    step="0.1"
-                    value={gravity}
-                    onChange={(e) => setGravity(parseFloat(e.target.value))}
-                    className="w-full h-3 rounded-lg appearance-none transition-all duration-300"
-                    style={{
-                      background: isDarkMode 
-                        ? `linear-gradient(90deg, #10b981 0%, #3b82f6 ${(gravity / 2) * 100}%, rgba(255,255,255,0.2) ${(gravity / 2) * 100}%, rgba(255,255,255,0.2) 100%)`
-                        : `linear-gradient(90deg, #10b981 0%, #3b82f6 ${(gravity / 2) * 100}%, rgba(0,0,0,0.2) ${(gravity / 2) * 100}%, rgba(0,0,0,0.2) 100%)`,
-                      cursor: "pointer",
-                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)'}`,
-                    }}
-                  />
-                  <div className={`flex justify-between text-xs ${isDarkMode ? 'opacity-60' : 'opacity-75'} px-1`}>
-                    <span>0</span>
-                    <span>0.5</span>
-                    <span>1.0</span>
-                    <span>1.5</span>
-                    <span>2.0</span>
-                  </div>
-                  <div className={`flex justify-between text-xs ${isDarkMode ? 'opacity-50' : 'opacity-70'} px-1`}>
-                    <span>Zero</span>
-                    <span className="text-center">Earth</span>
-                    <span>Heavy</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-
-
-        <div 
-          className={`absolute bottom-6 sm:bottom-8 left-4 sm:left-6 right-4 sm:right-6 pointer-events-none transition-all duration-500 ease-in-out ${
-            showUI 
-              ? "opacity-80 translate-y-0" 
-              : "opacity-0 translate-y-4"
-          }`}
-        >
-          <div
-            className="backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-4 mx-auto max-w-sm sm:max-w-md text-center transition-all duration-300"
-            style={{
-              background: isDarkMode
-                ? "linear-gradient(135deg, rgba(168,85,247,0.2) 0%, rgba(168,85,247,0.1) 100%)"
-                : "linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.2) 100%)",
-              border: `1px solid ${
-                isDarkMode ? "rgba(168,85,247,0.25)" : "rgba(0,0,0,0.1)"
-              }`,
-              color: isDarkMode ? "#ffffff" : "#1a1a1a",
-            }}
-          >
-            <p className="text-sm sm:text-base font-medium">
-              Drag objects to throw them around!
-            </p>
-          </div>
-        </div>
-
-        <div 
-          className={`hidden sm:block transition-all duration-500 ease-in-out ${
-            showUI 
-              ? "opacity-100 translate-y-0 pointer-events-auto" 
-              : "opacity-0 -translate-y-4 pointer-events-none"
-          }`}
-        >
-          <div className="absolute top-6 left-6 right-6 z-10">
-            <div
-              className="backdrop-blur-md rounded-2xl p-4 pointer-events-auto transition-all duration-300"
-              style={{
-                background: isDarkMode
-                  ? "linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(99,102,241,0.15) 100%)"
-                  : "linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.3) 100%)",
-                border: `1px solid ${
-                  isDarkMode ? "rgba(99,102,241,0.3)" : "rgba(0,0,0,0.1)"
-                }`,
-                color: isDarkMode ? "#ffffff" : "#1a1a1a",
-              }}
-            >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-6">
-                  <div className="flex items-center space-x-3">
-                    <div className={`text-sm font-medium ${isDarkMode ? 'opacity-75' : 'opacity-90'}`}>Collisions:</div>
-                    <div className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                      {collisionCount}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <button
-                      onClick={forceCollision}
-                      className="rounded-full p-3 transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
-                      style={{
-                        background: isDarkMode
-                          ? "linear-gradient(135deg, rgba(239,68,68,0.25) 0%, rgba(239,68,68,0.15) 100%)"
-                          : "linear-gradient(135deg, rgba(239,68,68,0.3) 0%, rgba(239,68,68,0.1) 100%)",
-                        border: "1px solid rgba(239,68,68,0.3)",
-                        cursor: "pointer",
-                        minWidth: "42px",
-                        minHeight: "42px",
-                      }}
-                      title="Force Collision"
-                    >
-                      <MdFlashOn className="w-5 h-5 text-red-400" />
-                    </button>
-
-                    <button
-                      onClick={toggleWireframe}
-                      className="rounded-full p-3 transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
-                      style={{
-                        background: isDarkMode
-                          ? "linear-gradient(135deg, rgba(59,130,246,0.25) 0%, rgba(59,130,246,0.15) 100%)"
-                          : "linear-gradient(135deg, rgba(59,130,246,0.3) 0%, rgba(59,130,246,0.1) 100%)",
-                        border: "1px solid rgba(59,130,246,0.3)",
-                        cursor: "pointer",
-                        minWidth: "42px",
-                        minHeight: "42px",
-                      }}
-                    >
-                      {isWireframe ? (
-                        <MdVisibilityOff className="w-5 h-5 text-blue-400" />
-                      ) : (
-                        <MdVisibility className="w-5 h-5 text-blue-400" />
-                      )}
-                    </button>
-
-                    <button
-                      onClick={resetSimulation}
-                      className="rounded-full p-3 transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
-                      style={{
-                        background: isDarkMode
-                          ? "linear-gradient(135deg, rgba(249,115,22,0.25) 0%, rgba(249,115,22,0.15) 100%)"
-                          : "linear-gradient(135deg, rgba(249,115,22,0.3) 0%, rgba(249,115,22,0.1) 100%)",
-                        border: "1px solid rgba(249,115,22,0.3)",
-                        cursor: "pointer",
-                        minWidth: "42px",
-                        minHeight: "42px",
-                      }}
-                    >
-                      <MdRefresh className="w-5 h-5 text-orange-400" />
-                    </button>
-
-                    <div className="w-px h-8 bg-white opacity-20 mx-2"></div>
-                    
-                    <button
-                      onClick={() => setIsDarkMode(!isDarkMode)}
-                      className="rounded-full p-3 transition-all duration-300 hover:scale-110 active:scale-95"
-                      style={{
-                        background: isDarkMode
-                          ? "linear-gradient(135deg, rgba(251,191,36,0.25) 0%, rgba(251,191,36,0.15) 100%)"
-                          : "linear-gradient(135deg, rgba(251,191,36,0.3) 0%, rgba(251,191,36,0.1) 100%)",
-                        border: "1px solid rgba(251,191,36,0.3)",
-                        cursor: "pointer",
-                        minWidth: "42px",
-                        minHeight: "42px",
-                      }}
-                    >
-                      {isDarkMode ? (
-                        <MdWbSunny className="w-5 h-5" style={{ color: "#fbbf24" }} />
-                      ) : (
-                        <MdDarkMode className="w-5 h-5" style={{ color: "#4338ca" }} />
-                      )}
-                    </button>
-
-                    <div className="w-px h-8 bg-white opacity-20 mx-2"></div>
-                    
-                    <button
-                      onClick={() => setShowUI(!showUI)}
-                      className="rounded-full p-3 transition-all duration-300 hover:scale-110 active:scale-95"
-                      style={{
-                        background: isDarkMode
-                          ? "linear-gradient(135deg, rgba(168,85,247,0.25) 0%, rgba(168,85,247,0.15) 100%)"
-                          : "linear-gradient(135deg, rgba(168,85,247,0.3) 0%, rgba(168,85,247,0.1) 100%)",
-                        border: "1px solid rgba(168,85,247,0.3)",
-                        cursor: "pointer",
-                        minWidth: "42px",
-                        minHeight: "42px",
-                      }}
-                      title={showUI ? "Hide Controls" : "Show Controls"}
-                    >
-                      {showUI ? (
-                        <MdVisibilityOff className="w-5 h-5 text-purple-400" />
-                      ) : (
-                        <MdVisibility className="w-5 h-5 text-purple-400" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-6">
-                  <span className={`text-sm font-medium ${isDarkMode ? 'opacity-75' : 'opacity-90'} whitespace-nowrap`}>
-                    Gravity
-                  </span>
-                  <div className="flex-1 max-w-lg mx-6">
-                    <div className="space-y-2">
-                      <div className="relative">
-                        <input
-                          type="range"
-                          min="0"
-                          max="2"
-                          step="0.1"
-                          value={gravity}
-                          onChange={(e) => setGravity(parseFloat(e.target.value))}
-                          className="w-full h-4 rounded-lg appearance-none"
-                          style={{
-                            background: isDarkMode 
-                              ? `linear-gradient(90deg, #10b981 0%, #3b82f6 ${(gravity / 2) * 100}%, rgba(255,255,255,0.15) ${(gravity / 2) * 100}%, rgba(255,255,255,0.15) 100%)`
-                              : `linear-gradient(90deg, #10b981 0%, #3b82f6 ${(gravity / 2) * 100}%, rgba(0,0,0,0.15) ${(gravity / 2) * 100}%, rgba(0,0,0,0.15) 100%)`,
-                            cursor: "pointer",
-                            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'}`,
-                          }}
-                        />
-                      </div>
-                      <div className={`flex justify-between text-xs ${isDarkMode ? 'opacity-60' : 'opacity-75'} px-1`}>
-                        <span>0</span>
-                        <span>0.5</span>
-                        <span>1.0</span>
-                        <span>1.5</span>
-                        <span>2.0</span>
-                      </div>
-                      <div className={`flex justify-between text-xs ${isDarkMode ? 'opacity-50' : 'opacity-70'} px-1`}>
-                        <span>Zero</span>
-                        <span className="text-center">Earth</span>
-                        <span>Heavy</span>
-                      </div>
-                    </div>
-                  </div>
-                  <span className="text-lg font-bold bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent whitespace-nowrap min-w-[2rem]">
-                    {gravity.toFixed(1)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div 
-        className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-1000 ease-out ${
-          isLoading ? 'opacity-100 visible' : 'opacity-0 invisible'
-        }`}
-        style={{
-          background: isDarkMode
-            ? "linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #475569 75%, #64748b 100%)"
-            : "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)",
-        }}
-      >
-          <div className="flex flex-col items-center space-y-8 p-8">
-            <div className="relative">
-              <div 
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-transparent animate-spin"
-                style={{
-                  background: isDarkMode
-                    ? "linear-gradient(45deg, rgba(168,85,247,0.8), rgba(59,130,246,0.8), rgba(16,185,129,0.8))"
-                    : "linear-gradient(45deg, rgba(168,85,247,0.9), rgba(59,130,246,0.9), rgba(16,185,129,0.9))",
-                  WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                  WebkitMaskComposite: "xor",
-                  maskComposite: "subtract",
-                  borderRadius: "50%",
-                  padding: "4px",
-                }}
-              >
-                <div 
-                  className="w-full h-full rounded-full"
-                  style={{
-                    background: isDarkMode ? "#0f172a" : "#f8fafc",
-                  }}
-                />
-              </div>
-              
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div 
-                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-full animate-pulse"
-                  style={{
-                    background: isDarkMode
-                      ? "radial-gradient(circle, rgba(168,85,247,0.6) 0%, rgba(168,85,247,0.2) 70%)"
-                      : "radial-gradient(circle, rgba(168,85,247,0.8) 0%, rgba(168,85,247,0.3) 70%)",
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="text-center space-y-4">
-              <h1 
-                className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-transparent"
-                style={{
-                  fontFamily: "Poppins, sans-serif",
-                  textShadow: isDarkMode 
-                    ? "0 0 30px rgba(168,85,247,0.3)" 
-                    : "0 0 20px rgba(168,85,247,0.2)",
-                }}
-              >
-                Physics Playground
+              <h1 className="text-lg font-bold bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-300 bg-clip-text text-transparent">
+                Coulomb's Law Simulator
               </h1>
+            </div>
+          )}
+          
+          {isMobile ? (
+            <div className="space-y-2">
+              <p className="text-xs text-slate-300 text-center font-medium">
+                Tap to place • Pinch to adjust • Drag to move
+              </p>
               
-              <div className="flex items-center justify-center space-x-2">
-                <div className="flex space-x-1">
-                  <div 
-                    className="w-2 h-2 rounded-full animate-bounce"
-                    style={{
-                      backgroundColor: isDarkMode ? "#a855f7" : "#8b5cf6",
-                      animationDelay: "0ms",
-                    }}
-                  />
-                  <div 
-                    className="w-2 h-2 rounded-full animate-bounce"
-                    style={{
-                      backgroundColor: isDarkMode ? "#3b82f6" : "#6366f1",
-                      animationDelay: "150ms",
-                    }}
-                  />
-                  <div 
-                    className="w-2 h-2 rounded-full animate-bounce"
-                    style={{
-                      backgroundColor: isDarkMode ? "#10b981" : "#059669",
-                      animationDelay: "300ms",
-                    }}
-                  />
-                </div>
-                <p 
-                  className="text-lg sm:text-xl font-medium ml-3"
-                  style={{
-                    color: isDarkMode ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.9)",
-                    fontFamily: "Poppins, sans-serif",
-                  }}
-                >
-                  Initializing 3D World
-                </p>
-              </div>
-
-              <div 
-                className="backdrop-blur-md rounded-2xl px-6 py-3 mx-auto max-w-sm"
-                style={{
-                  background: isDarkMode
-                    ? "rgba(255,255,255,0.1)"
-                    : "rgba(255,255,255,0.2)",
-                  border: `1px solid ${isDarkMode ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.3)"}`,
-                }}
+              <motion.div 
+                className="flex justify-center gap-2"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
               >
-                <p 
-                  className="text-sm font-medium"
-                  style={{
-                    color: isDarkMode ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.8)",
-                    fontFamily: "Poppins, sans-serif",
-                  }}
-                >
-                  Loading physics engine & 3D objects...
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-700/50 rounded-full border border-slate-600/50 backdrop-blur-sm">
+                  <FiActivity className="text-xs text-slate-300" />
+                  <span className="text-xs text-slate-300 font-medium">{charges.length} charges</span>
+                </div>
+              </motion.div>
+
+              <motion.div 
+                className="flex justify-center items-center gap-2"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <span className="text-xs text-slate-400 font-medium">Place:</span>
+                <div className="flex gap-1">
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setChargePlacementMode('positive')}
+                    className={`flex items-center gap-0.5 px-2 py-1 rounded-full border transition-all text-xs font-medium ${
+                      chargePlacementMode === 'positive'
+                        ? 'bg-blue-500/30 border-blue-400/60 text-blue-100 shadow-lg shadow-blue-500/25'
+                        : 'bg-blue-500/10 border-blue-400/30 text-blue-300/80 hover:bg-blue-500/20'
+                    }`}
+                  >
+                    <FiPlus className="text-xs" />
+                    <span>+</span>
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setChargePlacementMode('negative')}
+                    className={`flex items-center gap-0.5 px-2 py-1 rounded-full border transition-all text-xs font-medium ${
+                      chargePlacementMode === 'negative'
+                        ? 'bg-purple-500/30 border-purple-400/60 text-purple-100 shadow-lg shadow-purple-500/25'
+                        : 'bg-purple-500/10 border-purple-400/30 text-purple-300/80 hover:bg-purple-500/20'
+                    }`}
+                  >
+                    <FiMinus className="text-xs" />
+                    <span>-</span>
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setChargePlacementMode('random')}
+                    className={`flex items-center gap-0.5 px-2 py-1 rounded-full border transition-all text-xs font-medium ${
+                      chargePlacementMode === 'random'
+                        ? 'bg-amber-500/30 border-amber-400/60 text-amber-100 shadow-lg shadow-amber-500/25'
+                        : 'bg-amber-500/10 border-amber-400/30 text-amber-300/80 hover:bg-amber-500/20'
+                    }`}
+                  >
+                    <FiShuffle className="text-xs" />
+                    <span>?</span>
+                  </motion.button>
+                </div>
+              </motion.div>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between">
+                {/* Left side - Title */}
+                <div className="flex items-center gap-3">
+                  <div className="p-1.5 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 backdrop-blur-sm">
+                    <FiActivity className="text-indigo-400 text-xl" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-300 bg-clip-text text-transparent">
+                      Coulomb's Law Simulator
+                    </h1>
+                    <p className="text-xs text-slate-400 font-medium">
+                      Interactive Physics Simulation
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right side - Controls */}
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/60 rounded-lg border border-slate-600/50 backdrop-blur-sm">
+                      <FiActivity className="text-indigo-400 text-sm" />
+                      <span className="text-slate-200 font-semibold text-sm">{charges.length}</span>
+                      <span className="text-slate-400 text-xs">charges</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 rounded-lg border border-emerald-500/40 backdrop-blur-sm">
+                      <FiMousePointer className="text-emerald-400 text-sm" />
+                      <span className="text-emerald-300 font-medium text-sm">Desktop</span>
+                    </div>
+                  </div>
+
+                  <div className="h-6 w-px bg-gradient-to-b from-transparent via-slate-600/60 to-transparent"></div>
+
+                  <motion.div 
+                    className="flex items-center gap-3"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <div className="text-slate-300 font-medium text-sm">Placement Mode:</div>
+                    <div className="flex items-center gap-1 p-0.5 bg-slate-800/40 rounded-lg border border-slate-700/50 backdrop-blur-sm">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setChargePlacementMode('positive')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all duration-200 font-medium text-sm ${
+                          chargePlacementMode === 'positive'
+                            ? 'bg-blue-500/30 border border-blue-400/60 text-blue-100 shadow-lg shadow-blue-500/25'
+                            : 'text-blue-300/80 hover:bg-blue-500/15 hover:text-blue-200'
+                        }`}
+                      >
+                        <FiPlus className="text-xs" />
+                        <span>Positive</span>
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setChargePlacementMode('negative')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all duration-200 font-medium text-sm ${
+                          chargePlacementMode === 'negative'
+                            ? 'bg-purple-500/30 border border-purple-400/60 text-purple-100 shadow-lg shadow-purple-500/25'
+                            : 'text-purple-300/80 hover:bg-purple-500/15 hover:text-purple-200'
+                        }`}
+                      >
+                        <FiMinus className="text-xs" />
+                        <span>Negative</span>
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setChargePlacementMode('random')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all duration-200 font-medium text-sm ${
+                          chargePlacementMode === 'random'
+                            ? 'bg-amber-500/30 border border-amber-400/60 text-amber-100 shadow-lg shadow-amber-500/25'
+                            : 'text-amber-300/80 hover:bg-amber-500/15 hover:text-amber-200'
+                        }`}
+                      >
+                        <FiShuffle className="text-xs" />
+                        <span>Random</span>
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                </div>
+              </div>
+              
+              <div className="mt-3 px-3 py-1.5 bg-slate-800/30 rounded-lg border border-slate-700/40 backdrop-blur-sm">
+                <p className="text-xs text-slate-300 text-center font-medium">
+                  Click to place charges • Scroll wheel to adjust magnitude • Drag to move • P/N/R keys to switch modes
                 </p>
               </div>
-                         </div>
-           </div>
-         </div>
+            </div>
+          )}
+        </motion.div>
+
+        <div 
+          ref={containerRef}
+          className="absolute inset-x-1 md:inset-x-4 top-32 md:top-36 bottom-24 md:bottom-28"
+        >
+          <motion.div
+            initial={{ scale: 0.98, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.3, type: "spring", stiffness: 120 }}
+            className="relative w-full h-full bg-gradient-to-br from-slate-900/60 via-slate-800/40 to-slate-900/60 backdrop-blur-xl rounded-3xl overflow-hidden shadow-2xl border border-slate-700/50"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.1),transparent_50%)] opacity-60" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(168,85,247,0.1),transparent_50%)] opacity-60" />
+            
+            <canvas
+              ref={canvasRef}
+              width={canvasSize.width}
+              height={canvasSize.height}
+              className="absolute inset-0 touch-none rounded-3xl cursor-crosshair hover:cursor-pointer transition-all duration-200"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onWheel={handleWheel}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            />
+            
+            {charges.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5, duration: 0.6, ease: "easeOut" }}
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              >
+                <div className="text-center max-w-md">
+                  <motion.div
+                    animate={{ 
+                      scale: [1, 1.1, 1],
+                      rotate: [0, 10, -10, 0],
+                      opacity: [0.6, 1, 0.6]
+                    }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                    className="mb-8"
+                  >
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-full blur-xl scale-150"></div>
+                      <FiTarget className={`mx-auto relative z-10 ${isMobile ? 'text-5xl' : 'text-7xl'} text-gradient bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent`} />
+                    </div>
+                  </motion.div>
+                  
+                  <motion.div 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.8, duration: 0.5 }}
+                    className={`bg-gradient-to-br from-slate-800/80 via-slate-700/60 to-slate-800/80 backdrop-blur-xl rounded-3xl p-8 border border-slate-600/40 shadow-2xl ${isMobile ? 'mx-4' : 'mx-8'}`}
+                  >
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <h3 className={`text-slate-100 font-bold ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+                          {isMobile ? "Tap anywhere to begin" : "Click anywhere to begin"}
+                        </h3>
+                        <p className={`text-slate-300 font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>
+                          Start by placing your first charge
+                        </p>
+                      </div>
+                      
+                      <div className={`inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r ${
+                        chargePlacementMode === 'positive' ? 'from-blue-500/30 to-blue-600/30 border-blue-400/50' :
+                        chargePlacementMode === 'negative' ? 'from-purple-500/30 to-purple-600/30 border-purple-400/50' :
+                        'from-amber-500/30 to-amber-600/30 border-amber-400/50'
+                      } rounded-full border backdrop-blur-sm`}>
+                        <span className="text-slate-200 text-sm font-medium">Next charge:</span>
+                        <span className={`font-semibold ${
+                          chargePlacementMode === 'positive' ? 'text-blue-200' :
+                          chargePlacementMode === 'negative' ? 'text-purple-200' :
+                          'text-amber-200'
+                        }`}>
+                          {chargePlacementMode === 'positive' && "Positive (+)"}
+                          {chargePlacementMode === 'negative' && "Negative (-)"}
+                          {chargePlacementMode === 'random' && "Random"}
+                        </span>
+                      </div>
+                      
+                      {!isMobile && (
+                        <motion.div 
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 1.2 }}
+                          className="flex items-center justify-center gap-6 pt-4 border-t border-slate-600/30"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full shadow-lg shadow-blue-500/50"></div>
+                            <span className="text-slate-400 text-sm">Positive charges</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 bg-gradient-to-r from-purple-400 to-purple-500 rounded-full shadow-lg shadow-purple-500/50"></div>
+                            <span className="text-slate-400 text-sm">Negative charges</span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </div>
+                  </motion.div>
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          className="absolute bottom-3 left-3 right-3 md:bottom-6 md:left-8 md:right-24"
+        >
+          <div className="h-14 md:h-16 bg-gradient-to-r from-slate-900/95 via-slate-800/90 to-slate-900/95 backdrop-blur-xl rounded-full shadow-2xl border border-slate-700/60 px-4 md:px-6 flex items-center justify-between">
+            {selectedChargeData ? (
+              isMobile ? (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${selectedChargeData.isPositive ? 'bg-gradient-to-r from-blue-400 to-blue-500 shadow-sm shadow-blue-500/50' : 'bg-gradient-to-r from-purple-400 to-purple-500 shadow-sm shadow-purple-500/50'}`} />
+                    <span className="text-white font-semibold text-sm">Selected</span>
+                    <span className="text-slate-300 text-xs">Mag: {selectedChargeData.magnitude.toFixed(2)}</span>
+                  </div>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={toggleChargeSign}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-medium shadow-md transition-all text-xs ${
+                      selectedChargeData.isPositive
+                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                        : 'bg-gradient-to-r from-purple-500 to-purple-600 text-white'
+                    }`}
+                  >
+                    {selectedChargeData.isPositive ? (
+                      <>
+                        <FiPlus className="text-xs" />
+                        <span>Switch to -</span>
+                      </>
+                    ) : (
+                      <>
+                        <FiMinus className="text-xs" />
+                        <span>Switch to +</span>
+                      </>
+                    )}
+                  </motion.button>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-4">
+                    <div className={`w-4 h-4 rounded-full ${selectedChargeData.isPositive ? 'bg-gradient-to-r from-blue-400 to-blue-500 shadow-sm shadow-blue-500/50' : 'bg-gradient-to-r from-purple-400 to-purple-500 shadow-sm shadow-purple-500/50'}`} />
+                    <span className="text-white font-semibold text-base">Selected Charge</span>
+                    <span className="text-slate-400 text-sm">
+                      {selectedChargeData.isPositive ? 'Positive' : 'Negative'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-6">
+                    <div className="text-center">
+                      <div className="text-slate-400 text-xs uppercase tracking-wide">Magnitude</div>
+                      <div className="text-white font-mono text-sm font-bold">
+                        {selectedChargeData.magnitude.toFixed(2)}
+                      </div>
+                    </div>
+                    
+                    <div className="text-center">
+                      <div className="text-slate-400 text-xs uppercase tracking-wide">Field Strength</div>
+                      <div className="text-white font-mono text-sm font-bold">
+                        {getTotalFieldStrength().toFixed(3)}
+                      </div>
+                    </div>
+                    
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={toggleChargeSign}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium shadow-lg transition-all duration-200 ${
+                        selectedChargeData.isPositive
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                          : 'bg-gradient-to-r from-purple-500 to-purple-600 text-white'
+                      }`}
+                    >
+                      {selectedChargeData.isPositive ? (
+                        <>
+                          <FiPlus className="text-sm" />
+                          <span>Switch to Negative</span>
+                        </>
+                      ) : (
+                        <>
+                          <FiMinus className="text-sm" />
+                          <span>Switch to Positive</span>
+                        </>
+                      )}
+                    </motion.button>
+                  </div>
+                </>
+              )
+            ) : (
+              // No charge selected state
+              isMobile ? (
+                <div className="flex items-center justify-center w-full">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-slate-600/60" />
+                    <span className="text-slate-400 font-medium text-sm">No charge selected</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center w-full">
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 rounded-full bg-slate-600/60" />
+                    <span className="text-slate-400 font-medium text-base">No charge selected</span>
+                    <span className="text-slate-500 text-sm">Click a charge to view details</span>
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        </motion.div>
+
+        <motion.button
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
+          whileHover={{ scale: 1.1, y: -2 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setShowMenu(!showMenu)}
+          className="fixed z-50 w-14 h-14 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-full shadow-2xl flex items-center justify-center text-white border-2 border-white/30 backdrop-blur-lg bottom-8 md:bottom-8 right-4 md:right-8"
+        >
+          <motion.div
+            animate={{ rotate: showMenu ? 180 : 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            className="drop-shadow-lg"
+          >
+            <FiMenu size={isMobile ? 22 : 24} />
+          </motion.div>
+        </motion.button>
+
+        <AnimatePresence>
+          {showMenu && (
+            <>
+              <motion.button
+                initial={{ scale: 0, y: 0, opacity: 0 }}
+                animate={{ scale: 1, y: isMobile ? -80 : -90, opacity: 1 }}
+                exit={{ scale: 0, y: 0, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 300, delay: 0.1 }}
+                whileHover={{ scale: 1.1, y: isMobile ? -85 : -95 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={resetCharges}
+                className="fixed z-50 w-14 h-14 bg-gradient-to-br from-red-500 to-rose-600 rounded-full shadow-xl flex items-center justify-center text-white border-2 border-white/30 backdrop-blur-lg bottom-3 md:bottom-6 right-4 md:right-8"
+              >
+                <FiRefreshCw size={isMobile ? 16 : 18} className="drop-shadow-sm" />
+              </motion.button>
+              
+              <motion.button
+                initial={{ scale: 0, y: 0, opacity: 0 }}
+                animate={{ scale: 1, y: isMobile ? -150 : -170, opacity: 1 }}
+                exit={{ scale: 0, y: 0, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 300, delay: 0.2 }}
+                whileHover={{ scale: 1.1, y: isMobile ? -155 : -175 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={randomizeCharges}
+                className="fixed z-50 w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full shadow-xl flex items-center justify-center text-white border-2 border-white/30 backdrop-blur-lg bottom-3 md:bottom-6 right-4 md:right-8"
+              >
+                <FiShuffle size={isMobile ? 16 : 18} className="drop-shadow-sm" />
+              </motion.button>
+
+              <motion.button
+                initial={{ scale: 0, y: 0, opacity: 0 }}
+                animate={{ scale: 1, y: isMobile ? -220 : -250, opacity: 1 }}
+                exit={{ scale: 0, y: 0, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 300, delay: 0.3 }}
+                whileHover={{ scale: 1.1, y: isMobile ? -225 : -255 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={toggleInfo}
+                className="fixed z-50 w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white border-2 border-white/30 backdrop-blur-lg bottom-3 md:bottom-6 right-4 md:right-8 bg-gradient-to-br from-blue-500 to-blue-600"
+              >
+                <FiInfo size={isMobile ? 16 : 18} className="drop-shadow-sm" />
+              </motion.button>
+            </>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showInfo && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+              onClick={() => setShowInfo(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full border border-slate-700/50 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 rounded-xl bg-blue-500/20 border border-blue-500/30">
+                    <FiInfo className="text-blue-400 text-xl" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Coulomb's Law</h3>
+                </div>
+                
+                <div className="space-y-4 text-slate-300">
+                  <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/30">
+                    <h4 className="font-semibold text-blue-300 mb-2">Formula</h4>
+                    <p className="font-mono text-sm bg-slate-900/50 p-2 rounded border border-slate-700/30">
+                      F = k × (q₁ × q₂) / r²
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="font-semibold text-purple-300 mb-2">Controls</h4>
+                      <ul className="text-sm space-y-1 pl-2">
+                        <li>• Click/tap to place charges</li>
+                        <li>• Click/tap charge to select/deselect</li>
+                        <li>• Drag selected charges to move</li>
+                        <li>• Scroll wheel to adjust magnitude</li>
+                        <li>• Pinch to zoom on mobile</li>
+                      </ul>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-semibold text-green-300 mb-2">Visualization</h4>
+                      <ul className="text-sm space-y-1 pl-2">
+                        <li>• Blue arrows show electric field</li>
+                        <li>• Arrow color indicates field strength</li>
+                        <li>• Like charges repel, unlike attract</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => setShowInfo(false)}
+                  className="w-full mt-6 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+                >
+                  Got it!
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
-}
+};
 
-export default App;
+export default CoulombLawDemo;
