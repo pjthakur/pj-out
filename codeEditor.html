@@ -1,0 +1,2085 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Code Annotation Tool</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-okaidia.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/prismjs/plugins/line-numbers/prism-line-numbers.min.css"
+      rel="stylesheet"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+    />
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/material-darker.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/selection/active-line.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css"
+      rel="stylesheet"
+    />
+  </head>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Open Sans", sans-serif;
+    }
+
+    * {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    *::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    *::-webkit-scrollbar-track {
+      display: none;
+    }
+
+    *::-webkit-scrollbar-thumb {
+      display: none;
+    }
+
+    .landing-page {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      overflow-y: auto;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .landing-header {
+      padding: 20px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .landing-header .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .nav-brand i {
+      font-size: 28px;
+    }
+
+    .get-started-btn {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .get-started-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .hero {
+      padding: 80px 0;
+    }
+
+    .hero .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .hero-content h1 {
+      font-size: 48px;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 24px;
+    }
+
+    .hero-content p {
+      font-size: 18px;
+      line-height: 1.6;
+      margin-bottom: 32px;
+      opacity: 0.9;
+    }
+
+    .cta-btn {
+      background: white;
+      color: #667eea;
+      border: none;
+      padding: 16px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .cta-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .hero-visual {
+      display: flex;
+      justify-content: center;
+    }
+
+    .code-preview {
+      background: #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .code-header {
+      background: #334155;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .code-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .code-dots span {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+
+    .code-dots span:nth-child(1) { background: #ef4444; }
+    .code-dots span:nth-child(2) { background: #f59e0b; }
+    .code-dots span:nth-child(3) { background: #22c55e; }
+
+    .code-title {
+      color: #94a3b8;
+      font-size: 12px;
+    }
+
+    .code-content {
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .code-line {
+      display: flex;
+      align-items: center;
+      position: relative;
+      margin-bottom: 4px;
+    }
+
+    .line-num {
+      color: #64748b;
+      width: 24px;
+      text-align: right;
+      margin-right: 16px;
+      font-size: 12px;
+    }
+
+    .code-text {
+      color: #e2e8f0;
+    }
+
+    .code-line.annotated .line-num {
+      color: #f59e0b;
+    }
+
+    .annotation-dot {
+      position: absolute;
+      right: 8px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .annotation-dot.todo {
+      background: #f59e0b;
+    }
+
+    .features {
+      padding: 80px 0;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .features h2 {
+      text-align: center;
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 60px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 40px;
+    }
+
+    .feature-card {
+      text-align: center;
+      padding: 40px 24px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.2s ease;
+    }
+
+    .feature-card:hover {
+      background: rgba(255, 255, 255, 0.12);
+      transform: translateY(-4px);
+    }
+
+    .feature-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 24px;
+    }
+
+    .feature-card h3 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .feature-card p {
+      opacity: 0.9;
+      line-height: 1.6;
+    }
+
+    .how-it-works {
+      padding: 80px 0;
+    }
+
+    .how-it-works h2 {
+      text-align: center;
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 60px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 40px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+    }
+
+    .step-number {
+      width: 48px;
+      height: 48px;
+      background: white;
+      color: #667eea;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .step-content h3 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .step-content p {
+      opacity: 0.9;
+      line-height: 1.6;
+    }
+
+    .landing-footer {
+      padding: 40px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      text-align: center;
+    }
+
+    .landing-footer p {
+      opacity: 0.8;
+      font-size: 14px;
+    }
+
+    @media (max-width: 768px) {
+      .landing-header .container {
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .hero .container {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        text-align: center;
+      }
+
+      .hero-content h1 {
+        font-size: 36px;
+      }
+
+      .hero-content p {
+        font-size: 16px;
+      }
+
+      .features h2,
+      .how-it-works h2 {
+        font-size: 28px;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+
+      .steps {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+
+      .step {
+        flex-direction: column;
+        text-align: center;
+        gap: 16px;
+      }
+    }
+
+    .info-label {
+      font-size: 14px;
+      color: #334155;
+      padding: 16px 20px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-left: 4px solid #2563eb;
+      margin: 16px 20px 0;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #1e293b;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    body.landing-active {
+      padding: 0;
+      overflow: auto;
+    }
+
+    body.app-active {
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .app {
+      overflow: hidden;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      height: calc(100vh - 40px);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      padding: 20px 24px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(10px);
+      margin-bottom: 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px 20px 0 0;
+    }
+
+    .heading {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(10px);
+      padding: 20px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 80px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 16px 16px 0 0;
+      position: relative;
+    }
+
+    .heading::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 28px;
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      border-radius: 2px;
+    }
+
+    .top-bar .traffic-lights {
+      display: flex;
+      gap: 8px;
+      margin-right: 16px;
+    }
+
+    .traffic-lights span {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .traffic-lights .red {
+      background: #ef4444;
+    }
+
+    .traffic-lights .yellow {
+      background: #f59e0b;
+    }
+
+    .traffic-lights .green {
+      background: #22c55e;
+    }
+
+    .top-bar h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+      flex: 1;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      padding: 8px 12px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .top-bar h1:hover {
+      color: #2563eb;
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .new-session-btn {
+      padding: 12px 20px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    }
+
+    .new-session-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+    }
+
+    .main {
+      display: flex;
+      flex: 1;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .comment-body {
+      color: #334155;
+      font-size: 14px;
+      padding: 20px;
+      line-height: 1.6;
+      max-height: 140px; /* Approximately 5 lines */
+      overflow: hidden;
+      position: relative;
+      background: rgba(255, 255, 255, 0.95);
+      margin: 0;
+    }
+
+    .comment-body.truncated {
+      display: -webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .comment-body.truncated::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 20px;
+      background: linear-gradient(transparent, #ffffff);
+    }
+
+    .expand-note-btn {
+      position: absolute;
+      bottom: 16px;
+      right: 20px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+      z-index: 10;
+    }
+
+    .expand-note-btn:hover {
+      background: #2563eb;
+    }
+
+    .section-wrapper {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      background: rgba(248, 250, 252, 0.4);
+      backdrop-filter: blur(10px);
+      gap: 24px;
+      width: 100%;
+      border-radius: 20px;
+      padding: 24px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .mobile {
+      display: none;
+    }
+
+    .code-section {
+      flex: 3;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(15px);
+      min-height: 0;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .code-section h2,
+    .comments-section h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .comments-section {
+      flex: 2;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(15px);
+      min-height: 0;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .comments-wrapper {
+      padding: 20px;
+      border-radius: 16px;
+      background: rgba(248, 250, 252, 0.6);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin: 16px;
+      overflow: auto;
+      flex: 1;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .comments-wrapper::-webkit-scrollbar {
+      display: none;
+    }
+
+    @media (max-width: 860px) {
+      body.app-active {
+        padding: 12px;
+      }
+
+      .app {
+        height: calc(100vh - 24px);
+        border-radius: 16px;
+      }
+
+      .section-wrapper {
+        flex-direction: column;
+        padding: 16px;
+        gap: 20px;
+      }
+
+      .code-section {
+        height: 50vh;
+        width: 100%;
+        border-radius: 16px;
+      }
+
+      .heading h2 {
+        font-size: 16px;
+      }
+
+      .info-label {
+        font-size: 12px;
+        padding: 12px 16px;
+        margin: 12px 16px 0;
+      }
+
+      .comments-section {
+        height: 50vh;
+        width: 100%;
+        border-radius: 16px;
+      }
+
+      .export-button {
+        display: none;
+      }
+
+      .mobile {
+        display: block;
+        font-size: 12px;
+      }
+
+      .modal,
+      .confirm-modal,
+      .note-detail-modal {
+        left: -12px;
+        top: -12px;
+        width: calc(100vw + 24px);
+        height: calc(100vh + 24px);
+      }
+    }
+
+    .export-button {
+      padding: 12px 24px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+
+    .export-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+    }
+
+    .comment-box {
+      border-radius: 16px;
+      padding: 0;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(10px);
+      margin-bottom: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: all 0.2s ease;
+      cursor: pointer;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    .comment-box:hover {
+      border-color: rgba(37, 99, 235, 0.5);
+      background: rgba(255, 255, 255, 1);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    .comment-box .comment-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 24px;
+      background: rgba(248, 250, 252, 0.9);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+      margin: 0;
+      height: auto;
+      min-height: 60px;
+    }
+
+    .comment-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .line-number {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e293b;
+      min-width: 60px;
+    }
+
+    .tag {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 0;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    }
+
+    .tag.todo {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+    }
+
+    .tag.enhance {
+      background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+      box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3);
+    }
+
+    .delete-icon {
+      color: #64748b;
+      cursor: pointer;
+      font-size: 18px;
+      transition: all 0.2s ease;
+      padding: 10px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(5px);
+    }
+
+    .delete-icon:hover {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+    }
+
+    .code-editor {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .editor-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 16px 16px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .note-text {
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 999;
+      left: -20px;
+      top: -20px;
+      width: calc(100vw + 40px);
+      height: calc(100vh + 40px);
+      overflow: auto;
+      background: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      color: #1e293b;
+      padding: 36px;
+      border: none;
+      border-radius: 20px;
+      width: 480px;
+      max-width: 90%;
+      position: relative;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+    }
+
+    .close-modal {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      color: #64748b;
+      font-size: 24px;
+      cursor: pointer;
+      transition: color 0.2s ease;
+      padding: 4px;
+      border-radius: 8px;
+    }
+
+    .close-modal:hover {
+      color: #1e293b;
+      background: #f1f5f9;
+    }
+
+    .modal-content h3 {
+      font-size: 20px;
+      margin-bottom: 20px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .modal-content label {
+      display: block;
+      font-size: 14px;
+      margin: 16px 0 8px;
+      font-weight: 500;
+      color: #1e293b;
+    }
+
+    .modal-content select {
+      width: 100%;
+      padding: 14px 18px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(10px);
+      color: #1e293b;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .modal-content select:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .modal-content textarea {
+      width: 100%;
+      margin-top: 12px;
+      padding: 18px;
+      height: 130px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(10px);
+      color: #1e293b;
+      font-size: 14px;
+      resize: vertical;
+      transition: all 0.2s ease;
+    }
+
+    .modal-content textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      margin-top: 24px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+    }
+
+    .note-reference {
+      background: rgba(59, 130, 246, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      margin-bottom: 18px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #1e293b;
+      color: white;
+      padding: 16px 24px;
+      border-radius: 16px;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .bug {
+      background: #ef4444;
+    }
+
+    .todo {
+      background: #f59e0b;
+    }
+
+    .enhance {
+      background: #06b6d4;
+    }
+
+    .editor-wrapper {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      overflow: hidden;
+      background: #1e293b;
+      flex: 1;
+      min-height: 0;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    #code-editor {
+      height: 100%;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .CodeMirror {
+      height: 100% !important;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+      font-size: 14px !important;
+      line-height: 1.5em !important;
+      border-radius: 16px !important;
+      background: #1e293b !important;
+      border: none !important;
+      cursor: text !important;
+    }
+
+    .CodeMirror-scroll {
+      padding: 16px 16px 16px 0 !important;
+      background: #1e293b !important;
+    }
+
+    .CodeMirror-gutters {
+      background: #334155 !important;
+      border-right: 1px solid #475569 !important;
+      padding-left: 8px !important;
+      padding-right: 8px !important;
+      border-radius: 16px 0 0 16px !important;
+      width: 45px !important;
+    }
+
+    .CodeMirror-linenumber {
+      color: #94a3b8 !important;
+      padding: 0 4px !important;
+      text-align: center !important;
+      font-size: 13px !important;
+      line-height: 1.5em !important;
+      width: 100% !important;
+      min-width: 37px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      position: relative !important;
+      cursor: pointer !important;
+      transition: all 0.2s ease !important;
+    }
+
+    .CodeMirror-linenumber:hover {
+      color: #3b82f6 !important;
+      background: rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .CodeMirror-cursor {
+      border-left: 2px solid #3b82f6 !important;
+      visibility: visible !important;
+    }
+
+    .CodeMirror-focused .CodeMirror-cursor {
+      visibility: visible !important;
+    }
+
+    .CodeMirror-selected {
+      background: rgba(59, 130, 246, 0.2) !important;
+    }
+
+    .CodeMirror-line {
+      padding-left: 16px !important;
+      background: transparent !important;
+      cursor: text !important;
+    }
+
+    .CodeMirror-activeline-background {
+      background: rgba(255, 255, 255, 0.05) !important;
+    }
+
+    .CodeMirror-code {
+      background: #1e293b !important;
+    }
+
+    .CodeMirror-lines {
+      padding: 0 !important;
+      cursor: text !important;
+    }
+
+    .CodeMirror-sizer {
+      background: #1e293b !important;
+      min-height: 100% !important;
+    }
+
+    .cm-comment {
+      color: #64748b !important;
+    }
+
+    .cm-keyword {
+      color: #8b5cf6 !important;
+    }
+
+    .cm-string {
+      color: #34d399 !important;
+    }
+
+    .cm-number {
+      color: #f472b6 !important;
+    }
+
+    .cm-def, .cm-variable {
+      color: #fbbf24 !important;
+    }
+
+    .cm-operator {
+      color: #06b6d4 !important;
+    }
+
+    .cm-bracket {
+      color: #e2e8f0 !important;
+    }
+
+    .cm-property {
+      color: #f472b6 !important;
+    }
+
+    .cm-builtin {
+      color: #34d399 !important;
+    }
+
+    .CodeMirror-scrollbar-filler,
+    .CodeMirror-gutter-filler {
+      background: transparent !important;
+    }
+
+    .CodeMirror-vscrollbar::-webkit-scrollbar,
+    .CodeMirror-hscrollbar::-webkit-scrollbar {
+      display: none !important;
+    }
+
+    .CodeMirror-vscrollbar,
+    .CodeMirror-hscrollbar {
+      scrollbar-width: none !important;
+    }
+
+    .CodeMirror-overlayscroll-horizontal div,
+    .CodeMirror-overlayscroll-vertical div {
+      background: transparent !important;
+    }
+
+    .comment-indicator {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      z-index: 10;
+    }
+
+    .comment-indicator.bug {
+      background: #ef4444;
+    }
+
+    .comment-indicator.todo {
+      background: #f59e0b;
+    }
+
+    .comment-indicator.enhance {
+      background: #06b6d4;
+    }
+
+    .highlight-line {
+      background: rgba(59, 130, 246, 0.3) !important;
+      animation: highlightFade 2s ease-out;
+    }
+
+    @keyframes highlightFade {
+      0% {
+        background: rgba(59, 130, 246, 0.5) !important;
+      }
+      100% {
+        background: rgba(59, 130, 246, 0.1) !important;
+      }
+    }
+
+    .confirm-modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: -20px;
+      top: -20px;
+      width: calc(100vw + 40px);
+      height: calc(100vh + 40px);
+      overflow: auto;
+      background: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .confirm-modal-content {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      color: #1e293b;
+      padding: 36px;
+      border: none;
+      border-radius: 20px;
+      width: 450px;
+      max-width: 90%;
+      position: relative;
+      text-align: center;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+    }
+
+    .confirm-modal h3 {
+      font-size: 20px;
+      margin-bottom: 16px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .confirm-modal p {
+      font-size: 14px;
+      color: #475569;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .confirm-modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .btn-cancel {
+      background: rgba(241, 245, 249, 0.8);
+      backdrop-filter: blur(10px);
+      color: #64748b;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 12px 24px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .btn-cancel:hover {
+      background: rgba(226, 232, 240, 0.9);
+      color: #475569;
+      transform: translateY(-1px);
+    }
+
+    .btn-confirm {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-confirm:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+    }
+
+    .note-detail-modal {
+      display: none;
+      position: fixed;
+      z-index: 1001;
+      left: -20px;
+      top: -20px;
+      width: calc(100vw + 40px);
+      height: calc(100vh + 40px);
+      overflow: auto;
+      background: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .note-detail-content {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      color: #1e293b;
+      padding: 36px;
+      border: none;
+      border-radius: 20px;
+      width: 520px;
+      max-width: 90%;
+      max-height: 80vh;
+      position: relative;
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+    }
+
+    .note-detail-content::-webkit-scrollbar {
+      display: none;
+    }
+
+    .note-detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .note-detail-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .note-detail-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #334155;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .close-note-detail {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      color: #64748b;
+      font-size: 24px;
+      cursor: pointer;
+      transition: color 0.2s ease;
+      padding: 4px;
+      border-radius: 8px;
+    }
+
+    .close-note-detail:hover {
+      color: #1e293b;
+      background: #f1f5f9;
+    }
+
+  </style>
+
+  <body>
+    <div class="landing-page" id="landing-page">
+      <header class="landing-header">
+        <div class="container">
+          <div class="nav-brand">
+            <i class="ri-code-s-slash-line"></i>
+            <span>Code Annotator</span>
+          </div>
+          <button class="get-started-btn" onclick="showApp()">
+            Get Started
+            <i class="ri-arrow-right-line"></i>
+          </button>
+        </div>
+      </header>
+
+      <main class="landing-main">
+        <section class="hero">
+          <div class="container">
+            <div class="hero-content">
+              <h1>Annotate Your Code with Precision</h1>
+              <p>A powerful tool for adding structured comments to your code. Track bugs, todos, and enhancements with visual indicators and seamless organization.</p>
+              <button class="cta-btn" onclick="showApp()">
+                <i class="ri-play-circle-line"></i>
+                Start Annotating
+              </button>
+            </div>
+            <div class="hero-visual">
+              <div class="code-preview">
+                <div class="code-header">
+                  <div class="code-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                  <span class="code-title">example.js</span>
+                </div>
+                <div class="code-content">
+                  <div class="code-line">
+                    <span class="line-num">1</span>
+                    <span class="code-text">function calculateTotal() {</span>
+                  </div>
+                  <div class="code-line">
+                    <span class="line-num">2</span>
+                    <span class="code-text">  return price * quantity;</span>
+                  </div>
+                  <div class="code-line annotated">
+                    <span class="line-num">3</span>
+                    <span class="code-text">  // TODO: Add tax calculation</span>
+                    <div class="annotation-dot todo"></div>
+                  </div>
+                  <div class="code-line">
+                    <span class="line-num">4</span>
+                    <span class="code-text">}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="features">
+          <div class="container">
+            <h2>Key Features</h2>
+            <div class="features-grid">
+              <div class="feature-card">
+                <div class="feature-icon">
+                  <i class="ri-bug-line"></i>
+                </div>
+                <h3>Bug Tracking</h3>
+                <p>Mark and track bugs directly in your code with visual indicators and detailed descriptions.</p>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon">
+                  <i class="ri-todo-line"></i>
+                </div>
+                <h3>TODO Management</h3>
+                <p>Keep track of pending tasks and improvements with organized todo annotations.</p>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon">
+                  <i class="ri-lightbulb-line"></i>
+                </div>
+                <h3>Enhancement Ideas</h3>
+                <p>Document enhancement ideas and feature requests with structured annotations.</p>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon">
+                  <i class="ri-eye-line"></i>
+                </div>
+                <h3>Visual Indicators</h3>
+                <p>See all your annotations at a glance with color-coded dots next to line numbers.</p>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon">
+                  <i class="ri-download-line"></i>
+                </div>
+                <h3>Export Annotations</h3>
+                <p>Export your annotations as markdown files for documentation and sharing.</p>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon">
+                  <i class="ri-save-line"></i>
+                </div>
+                <h3>Auto Save</h3>
+                <p>Your work is automatically saved locally, so you never lose your annotations.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="how-it-works">
+          <div class="container">
+            <h2>How It Works</h2>
+            <div class="steps">
+              <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <h3>Write Your Code</h3>
+                  <p>Use the built-in code editor to write or paste your code with syntax highlighting.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <h3>Click Line Numbers</h3>
+                  <p>Click on any line number to add a comment with a tag (BUG, TODO, or ENHANCE).</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h3>Organize & Export</h3>
+                  <p>View all annotations in the sidebar and export them as markdown documentation.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="landing-footer">
+        <div class="container">
+          <p>2024 Code Annotator. A modern tool for structured code commenting.</p>
+        </div>
+      </footer>
+    </div>
+
+    <div class="app" id="main-app" style="display: none;">
+      <div class="top-bar">
+        <div class="traffic-lights">
+          <span class="red"></span>
+          <span class="yellow"></span>
+          <span class="green"></span>
+        </div>
+        <h1 onclick="goBackToLanding()" title="Click to go back to landing page">
+          <i class="ri-home-line"></i>
+          Code Annotation Tool
+        </h1>
+        <button class="new-session-btn" id="new-session-btn">
+          <i class="ri-refresh-line"></i>
+          New Session
+        </button>
+      </div>
+
+      <div class="main">
+        <div class="section-wrapper">
+          <div class="code-section">
+            <div class="heading">
+              <h2>Code input</h2>
+              <button class="export-button" id="export-code-btn">
+                <i class="ri-upload-2-line"></i>
+                Export Code
+              </button>
+              <button class="export-button mobile" id="export-code-btn-mobile">
+                <i class="ri-upload-2-line"></i>
+                Code
+              </button>
+            </div>
+              <p class="info-label">
+                <i
+                  class="ri-lightbulb-fill"
+                  style="color: rgb(255, 213, 0); margin: 0 4px"
+                ></i>
+              Click on a **line number** to add a comment with a tag
+              </p>
+            <div class="code-editor">
+              <div class="editor-section">
+                <div class="editor-wrapper">
+                <div id="code-editor"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="comments-section">
+            <div class="heading">
+              <h2>Comments</h2>
+              <button class="export-button" id="export-btn">
+                <i class="ri-upload-2-line"></i>
+                Export Annotations
+              </button>
+              <button class="export-button mobile" id="export-btn">
+                <i class="ri-upload-2-line"></i>
+                Export
+              </button>
+            </div>
+
+            <div class="comments-wrapper">
+              <div id="notes-container"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal" id="note-modal">
+        <div class="modal-content">
+          <span class="close-modal">&times;</span>
+          <h3>Add Note</h3>
+          <div id="note-reference" class="note-reference"></div>
+          <label for="note-tag">Tag</label>
+          <select id="note-tag">
+            <option value="bug">BUG</option>
+            <option value="todo">TODO</option>
+            <option value="enhance">ENHANCE</option>
+          </select>
+          <textarea
+            id="note-text"
+            placeholder="Write your note here..."
+          ></textarea>
+          <button id="save-note-btn" class="btn btn-primary">Save Note</button>
+        </div>
+      </div>
+
+      <div class="confirm-modal" id="confirm-modal">
+        <div class="confirm-modal-content">
+          <h3>Start New Session?</h3>
+          <p>This will permanently delete all your code and annotations. This action cannot be undone.</p>
+          <div class="confirm-modal-buttons">
+            <button class="btn-cancel" id="cancel-new-session">Cancel</button>
+            <button class="btn-confirm" id="confirm-new-session">Clear All Data</button>
+          </div>
+        </div>
+    </div>
+
+      <div class="note-detail-modal" id="note-detail-modal">
+        <div class="note-detail-content">
+          <span class="close-note-detail">&times;</span>
+          <div class="note-detail-header">
+            <div class="note-detail-title" id="note-detail-title">
+              <!-- Title will be populated by JavaScript -->
+            </div>
+          </div>
+          <div class="note-detail-text" id="note-detail-text">
+            <!-- Note content will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <div class="toast" id="toast"></div>
+    </div>
+
+    <script>
+      let codeEditor;
+      let selectedLineNumber = null;
+      let isScrolling = false;
+
+      document.body.classList.add('landing-active');
+
+            function showApp() {
+        document.getElementById('landing-page').style.display = 'none';
+        document.getElementById('main-app').style.display = 'flex';
+        document.body.classList.remove('landing-active');
+        document.body.classList.add('app-active');
+        
+        if (!codeEditor) {
+          setTimeout(() => {
+            initializeCodeMirror();
+            setTimeout(() => {
+              window.updateLineNumberIndicators();
+            }, 200);
+          }, 100);
+        }
+      }
+
+      function goBackToLanding() {
+        document.getElementById('main-app').style.display = 'none';
+        document.getElementById('landing-page').style.display = 'block';
+        document.body.classList.remove('app-active');
+        document.body.classList.add('landing-active');
+      }
+
+      function initializeCodeMirror() {
+        if (codeEditor) return;
+        
+        codeEditor = CodeMirror(document.getElementById("code-editor"), {
+          mode: "javascript",
+          theme: "material-darker",
+          lineNumbers: true,
+          autoCloseBrackets: true,
+          matchBrackets: true,
+          styleActiveLine: true,
+          indentUnit: 2,
+          tabSize: 2,
+          indentWithTabs: false,
+          lineWrapping: false,
+          autofocus: true,
+          extraKeys: {
+            "Tab": function(cm) {
+              if (cm.somethingSelected()) {
+                cm.indentSelection("add");
+              } else {
+                cm.replaceSelection("  ");
+              }
+            }
+          }
+        });
+
+        codeEditor.on("gutterClick", function(cm, line, gutter) {
+          if (gutter === "CodeMirror-linenumbers") {
+            selectedLineNumber = line + 1;
+            
+            document.getElementById("note-reference").textContent = `Line: ${selectedLineNumber}`;
+            document.getElementById("note-modal").style.display = "flex";
+          }
+        });
+
+        const savedCode = localStorage.getItem('code-annotator-code');
+        const defaultCode = "// Welcome to the Code Annotation Tool\n\nfunction example() {\n  console.log('Hello, World!');\n}";
+        codeEditor.setValue(savedCode || defaultCode);
+
+        codeEditor.on("change", function(cm, change) {
+          localStorage.setItem('code-annotator-code', cm.getValue());
+
+          if (change.origin !== "setValue" && change.text && change.text.join("").length > 0) {
+            window.updateLineNumberIndicators();
+          }
+        });
+
+        setTimeout(() => {
+          window.updateLineNumberIndicators();
+
+          codeEditor.refresh();
+          setTimeout(window.updateLineNumberIndicators, 100);
+        }, 100);
+      }
+
+      function getCurrentCode() {
+        return codeEditor ? codeEditor.getValue() : "";
+      }
+    </script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const notesContainer = document.getElementById("notes-container");
+        const noteModal = document.getElementById("note-modal");
+        const confirmModal = document.getElementById("confirm-modal");
+        const noteDetailModal = document.getElementById("note-detail-modal");
+        const toast = document.getElementById("toast");
+        const noteReference = document.getElementById("note-reference");
+
+        const saveNoteBtn = document.getElementById("save-note-btn");
+        const exportBtn = document.getElementById("export-btn");
+        const newSessionBtn = document.getElementById("new-session-btn");
+        const cancelNewSessionBtn = document.getElementById("cancel-new-session");
+        const confirmNewSessionBtn = document.getElementById("confirm-new-session");
+
+        let currentTag = "TODO";
+
+        let notes =
+          JSON.parse(localStorage.getItem("code-annotator-notes")) || [];
+
+        window.getNotes = function() {
+          return notes;
+        };
+
+        function init() {
+          renderNotes();
+          setupEventListeners();
+
+          setTimeout(() => {
+            window.updateLineNumberIndicators();
+  
+            setTimeout(window.updateLineNumberIndicators, 500);
+          }, 200);
+        }
+
+        function setupEventListeners() {
+
+
+          saveNoteBtn.addEventListener("click", saveNote);
+
+          let closeBtn = document.querySelector(".close-modal");
+
+          closeBtn.addEventListener("click", () => {
+            noteModal.style.display = "none";
+          });
+
+          window.addEventListener("click", (e) => {
+            if (e.target === noteModal) {
+              noteModal.style.display = "none";
+            }
+            if (e.target === confirmModal) {
+              confirmModal.style.display = "none";
+            }
+            if (e.target === noteDetailModal) {
+              noteDetailModal.style.display = "none";
+            }
+          });
+
+          document.querySelector(".close-note-detail").addEventListener("click", () => {
+            noteDetailModal.style.display = "none";
+          });
+        }
+
+        exportBtn.addEventListener("click", exportData);
+        newSessionBtn.addEventListener("click", showNewSessionModal);
+        cancelNewSessionBtn.addEventListener("click", hideNewSessionModal);
+        confirmNewSessionBtn.addEventListener("click", confirmNewSession);
+
+        document.getElementById("export-code-btn").addEventListener("click", exportCode);
+        document.getElementById("export-code-btn-mobile").addEventListener("click", exportCode);
+
+        function saveNote() {
+          const noteText = document.getElementById("note-text").value.trim();
+          const noteTag = document.getElementById("note-tag").value;
+          if (!noteText || selectedLineNumber == null) {
+            showToast("Line and comment are required");
+            return;
+          }
+
+          const note = {
+            id: Date.now(),
+            line: selectedLineNumber,
+            tag: noteTag,
+            text: noteText,
+            timestamp: new Date().toISOString(),
+          };
+
+          notes.push(note);
+          saveNotesToStorage();
+          renderNotes();
+
+          document.getElementById("note-text").value = "";
+
+          noteModal.style.display = "none";
+          showToast("Note saved successfully");
+          
+          window.updateLineNumberIndicators();
+        }
+
+        function renderNotes() {
+          notesContainer.innerHTML = "";
+
+          if (notes.length === 0) {
+            notesContainer.innerHTML =
+            '<p class="empty-message" style="color: #475569; text-align: center; padding: 40px 20px; font-style: italic;">No comments yet.</p>';
+          window.updateLineNumberIndicators();
+            return;
+          }
+
+          notes.forEach((note) => {
+            const tagClass = note.tag.toLowerCase();
+            const noteEl = document.createElement("div");
+            
+            const lines = note.text.split('\n');
+            const isLongNote = lines.length > 5 || note.text.length > 200;
+            
+            let displayText = note.text;
+            if (isLongNote) {
+              const truncatedLines = lines.slice(0, 5);
+              displayText = truncatedLines.join('\n');
+              if (lines.length > 5) {
+                displayText += '...';
+              }
+            }
+            
+            noteEl.innerHTML = `<div class="comment-box" onclick="scrollToLine(${note.line})">
+  <div class="comment-header">
+    <div class="comment-header-left">
+      <span class="line-number">Line: ${note.line}</span>
+      <span class="tag ${tagClass}">${note.tag.toUpperCase()}</span>
+    </div>
+    <div class="delete-icon" onclick="event.stopPropagation(); deleteNote('${
+      note.id
+    }')"><i class="ri-delete-bin-line"></i></div>
+  </div>
+  <div class="comment-body ${isLongNote ? 'truncated' : ''}">${displayText}${isLongNote ? `<button class="expand-note-btn" onclick="event.stopPropagation(); showNoteDetail('${note.id}')" title="View full note"><i class="ri-expand-diagonal-line"></i></button>` : ''}</div>
+</div>`;
+
+            notesContainer.appendChild(noteEl);
+          });
+          
+          setTimeout(() => {
+            window.updateLineNumberIndicators();
+          }, 50);
+        }
+
+        window.deleteNote = function (noteId) {
+          notes = notes.filter((n) => n.id.toString() !== noteId.toString());
+          saveNotesToStorage();
+          renderNotes();
+          showToast("Note deleted");
+        };
+
+        function saveNotesToStorage() {
+          localStorage.setItem("code-annotator-notes", JSON.stringify(notes));
+        }
+
+        function exportData() {
+          if (!notes || notes.length === 0) {
+            showToast("No comments to export.");
+            return;
+          }
+          const code = getCurrentCode();
+          const lang = "javascript";
+          let md = `# Code Annotations\n\n`;
+          md += `## Code\n\n\`\`\`${lang}\n${code}\n\`\`\`\n\n`;
+
+          if (notes.length) {
+            md += `## Annotations\n\n`;
+            const sortedNotes = [...notes].sort(
+              (a, b) => Number(a.line) - Number(b.line)
+            );
+
+            sortedNotes.forEach((note) => {
+              md += `### [${note.tag.toUpperCase()}] Line ${
+                note.line
+              }\n${note.text.trim()}\n\n`;
+            });
+          } else {
+            md += `_No annotations added._\n`;
+          }
+
+          const blob = new Blob([md], { type: "text/markdown" });
+          const url = URL.createObjectURL(blob);
+
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `code-annotations-${
+            new Date().toISOString().split("T")[0]
+          }.md`;
+          document.body.appendChild(a);
+          a.click();
+
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 500);
+
+          showToast("Markdown exported.");
+        }
+
+        function exportCode() {
+          const code = getCurrentCode();
+          if (!code || code.trim() === "") {
+            showToast("No code to export.");
+            return;
+          }
+
+          const blob = new Blob([code], { type: "text/plain" });
+          const url = URL.createObjectURL(blob);
+
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `code-${
+            new Date().toISOString().split("T")[0]
+          }.txt`;
+          document.body.appendChild(a);
+          a.click();
+
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 500);
+
+          showToast("Code exported successfully.");
+        }
+
+        function showNewSessionModal() {
+          confirmModal.style.display = "flex";
+        }
+
+        function hideNewSessionModal() {
+          confirmModal.style.display = "none";
+        }
+
+        function confirmNewSession() {
+
+          notes = [];
+          saveNotesToStorage();
+          renderNotes();
+          
+          const defaultCode = "// Welcome to the Code Annotation Tool\n\nfunction example() {\n  console.log('Hello, World!');\n}";
+          if (codeEditor) {
+            codeEditor.setValue(defaultCode);
+          }
+          localStorage.removeItem('code-annotator-code');
+          
+          hideNewSessionModal();
+          showToast("New session started - all data cleared");
+        }
+
+        window.updateLineNumberIndicators = function updateLineNumberIndicators() {
+          if (!codeEditor || isScrolling) {
+            return;
+          }
+          
+          if (!document.querySelector('.CodeMirror-linenumber')) {
+            setTimeout(window.updateLineNumberIndicators, 50);
+            return;
+          }
+          
+          const currentNotes = window.getNotes ? window.getNotes() : (typeof notes !== 'undefined' ? notes : []);
+          
+          console.log('Updating indicators for', currentNotes.length, 'notes');
+          
+          const existingIndicators = document.querySelectorAll('.comment-indicator');
+          existingIndicators.forEach(indicator => indicator.remove());
+          
+          currentNotes.forEach((note) => {
+            const lineNumber = note.line;
+            
+            const allLineNumbers = document.querySelectorAll('.CodeMirror-linenumber');
+            let targetLineElement = null;
+            
+            for (let element of allLineNumbers) {
+              if (element.textContent.trim() === lineNumber.toString()) {
+                targetLineElement = element;
+                break;
+              }
+            }
+            
+            if (targetLineElement) {
+              const indicator = document.createElement('div');
+              indicator.className = `comment-indicator ${note.tag.toLowerCase()}`;
+              targetLineElement.appendChild(indicator);
+              console.log('Added indicator for line', lineNumber, 'with tag', note.tag);
+            } else {
+              console.log('Could not find line element for line', lineNumber);
+            }
+          });
+        }
+
+        window.scrollToLine = function(lineNumber) {
+          if (!codeEditor) return;
+          
+          isScrolling = true;
+          
+          const line = lineNumber - 1;
+          
+          codeEditor.scrollIntoView({line: line, ch: 0}, 200);
+          
+          codeEditor.setCursor(line, 0);
+          
+          codeEditor.focus();
+          
+          const lineHandle = codeEditor.getLineHandle(line);
+          if (lineHandle) {
+ 
+            codeEditor.addLineClass(line, "background", "highlight-line");
+            
+            setTimeout(() => {
+              codeEditor.removeLineClass(line, "background", "highlight-line");
+            }, 2000);
+          }
+          
+          isScrolling = false;
+          window.updateLineNumberIndicators();
+        };
+
+        window.showNoteDetail = function(noteId) {
+          const note = notes.find(n => n.id.toString() === noteId.toString());
+          if (!note) return;
+          
+          const tagClass = note.tag.toLowerCase();
+          const tagColor = {
+            'bug': '#ef4444',
+            'todo': '#f59e0b',
+            'enhance': '#06b6d4'
+          }[tagClass] || '#3b82f6';
+          
+          document.getElementById("note-detail-title").innerHTML = `
+            Line: ${note.line}
+            <span class="tag ${tagClass}">${note.tag.toUpperCase()}</span>
+          `;
+          
+          document.getElementById("note-detail-text").textContent = note.text;
+          noteDetailModal.style.display = "flex";
+        };
+
+        function showToast(message) {
+          toast.textContent = message;
+          toast.classList.add("show");
+
+          setTimeout(() => {
+            toast.classList.remove("show");
+          }, 3000);
+        }
+
+        init();
+      });
+    </script>
+  </body>
+</html>
