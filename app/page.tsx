@@ -1,1190 +1,1491 @@
 "use client";
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import ReactDOM from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FiTrendingUp, 
-  FiClock, 
-  FiEdit2,  
-  FiX, 
-  FiPlus,
-  FiMinus,
-  FiActivity,
-  FiAward,
-  FiZap,
-  FiTarget,
-  FiPlay,
-  FiPause,
-  FiSquare
-} from 'react-icons/fi';
-import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { useState, useEffect, useRef } from "react";
+import {
+  FaUser,
+  FaComment,
+  FaBookmark,
+  FaReply,
+  FaRegBookmark,
+  FaSearch,
+  FaCrown,
+  FaStar,
+  FaHeart,
+  FaRegHeart,
+  FaSmile,
+  FaBold,
+  FaItalic,
+  FaLink,
+  FaChevronLeft,
+  FaChevronRight,
+  FaArrowLeft,
+  FaCode,
+  FaCss3Alt,
+  FaReact,
+  FaRocket,
+  FaComments,
+  FaPaperPlane,
+  FaTimes,
+} from "react-icons/fa";
+import toast, { Toaster } from "react-hot-toast";
 
-const Portal: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
-  }, []);
+const trendingTopics = [
+  {
+    id: 1,
+    title: "React Tips",
+    icon: <FaReact className="text-[#A55EEA]" />,
+  },
+  {
+    id: 2,
+    title: "TypeScript",
+    icon: <FaCode className="text-[#A55EEA]" />,
+  },
+  {
+    id: 3,
+    title: "Tailwind CSS",
+    icon: <FaCss3Alt className="text-[#A55EEA]" />,
+  },
+  {
+    id: 4,
+    title: "State Manage",
+    icon: <FaStar className="text-[#A55EEA]" />,
+  },
+  {
+    id: 5,
+    title: "Deployment",
+    icon: <FaRocket className="text-[#A55EEA]" />,
+  },
+];
 
-  return mounted ? ReactDOM.createPortal(children, document.body) : null;
+const mockDiscussions: { [key: number]: Discussion[] } = {
+  1: [
+    {
+      id: "d1",
+      author: "alice",
+      content: "What are some essential tips you follow when using React?",
+      replies: [
+        {
+          id: "r1",
+          author: "bob",
+          content: "I always use React.memo for performance optimization!",
+          timestamp: new Date(Date.now() - 2 * 60 * 1000),
+        },
+        {
+          id: "r2",
+          author: "charlie",
+          content: "Component composition over inheritance is key.",
+          timestamp: new Date(Date.now() - 5 * 60 * 1000),
+        },
+      ],
+      timestamp: new Date(Date.now() - 5 * 60 * 1000),
+      answered: true,
+      likes: 12,
+      bookmarked: false,
+      reactions: {
+        "👍": { count: 5, users: ["bob", "charlie", "dana", "ed", "fiona"] },
+        "❤️": { count: 3, users: ["alice", "bob", "charlie"] },
+        "🔥": { count: 2, users: ["dana", "greg"] },
+      },
+    },
+    {
+      id: "d2",
+      author: "bob",
+      content: "How do you organize components in a large project?",
+      replies: [
+        {
+          id: "r3",
+          author: "dana",
+          content: "I use atomic design methodology.",
+          timestamp: new Date(Date.now() - 1 * 60 * 1000),
+        },
+      ],
+      timestamp: new Date(Date.now() - 10 * 60 * 1000),
+      answered: true,
+      likes: 8,
+      bookmarked: true,
+      reactions: {},
+    },
+    {
+      id: "d3",
+      author: "charlie",
+      content: "Do you use React Context or Redux more often?",
+      replies: [],
+      timestamp: new Date(Date.now() - 20 * 60 * 1000),
+      answered: false,
+      likes: 15,
+      bookmarked: false,
+      reactions: {},
+    },
+  ],
+  2: [
+    {
+      id: "d4",
+      author: "dana",
+      content: "How do you type API responses in TypeScript?",
+      replies: [
+        {
+          id: "r4",
+          author: "ed",
+          content: "I create interfaces for each API response.",
+          timestamp: new Date(Date.now() - 3 * 60 * 1000),
+        },
+        {
+          id: "r5",
+          author: "fiona",
+          content: "Generics are useful for reusable types.",
+          timestamp: new Date(Date.now() - 7 * 60 * 1000),
+        },
+      ],
+      timestamp: new Date(Date.now() - 2 * 60 * 1000),
+      answered: true,
+      likes: 21,
+      bookmarked: true,
+      reactions: {
+        "💯": { count: 4, users: ["alice", "bob", "charlie", "greg"] },
+        "🚀": { count: 2, users: ["dana", "fiona"] },
+      },
+    },
+    {
+      id: "d5",
+      author: "ed",
+      content: "Tips for beginners learning TS?",
+      replies: [],
+      timestamp: new Date(Date.now() - 35 * 60 * 1000),
+      answered: true,
+      likes: 17,
+      bookmarked: false,
+      reactions: {},
+    },
+  ],
+  3: [
+    {
+      id: "d6",
+      author: "fiona",
+      content: "How to create responsive layouts quickly?",
+      replies: [],
+      timestamp: new Date(Date.now() - 1 * 60 * 1000),
+      answered: true,
+      likes: 9,
+      bookmarked: false,
+      reactions: {},
+    },
+  ],
+  4: [],
+  5: [
+    {
+      id: "d7",
+      author: "greg",
+      content: "Netlify vs Vercel for React apps?",
+      replies: [
+        {
+          id: "r6",
+          author: "alice",
+          content: "Vercel has better Next.js integration.",
+          timestamp: new Date(Date.now() - 15 * 60 * 1000),
+        },
+      ],
+      timestamp: new Date(Date.now() - 50 * 60 * 1000),
+      answered: true,
+      likes: 14,
+      bookmarked: false,
+      reactions: {
+        "👍": { count: 6, users: ["alice", "bob", "charlie", "dana", "ed", "fiona"] },
+        "🎉": { count: 1, users: ["greg"] },
+      },
+    },
+  ],
 };
 
-interface FocusSession {
-  id: string;
-  title: string;
-  duration: number;
-  startTime: Date;
-  endTime: Date;
-  score: number;
-}
-if (typeof window !== 'undefined') {
-  const link = document.createElement('link');
-  link.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap';
-  link.rel = 'stylesheet';
-  document.head.appendChild(link);
+const moderators = [
+  { name: "Alice", role: "Lead Moderator" },
+  { name: "Bob", role: "Community Manager" },
+  { name: "Fiona", role: "Technical Expert" },
+];
 
-  const style = document.createElement('style');
-  style.id = 'focus-insights-styles';
-  style.textContent = `
-    html, body {
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-    }
-    html::-webkit-scrollbar, body::-webkit-scrollbar {
-      display: none;
-    }
-    html.modal-open,
-    body.modal-open {
-      overflow: hidden !important;
-    }
-    .modal-backdrop-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(0, 0, 0, 0.2);
-      -webkit-backdrop-filter: blur(8px);
-      backdrop-filter: blur(8px);
-      z-index: 50;
-    }
-  `;
-  if (!document.getElementById('focus-insights-styles')) {
-    document.head.appendChild(style);
-  }
+const activeUsers = [
+  { name: "Charlie", activity: "Posting" },
+  { name: "Dana", activity: "Commenting" },
+  { name: "Ed", activity: "Browsing" },
+  { name: "Greg", activity: "Reacting" },
+];
+
+
+
+type FilterType = "Most recent" | "Most replied" | "Unanswered" | "Bookmarks";
+
+const filters: FilterType[] = [
+  "Most recent",
+  "Most replied",
+  "Unanswered",
+  "Bookmarks",
+];
+
+interface Reply {
+  id: string;
+  author: string;
+  content: string;
+  timestamp: Date;
 }
-const FocusInsightsWidget: React.FC = () => {
-  const [sessions, setSessions] = useState<FocusSession[]>([]);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingSession, setEditingSession] = useState<FocusSession | null>(null);
-  const addModalScrollRef = useRef<HTMLDivElement>(null);
-  const editModalScrollRef = useRef<HTMLDivElement>(null);
+
+interface Discussion {
+  id: string;
+  author: string;
+  content: string;
+  replies: Reply[];
+  timestamp: Date;
+  answered: boolean;
+  likes: number;
+  bookmarked: boolean;
+  likedByUser?: boolean;
+  reactions?: { [emoji: string]: { count: number; users: string[] } };
+}
+
+const formatRelativeTime = (date: Date): string => {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) {
+    return "Just now";
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  } else if (diffInSeconds < 2592000) {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days} ${days === 1 ? "day" : "days"} ago`;
+  } else {
+    const months = Math.floor(diffInSeconds / 2592000);
+    return `${months} ${months === 1 ? "month" : "months"} ago`;
+  }
+};
+
+const CommunityDashboard: React.FC = () => {
+  const [selectedTopic, setSelectedTopic] = useState<number>(
+    trendingTopics[0].id
+  );
+  const [activeFilter, setActiveFilter] = useState<FilterType>("Most recent");
+  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [newPostContent, setNewPostContent] = useState<string>("");
+  const [replyContent, setReplyContent] = useState<{ [key: string]: string }>(
+    {}
+  );
+  const [expandedPost, setExpandedPost] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
+  const [isCreatePostExpanded, setIsCreatePostExpanded] = useState<boolean>(false);
+  const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null);
+  const [discussions, setDiscussions] = useState<{
+    [key: number]: Discussion[];
+  }>(mockDiscussions);
+
+  const [showSidebar, setShowSidebar] = useState<boolean>(true);
+  const [showRightSidebar, setShowRightSidebar] = useState<boolean>(false);
+  const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
+  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
+  const [userSettings, setUserSettings] = useState({
+    notifications: true,
+    emailAlerts: false,
+    theme: 'dark',
+    autoSave: true
+  });
+
+  const newPostRef = useRef<HTMLTextAreaElement>(null);
+  const replyRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>({});
 
   useEffect(() => {
-    const isModalOpen = showAddModal || showEditModal;
-    const htmlElement = document.documentElement;
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2500);
 
-    if (isModalOpen) {
-      htmlElement.classList.add('modal-open');
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
+
+    document.body.style.fontFamily =
+      "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
+    return () => {
+      if (document.head.contains(link)) {
+        document.head.removeChild(link);
+      }
+    };
+  }, []);
+
+
+
+  const handleSignOut = () => {
+    setDiscussions(mockDiscussions);
+    setNewPostContent("");
+    setReplyContent({});
+    setExpandedPost(null);
+    setActiveFilter("Most recent");
+    setSelectedTopic(trendingTopics[0].id);
+    toast.success("Successfully signed out");
+  };
+
+  const getUserStats = () => {
+    const allDiscussions = Object.values(discussions).flat();
+    const userPosts = allDiscussions.filter(d => d.author === "You");
+    const userReplies = allDiscussions.reduce((acc, d) => 
+      acc + d.replies.filter(r => r.author === "You").length, 0);
+    const totalLikes = userPosts.reduce((acc, post) => acc + post.likes, 0);
+    const bookmarkedPosts = allDiscussions.filter(d => d.bookmarked).length;
+    
+    return {
+      posts: userPosts.length,
+      replies: userReplies,
+      likes: totalLikes,
+      bookmarks: bookmarkedPosts
+    };
+  };
+
+  const addModeratorReply = (postId: string, topicId: number) => {
+    const moderatorReplies = [
+      "Great question! I'd love to help you with this.",
+      "This is an interesting topic. Here's what I think...",
+      "Thanks for bringing this up! This is a common challenge many developers face.",
+      "Good point! I've seen this come up frequently in our community.",
+      "This is a valuable discussion. Let me share some insights.",
+      "Excellent question! This touches on some important concepts.",
+      "I appreciate you starting this conversation. Very relevant topic!",
+      "This is definitely worth exploring. Great initiative!",
+    ];
+
+    const randomModerator = moderators[Math.floor(Math.random() * moderators.length)];
+    const randomReply = moderatorReplies[Math.floor(Math.random() * moderatorReplies.length)];
+
+    const moderatorReply: Reply = {
+      id: `r${Date.now()}`,
+      author: randomModerator.name,
+      content: randomReply,
+      timestamp: new Date(),
+    };
+
+    setDiscussions((prev) => {
+      const updatedDiscussions = [...prev[topicId]];
+      const postIndex = updatedDiscussions.findIndex((p) => p.id === postId);
+
+      if (postIndex !== -1) {
+        const updatedPost = {
+          ...updatedDiscussions[postIndex],
+          replies: [...updatedDiscussions[postIndex].replies, moderatorReply],
+          answered: true,
+        };
+        updatedDiscussions[postIndex] = updatedPost;
+      }
+
+      return {
+        ...prev,
+        [topicId]: updatedDiscussions,
+      };
+    });
+
+    toast.success(`${randomModerator.name} replied to your post!`);
+  };
+
+  const handleCreatePost = () => {
+    if (!newPostContent.trim()) {
+      toast.error("Post content cannot be empty");
+      return;
+    }
+
+    const newPost: Discussion = {
+      id: `d${Date.now()}`,
+      author: "You",
+      content: newPostContent,
+      replies: [],
+      timestamp: new Date(),
+      answered: false,
+      likes: 0,
+      bookmarked: false,
+      reactions: {},
+    };
+
+    setDiscussions((prev) => ({
+      ...prev,
+      [selectedTopic]: [newPost, ...prev[selectedTopic]],
+    }));
+
+    setTimeout(() => {
+      addModeratorReply(newPost.id, selectedTopic);
+    }, 3000);
+
+    setNewPostContent("");
+    setIsCreatePostExpanded(false);
+    toast.success("Your post has been published!");
+  };
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isCreatePostExpanded) {
+        setIsCreatePostExpanded(false);
+        setShowEmojiPicker(false);
+        newPostRef.current?.blur();
+      }
+      if (e.key === 'Escape' && showReactionPicker) {
+        setShowReactionPicker(null);
+      }
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showReactionPicker && !(e.target as Element).closest('.reaction-picker-container')) {
+        setShowReactionPicker(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isCreatePostExpanded, showReactionPicker]);
+
+  useEffect(() => {
+    if (showProfileModal || showSettingsModal || showWelcomeModal) {
+      document.body.style.overflow = 'hidden';
     } else {
-      htmlElement.classList.remove('modal-open');
+      document.body.style.overflow = 'unset';
     }
 
     return () => {
-      htmlElement.classList.remove('modal-open');
+      document.body.style.overflow = 'unset';
     };
-  }, [showAddModal, showEditModal]);
+  }, [showProfileModal, showSettingsModal, showWelcomeModal]);
 
-  const [newSessionTitle, setNewSessionTitle] = useState('');
-  const [newSessionStartTime, setNewSessionStartTime] = useState({ hour: '09', minute: '00', period: 'AM' });
-  const [newSessionEndTime, setNewSessionEndTime] = useState({ hour: '10', minute: '00', period: 'AM' });
-
-  const [editSessionTitle, setEditSessionTitle] = useState('');
-  const [editSessionStartTime, setEditSessionStartTime] = useState({ hour: '09', minute: '00', period: 'AM' });
-  const [editSessionEndTime, setEditSessionEndTime] = useState({ hour: '10', minute: '00', period: 'AM' });
-  
-  const [addSessionError, setAddSessionError] = useState('');
-  const [editSessionError, setEditSessionError] = useState('');
-  const [conflictingSessionId, setConflictingSessionId] = useState<string | null>(null);
-  const [titleChangedNotice, setTitleChangedNotice] = useState('');
-  const [streak, setStreak] = useState(0);
-  const [todayScore, setTodayScore] = useState(0);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(0);
-  const [timerStartTime, setTimerStartTime] = useState<Date | null>(null);
-  const [currentSessionTitle, setCurrentSessionTitle] = useState('Focus Session');
-
-  const calculateFocusScore = useCallback((duration: number, startTime: Date, title: string): number => {
-    let score = 50;
-    if (duration >= 25 && duration <= 90) {
-      score += Math.min(40, (duration - 25) * 0.6 + 20);
-    } else if (duration > 90) {
-      score += Math.max(20, 40 - (duration - 90) * 0.3);
-    } else if (duration > 0) {
-      score += duration * 0.8;
-    }
-    const hour = startTime.getHours();
-    if (hour >= 9 && hour <= 11) {
-      score += 10; 
-    } else if (hour >= 14 && hour <= 16) {
-      score += 8; 
-    } else if (hour >= 8 && hour <= 12) {
-      score += 6; 
-    } else if (hour >= 13 && hour <= 17) {
-      score += 4; 
-    }
-    const titleLower = title.toLowerCase();
-    if (titleLower.includes('deep work') || titleLower.includes('coding') || titleLower.includes('writing')) {
-      score += 10; 
-    } else if (titleLower.includes('review') || titleLower.includes('research') || titleLower.includes('study')) {
-      score += 8; 
-    } else if (titleLower.includes('planning') || titleLower.includes('design')) {
-      score += 6; 
-    } else if (titleLower.includes('meeting') || titleLower.includes('call')) {
-      score += 3; 
-    } else {
-      score += 5; 
-    }
-    score += Math.floor(Math.random() * 11) - 5;
-    return Math.max(0, Math.min(100, Math.round(score)));
-  }, []);
-  const generateMockData = useCallback(() => {
-    const today = new Date();
-    const mockSessions: FocusSession[] = [
-      {
-        id: '1',
-        title: 'Deep Work Session',
-        duration: 90,
-        startTime: new Date(today.setHours(9, 0, 0, 0)),
-        endTime: new Date(today.setHours(10, 30, 0, 0)),
-        score: 0 
-      },
-      {
-        id: '2',
-        title: 'Project Planning',
-        duration: 45,
-        startTime: new Date(today.setHours(11, 0, 0, 0)),
-        endTime: new Date(today.setHours(11, 45, 0, 0)),
-        score: 0 
-      },
-      {
-        id: '3',
-        title: 'Code Review',
-        duration: 60,
-        startTime: new Date(today.setHours(14, 0, 0, 0)),
-        endTime: new Date(today.setHours(15, 0, 0, 0)),
-        score: 0 
-      }
-    ];
-    mockSessions.forEach(session => {
-      session.score = calculateFocusScore(session.duration, session.startTime, session.title);
-    });
-    return { mockSessions };
-  }, [calculateFocusScore]);
-  const calculateTodayScore = useCallback(() => {
-    if (sessions.length === 0) return 0;
-    const totalScore = sessions.reduce((acc, session) => acc + session.score, 0);
-    return Math.round(totalScore / sessions.length);
-  }, [sessions]);
-  useEffect(() => {
-    const { mockSessions } = generateMockData();
-    setSessions(mockSessions);
-    setStreak(5);
-  }, [generateMockData]);
-  useEffect(() => {
-    const newScore = calculateTodayScore();
-    if (newScore > 0) {
-      setTodayScore(newScore);
-    }
-  }, [sessions, calculateTodayScore]);
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isTimerRunning) {
-      interval = setInterval(() => {
-        setTimerSeconds(prev => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isTimerRunning]);
-  const timeToObject = (date: Date) => {
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const hour12 = hours % 12 || 12;
-    return {
-      hour: hour12.toString().padStart(2, '0'),
-      minute: minutes.toString().padStart(2, '0'),
-      period
-    };
-  };
-  const objectToTime = (timeObj: { hour: string; minute: string; period: string }) => {
-    let hour = parseInt(timeObj.hour);
-    if (timeObj.period === 'PM' && hour !== 12) hour += 12;
-    if (timeObj.period === 'AM' && hour === 12) hour = 0;
-    const date = new Date();
-    date.setHours(hour, parseInt(timeObj.minute), 0, 0);
-    return date;
-  };
-  const calculateDuration = (startTime: { hour: string; minute: string; period: string }, endTime: { hour: string; minute: string; period: string }) => {
-    const start = objectToTime(startTime);
-    const end = objectToTime(endTime);
-    const durationMs = end.getTime() - start.getTime();
-    return Math.round(durationMs / (1000 * 60));
-  };
-  const adjustDuration = (startTime: { hour: string; minute: string; period: string }, durationMinutes: number) => {
-    const start = objectToTime(startTime);
-    const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
-    return timeToObject(end);
-  };
-  const changeDuration = (currentStartTime: { hour: string; minute: string; period: string }, currentEndTime: { hour: string; minute: string; period: string }, change: number, isAddModal: boolean) => {
-    const currentDuration = calculateDuration(currentStartTime, currentEndTime);
-    const newDuration = Math.max(15, Math.min(480, currentDuration + change));
-    const newEndTime = adjustDuration(currentStartTime, newDuration);
-    
-    const scrollRef = isAddModal ? addModalScrollRef : editModalScrollRef;
-    const scrollTop = scrollRef.current?.scrollTop || 0;
-    
-    if (isAddModal) {
-      setNewSessionEndTime(newEndTime);
-      setAddSessionError('');
-    } else {
-      setEditSessionEndTime(newEndTime);
-      setEditSessionError('');
-    }
-    setConflictingSessionId(null);
-    
-    requestAnimationFrame(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollTop;
-      }
-    });
-  };
-  const generateUniqueTitle = (proposedTitle: string, excludeSessionId?: string) => {
-    const existingTitles = sessions
-      .filter(session => excludeSessionId ? session.id !== excludeSessionId : true)
-      .map(session => session.title.toLowerCase());
-    if (!existingTitles.includes(proposedTitle.toLowerCase())) {
-      return proposedTitle;
-    }
-    let counter = 2;
-    let uniqueTitle = `${proposedTitle} (${counter})`;
-    while (existingTitles.includes(uniqueTitle.toLowerCase())) {
-      counter++;
-      uniqueTitle = `${proposedTitle} (${counter})`;
-    }
-    return uniqueTitle;
-  };
-  const checkTimeConflicts = (startTime: Date, endTime: Date, excludeSessionId?: string) => {
-    const conflictingSessions = sessions.filter(session => {
-      if (excludeSessionId && session.id === excludeSessionId) {
-        return false;
-      }
-      return (startTime < session.endTime) && (endTime > session.startTime);
-    });
-    return conflictingSessions;
-  };
-  const validateTimeRange = (startTime: { hour: string; minute: string; period: string }, endTime: { hour: string; minute: string; period: string }, excludeSessionId?: string) => {
-    const start = objectToTime(startTime);
-    const end = objectToTime(endTime);
-    if (end <= start) {
-      return 'End time must be after start time';
-    }
-    const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
-    if (durationMinutes > 480) { 
-      return 'Session duration cannot exceed 8 hours';
-    }
-    const conflictingSessions = checkTimeConflicts(start, end, excludeSessionId);
-    if (conflictingSessions.length > 0) {
-      const conflictSession = conflictingSessions[0];
-      const conflictStart = formatTime(conflictSession.startTime);
-      const conflictEnd = formatTime(conflictSession.endTime);
-      setConflictingSessionId(conflictSession.id);
-      return `Time conflict with "${conflictSession.title}" (${conflictStart} - ${conflictEnd})`;
-    }
-    setConflictingSessionId(null);
-    return '';
-  };
-  const handleEdit = (session: FocusSession) => {
-    setEditingSession(session);
-    setEditSessionTitle(session.title);
-    setEditSessionStartTime(timeToObject(session.startTime));
-    setEditSessionEndTime(timeToObject(session.endTime));
-    setShowEditModal(true);
-  };
-  const handleSaveEdit = () => {
-    if (!editingSession || !editSessionTitle) {
-      setEditSessionError('Please enter a session title');
+  const handleReply = (postId: string) => {
+    if (!replyContent[postId]?.trim()) {
+      toast.error("Reply cannot be empty");
       return;
     }
-    const validationError = validateTimeRange(editSessionStartTime, editSessionEndTime, editingSession.id);
-    if (validationError) {
-      setEditSessionError(validationError);
-      return;
-    }
-    const startTime = objectToTime(editSessionStartTime);
-    const endTime = objectToTime(editSessionEndTime);
-    const duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-    const uniqueTitle = generateUniqueTitle(editSessionTitle, editingSession.id);
-    const updatedSession = {
-      ...editingSession,
-      title: uniqueTitle,
-      startTime,
-      endTime,
-      duration,
-      score: calculateFocusScore(duration, startTime, uniqueTitle)
+
+    const newReply: Reply = {
+      id: `r${Date.now()}`,
+      author: "You",
+      content: replyContent[postId],
+      timestamp: new Date(),
     };
-    setSessions(sessions.map(session => 
-      session.id === editingSession.id ? updatedSession : session
-    ));
-    if (uniqueTitle !== editSessionTitle) {
-      setTitleChangedNotice(`Title changed to "${uniqueTitle}" to avoid duplicates`);
-      setTimeout(() => setTitleChangedNotice(''), 3000);
-    }
-    setShowEditModal(false);
-    setEditingSession(null);
-    setEditSessionTitle('');
-    setEditSessionError('');
-    setConflictingSessionId(null);
-    setTitleChangedNotice('');
-  };
-  const handleCancelEdit = () => {
-    setShowEditModal(false);
-    setEditingSession(null);
-    setEditSessionTitle('');
-    setEditSessionError('');
-    setConflictingSessionId(null);
-    setTitleChangedNotice('');
-  };
-  const startTimer = () => {
-    if (!timerStartTime) {
-      setTimerStartTime(new Date());
-    }
-    setIsTimerRunning(true);
-  };
-  const pauseTimer = () => {
-    setIsTimerRunning(false);
-  };
-  const stopTimer = () => {
-    if (timerSeconds > 0 && timerStartTime) {
-      const now = new Date();
-      const actualDuration = Math.round((now.getTime() - timerStartTime.getTime()) / (1000 * 60));
-      const uniqueTitle = generateUniqueTitle(currentSessionTitle);
-      const newSession: FocusSession = {
-        id: Date.now().toString(),
-        title: uniqueTitle,
-        duration: actualDuration,
-        startTime: timerStartTime,
-        endTime: now,
-        score: calculateFocusScore(actualDuration, timerStartTime, uniqueTitle)
+
+    setDiscussions((prev) => {
+      const updatedDiscussions = [...prev[selectedTopic]];
+      const postIndex = updatedDiscussions.findIndex((p) => p.id === postId);
+
+      if (postIndex !== -1) {
+        const currentPost = updatedDiscussions[postIndex];
+        const isReplyingToOwnPost = currentPost.author === "You";
+        
+        const updatedPost = {
+          ...currentPost,
+          replies: [...currentPost.replies, newReply],
+          answered: isReplyingToOwnPost ? currentPost.answered : true,
+        };
+        updatedDiscussions[postIndex] = updatedPost;
+      }
+
+      return {
+        ...prev,
+        [selectedTopic]: updatedDiscussions,
       };
-      setSessions([...sessions, newSession]);
-      if (uniqueTitle !== currentSessionTitle) {
-        setTitleChangedNotice(`Title changed to "${uniqueTitle}" to avoid duplicates`);
-        setTimeout(() => setTitleChangedNotice(''), 3000);
+    });
+
+    setReplyContent((prev) => ({ ...prev, [postId]: "" }));
+    toast.success("Reply posted successfully!");
+
+    if (replyRefs.current[postId]) {
+      replyRefs.current[postId]?.focus();
+    }
+  };
+
+  const toggleBookmark = (postId: string) => {
+    setDiscussions((prev) => {
+      const newDiscussions = { ...prev };
+
+      for (const topicId in newDiscussions) {
+        const topicDiscussions = newDiscussions[topicId];
+        const postIndex = topicDiscussions.findIndex((p) => p.id === postId);
+
+        if (postIndex !== -1) {
+          newDiscussions[topicId] = [
+            ...topicDiscussions.slice(0, postIndex),
+            {
+              ...topicDiscussions[postIndex],
+              bookmarked: !topicDiscussions[postIndex].bookmarked,
+            },
+            ...topicDiscussions.slice(postIndex + 1),
+          ];
+
+          break;
+        }
       }
-    }
-    setIsTimerRunning(false);
-    setTimerSeconds(0);
-    setTimerStartTime(null);
-    setCurrentSessionTitle('Focus Session');
-  };
-  const resetTimer = () => {
-    setIsTimerRunning(false);
-    setTimerSeconds(0);
-    setTimerStartTime(null);
-  };
-  const formatTimerTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    if (hours > 0) {
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-  const handleAddSession = () => {
-    if (!newSessionTitle) {
-      setAddSessionError('Please enter a session title');
-      return;
-    }
-    const validationError = validateTimeRange(newSessionStartTime, newSessionEndTime);
-    if (validationError) {
-      setAddSessionError(validationError);
-      return;
-    }
-    const startTime = objectToTime(newSessionStartTime);
-    const endTime = objectToTime(newSessionEndTime);
-    const duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-    const uniqueTitle = generateUniqueTitle(newSessionTitle);
-      const newSessionObj: FocusSession = {
-        id: Date.now().toString(),
-      title: uniqueTitle,
-        duration: duration,
-        startTime: startTime,
-      endTime: endTime,
-      score: calculateFocusScore(duration, startTime, uniqueTitle)
-      };
-      setSessions([...sessions, newSessionObj]);
-    if (uniqueTitle !== newSessionTitle) {
-      setTitleChangedNotice(`Title changed to "${uniqueTitle}" to avoid duplicates`);
-      setTimeout(() => setTitleChangedNotice(''), 3000);
-    }
-    setShowAddModal(false);
-    setNewSessionTitle('');
-    setNewSessionStartTime({ hour: '09', minute: '00', period: 'AM' });
-    setNewSessionEndTime({ hour: '10', minute: '00', period: 'AM' });
-    setAddSessionError('');
-    setConflictingSessionId(null);
-    setTitleChangedNotice('');
-  };
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
+
+      return newDiscussions;
     });
   };
-  const handleStartTimeChange = (newStartTime: { hour: string; minute: string; period: string }, isAddModal: boolean) => {
-    const startTime = objectToTime(newStartTime);
-    let endTime = new Date(startTime.getTime() + 60 * 60 * 1000); 
-    const excludeId = isAddModal ? undefined : editingSession?.id;
-    const conflictingSessions = checkTimeConflicts(startTime, endTime, excludeId);
-    if (conflictingSessions.length > 0) {
-      const conflictingSession = conflictingSessions[0];
-      const maxEndTime = new Date(conflictingSession.startTime.getTime() - 60 * 1000); 
-      if (maxEndTime > startTime) {
-        endTime = maxEndTime;
-      } else {
-        endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+
+  const toggleLike = (postId: string) => {
+    setDiscussions((prev) => {
+      const updatedDiscussions = [...prev[selectedTopic]];
+      const postIndex = updatedDiscussions.findIndex((p) => p.id === postId);
+
+      if (postIndex !== -1) {
+        updatedDiscussions[postIndex] = {
+          ...updatedDiscussions[postIndex],
+          likes:
+            updatedDiscussions[postIndex].likes +
+            (updatedDiscussions[postIndex].likedByUser ? -1 : 1),
+          likedByUser: !updatedDiscussions[postIndex].likedByUser,
+        };
       }
-    }
-    const newEndTime = timeToObject(endTime);
-    if (isAddModal) {
-      setNewSessionStartTime(newStartTime);
-      setNewSessionEndTime(newEndTime);
-      setAddSessionError('');
-    } else {
-      setEditSessionStartTime(newStartTime);
-      setEditSessionEndTime(newEndTime);
-      setEditSessionError('');
-    }
-    setConflictingSessionId(null);
+
+      return {
+        ...prev,
+        [selectedTopic]: updatedDiscussions,
+      };
+    });
   };
-  const DurationPicker = ({ 
-    startTime, 
-    endTime, 
-    isAddModal 
-  }: { 
-    startTime: { hour: string; minute: string; period: string }, 
-    endTime: { hour: string; minute: string; period: string }, 
-    isAddModal: boolean 
-  }) => {
-    const duration = calculateDuration(startTime, endTime);
-  return (
-      <div>
-        <label className="block text-base font-medium text-gray-700 mb-2">Duration</label>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => changeDuration(startTime, endTime, -15, isAddModal)}
-            className="flex items-center justify-center w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            <FiMinus className="w-3 h-3 text-gray-600" />
-          </button>
-          <div className="flex-1 text-center">
-            <div className="px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
-              <span className="text-base font-semibold text-gray-900">
-                {duration} min
-              </span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => changeDuration(startTime, endTime, 15, isAddModal)}
-            className="flex items-center justify-center w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            <FiPlus className="w-3 h-3 text-gray-600" />
-          </button>
-      </div>
-      </div>
+
+  const toggleReplyExpansion = (postId: string) => {
+    setExpandedPost(expandedPost === postId ? null : postId);
+  };
+
+  const addReaction = (postId: string, emoji: string) => {
+    setDiscussions((prev) => {
+      const newDiscussions = { ...prev };
+      
+      // Find the post across all topics
+      for (const topicId in newDiscussions) {
+        const topicDiscussions = [...newDiscussions[topicId]];
+        const postIndex = topicDiscussions.findIndex((p) => p.id === postId);
+
+        if (postIndex !== -1) {
+          const post = topicDiscussions[postIndex];
+          const reactions = { ...(post.reactions || {}) };
+          const currentReaction = reactions[emoji] || { count: 0, users: [] };
+          
+          const hasUserReacted = currentReaction.users.includes("You");
+          
+          if (hasUserReacted) {
+            // Remove reaction
+            const newUsers = currentReaction.users.filter((user: string) => user !== "You");
+            if (newUsers.length > 0) {
+              reactions[emoji] = { count: newUsers.length, users: newUsers };
+            } else {
+              delete reactions[emoji];
+            }
+          } else {
+            // Add reaction
+            reactions[emoji] = { 
+              count: currentReaction.count + 1, 
+              users: [...currentReaction.users, "You"] 
+            };
+          }
+
+          topicDiscussions[postIndex] = {
+            ...post,
+            reactions: reactions
+          };
+          
+          newDiscussions[topicId] = topicDiscussions;
+          break;
+        }
+      }
+
+      return newDiscussions;
+    });
+
+    setShowReactionPicker(null);
+  };
+
+  const getReactionEmojis = () => [
+    "👍", "❤️", "😊", "🔥", "🎉", "👏", "💯", "🚀"
+  ];
+
+  const currentDiscussions = discussions[selectedTopic] || [];
+
+  let filteredDiscussions = [...currentDiscussions];
+
+  if (activeFilter === "Most recent") {
+    filteredDiscussions.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
+  } else if (activeFilter === "Most replied") {
+    filteredDiscussions.sort((a, b) => b.replies.length - a.replies.length);
+  } else if (activeFilter === "Unanswered") {
+    filteredDiscussions = filteredDiscussions.filter(
+      (d) => d.replies.length === 0
     );
-  };
-  const TimePicker = ({ 
-    value, 
-    onChange, 
-    label,
-    isStartTime = false,
-    isAddModal = false
-  }: { 
-    value: { hour: string; minute: string; period: string }, 
-    onChange: (newTime: { hour: string; minute: string; period: string }) => void,
-    label: string,
-    isStartTime?: boolean,
-    isAddModal?: boolean
-  }) => {
-    const hours = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
-    const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
-    const periods = ['AM', 'PM'];
-  return (
-      <div>
-        <label className="block text-base font-medium text-gray-700 mb-3">{label}</label>
-        <div className="flex gap-3">
-          <select
-            value={value.hour}
-            onChange={(e) => {
-              const newTime = { ...value, hour: e.target.value };
-              if (isStartTime) {
-                handleStartTimeChange(newTime, isAddModal);
-              } else {
-                onChange(newTime);
-                setConflictingSessionId(null);
-                if (isAddModal) {
-                  setAddSessionError('');
-                } else {
-                  setEditSessionError('');
-                }
-              }
-            }}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-medium text-center appearance-none bg-white"
-          >
-            {hours.map(hour => (
-              <option key={hour} value={hour}>{hour}</option>
-            ))}
-          </select>
-          <span className="px-2 py-3 text-gray-500 text-xl font-bold">:</span>
-          <select
-            value={value.minute}
-            onChange={(e) => {
-              const newTime = { ...value, minute: e.target.value };
-              if (isStartTime) {
-                handleStartTimeChange(newTime, isAddModal);
-              } else {
-                onChange(newTime);
-                setConflictingSessionId(null);
-                if (isAddModal) {
-                  setAddSessionError('');
-                } else {
-                  setEditSessionError('');
-                }
-              }
-            }}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-medium text-center appearance-none bg-white"
-          >
-            {minutes.map(minute => (
-              <option key={minute} value={minute}>{minute}</option>
-            ))}
-          </select>
-          <select
-            value={value.period}
-            onChange={(e) => {
-              const newTime = { ...value, period: e.target.value };
-              if (isStartTime) {
-                handleStartTimeChange(newTime, isAddModal);
-              } else {
-                onChange(newTime);
-                setConflictingSessionId(null);
-                if (isAddModal) {
-                  setAddSessionError('');
-                } else {
-                  setEditSessionError('');
-                }
-              }
-            }}
-            className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-medium text-center appearance-none bg-white min-w-[80px]"
-          >
-            {periods.map(period => (
-              <option key={period} value={period}>{period}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+  } else if (activeFilter === "Bookmarks") {
+    filteredDiscussions = filteredDiscussions.filter(
+      (d) => d.bookmarked
     );
-  };
-  const totalFocusTime = sessions.reduce((acc, session) => acc + session.duration, 0);
-  const sparklineData = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (6 - index));
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const dayName = dayNames[date.getDay()];
-    let score;
-    if (index === 6) {
-      score = todayScore || 85;
-    } else {
-      const baseScore = todayScore || 85;
-      const variation = Math.random() * 20 - 10; 
-      const trendFactor = (index - 3) * 2; 
-      const weekendFactor = (date.getDay() === 0 || date.getDay() === 6) ? -5 : 0; 
-      score = Math.max(40, Math.min(100, Math.round(baseScore + variation + trendFactor + weekendFactor)));
-    }
-    return {
-      day: index + 1,
-      score: score,
-      dayName: index === 6 ? 'Today' : dayName,
-      date: date.toISOString().split('T')[0]
-    };
-  });
-  const getScoreColor = (score: number) => {
-    if (score >= 85) return 'text-green-600';
-    if (score >= 75) return 'text-blue-600';
-    if (score >= 65) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-  const getScoreBg = (score: number) => {
-    if (score >= 85) return 'bg-green-50 border-green-200';
-    if (score >= 75) return 'bg-blue-50 border-blue-200';
-    if (score >= 65) return 'bg-yellow-50 border-yellow-200';
-    return 'bg-red-50 border-red-200';
-  };
-  const renderTodayTab = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1 }}
-          className={`p-6 rounded-2xl border-2 ${getScoreBg(todayScore)}`}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Today's Score</p>
-              <motion.p 
-                key={todayScore}
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                className={`text-4xl font-bold ${getScoreColor(todayScore)}`}
-              >
-                {todayScore}%
-              </motion.p>
-              <p className="text-xs text-gray-500 mt-1">
-                {todayScore >= 85 ? 'Excellent focus!' : todayScore >= 75 ? 'Good performance!' : 'Room for improvement'}
-              </p>
-            </div>
-            <FiTarget className="w-8 h-8 text-gray-400" />
-          </div>
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-gray-500">Past 7 days</span>
-              <FiTrendingUp className="w-3 h-3 text-gray-400" />
-            </div>
-            <div className="h-8">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={sparklineData}>
-                <Line 
-                  type="monotone" 
-                    dataKey="score" 
-                    stroke={todayScore >= 85 ? '#16A34A' : todayScore >= 75 ? '#3B82F6' : todayScore >= 65 ? '#F59E0B' : '#DC2626'}
-                  strokeWidth={2}
-                    dot={{ r: 2, fill: todayScore >= 85 ? '#16A34A' : todayScore >= 75 ? '#3B82F6' : todayScore >= 65 ? '#F59E0B' : '#DC2626', strokeWidth: 0 }}
-                    activeDot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-            </div>
-          </div>
-        </motion.div>
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-          className="p-6 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Focus Streak</p>
-              <motion.p 
-                key={streak}
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                className="text-4xl font-bold text-purple-600"
-              >
-                {streak}
-              </motion.p>
-            </div>
-            <FiAward className="w-8 h-8 text-purple-400" />
-          </div>
-          <div className="flex items-center gap-2 mb-2">
-            <FiZap className="w-4 h-4 text-purple-500" />
-            <p className="text-sm text-purple-700 font-medium">
-              {streak >= 7 ? 'Amazing!' : streak >= 3 ? 'Keep going!' : 'Build momentum!'}
-            </p>
-          </div>
-          <p className="text-xs text-gray-500">Consecutive days ≥75%</p>
-        </motion.div>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="lg:col-span-2 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-200 p-6"
-        >
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center justify-center gap-2">
-            <FiClock className="text-indigo-500" />
-            Focus Timer
-          </h3>
-          <div className="mb-4">
-            <input
-              type="text"
-              value={currentSessionTitle}
-              onChange={(e) => setCurrentSessionTitle(e.target.value)}
-              className="text-center bg-white/80 border border-indigo-200 rounded-lg px-4 py-2 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="Session title"
-              disabled={isTimerRunning}
-            />
-            </div>
-          <div className="mb-6">
-            <div className="text-5xl font-mono font-bold text-indigo-700 mb-2">
-              {formatTimerTime(timerSeconds)}
-          </div>
-            <div className="text-sm text-gray-600">
-              {isTimerRunning ? 'Timer running...' : 'Ready to focus'}
-      </div>
-      </div>
-          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
-            {!isTimerRunning ? (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-                onClick={startTimer}
-                className="flex items-center justify-center gap-2 px-6 py-4 bg-indigo-500 text-white rounded-2xl hover:bg-indigo-600 transition-colors font-medium cursor-pointer col-span-2 min-h-[56px]"
-          >
-                <FiPlay className="w-5 h-5" />
-                <span className="text-base font-semibold">Start Focus</span>
-          </motion.button>
-            ) : (
-              <>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={pauseTimer}
-                  className="flex items-center justify-center gap-2 px-4 py-4 bg-yellow-500 text-white rounded-2xl hover:bg-yellow-600 transition-colors font-medium cursor-pointer min-h-[56px]"
-                >
-                  <FiPause className="w-5 h-5 stroke-2" />
-                  <span className="text-sm font-semibold">Pause</span>
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={stopTimer}
-                  className="flex items-center justify-center gap-2 px-4 py-4 bg-green-500 text-white rounded-2xl hover:bg-green-600 transition-colors font-medium cursor-pointer min-h-[56px]"
-                >
-                  <FiSquare className="w-5 h-5" />
-                  <span className="text-sm font-semibold">Stop</span>
-                </motion.button>
-              </>
-            )}
-            {timerSeconds > 0 && !isTimerRunning && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={resetTimer}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-500 text-white rounded-2xl hover:bg-gray-600 transition-colors font-medium cursor-pointer col-span-2 min-h-[48px]"
-              >
-                <FiX className="w-4 h-4" />
-                <span className="text-sm font-semibold">Reset Timer</span>
-              </motion.button>
-            )}
-        </div>
-        </div>
-      </motion.div>
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="lg:hidden flex justify-between items-center p-4 bg-gray-50 rounded-xl"
-        >
-          <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">{sessions.length}</p>
-            <p className="text-sm text-gray-600">Sessions</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">
-              {Math.floor(totalFocusTime / 60)}h {totalFocusTime % 60}m
-            </p>
-            <p className="text-sm text-gray-600">Focus Time</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">
-              {sessions.length > 0 ? Math.round(totalFocusTime / sessions.length) : 0}m
-            </p>
-            <p className="text-sm text-gray-600">Avg Session</p>
-          </div>
-        </motion.div>
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="hidden lg:block space-y-4"
-        >
-          <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-            <p className="text-3xl font-bold text-gray-900">{sessions.length}</p>
-            <p className="text-sm text-gray-600">Sessions</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-            <p className="text-xl font-bold text-gray-900">
-              {Math.floor(totalFocusTime / 60)}h {totalFocusTime % 60}m
-            </p>
-            <p className="text-sm text-gray-600">Focus Time</p>
-            </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-            <p className="text-3xl font-bold text-gray-900">
-              {sessions.length > 0 ? Math.round(totalFocusTime / sessions.length) : 0}m
-            </p>
-            <p className="text-sm text-gray-600">Avg Session</p>
-          </div>
-        </motion.div>
-      </div>
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.45 }}
-        className="bg-white rounded-2xl border border-gray-200 shadow-sm"
-      >
-        <div className="p-4 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <FiClock className="text-blue-500" />
-            Today's Sessions
-          </h3>
-          </div>
-        </div>
-        <div className="p-4">
-        <AnimatePresence>
-          {sessions.length === 0 ? (
-              <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-                className="text-center py-12"
-              >
-                <FiActivity className="w-16 h-16 text-gray-300 mx-auto mb-6" />
-                <p className="text-gray-500 mb-6 text-lg">No focus sessions yet today</p>
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  className="px-8 py-4 bg-blue-500 text-white rounded-2xl hover:bg-blue-600 transition-colors font-semibold cursor-pointer text-base min-w-[200px]"
-                >
-                  Start Your First Session
-                </button>
-              </motion.div>
-          ) : (
-              <div className="space-y-3">
-                {[...sessions].reverse().map((session, index) => (
-                <motion.div
-                  key={session.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ delay: index * 0.1 }}
-                    className={`p-4 rounded-xl border transition-all active:scale-98 ${
-                      session.id === conflictingSessionId 
-                        ? 'border-red-300 bg-red-50 shadow-md' 
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  onClick={() => handleEdit(session)}
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-3">
-                          <h4 className="font-semibold text-gray-900 text-lg truncate pr-2">{session.title}</h4>
-                          <div className={`px-3 py-1 rounded-full text-sm font-medium flex-shrink-0 ${
-                            session.score >= 85 ? 'bg-green-100 text-green-800' :
-                            session.score >= 75 ? 'bg-blue-100 text-blue-800' :
-                            session.score >= 65 ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {session.score}%
-                          </div>
-                      </div>
-                        <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 text-base text-gray-600">
-                            <div className="flex items-center gap-2">
-                              <FiClock className="w-4 h-4" />
-                              <span className="font-medium">{session.duration} min</span>
-                            </div>
-                            <span className="text-sm">{formatTime(session.startTime)} - {formatTime(session.endTime)}</span>
-                        </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-400">
-                            <span className="hidden sm:inline">Tap to edit</span>
-                            <FiEdit2 className="w-4 h-4" />
-                      </div>
-                    </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-              </div>
-          )}
-        </AnimatePresence>
-      </div>
-      </motion.div>
-    </div>
+  }
+
+  const filteredTopics = trendingTopics.filter((topic) =>
+    topic.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  return (
-    <div className="w-full max-w-2xl lg:max-w-6xl xl:max-w-7xl mx-auto p-4 lg:p-8 space-y-6 pb-24 touch-manipulation" style={{ fontFamily: 'Poppins, sans-serif' }}>
-      <AnimatePresence>
-        {titleChangedNotice && (
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed top-safe left-4 right-4 sm:left-1/2 sm:right-auto sm:transform sm:-translate-x-1/2 sm:max-w-md z-[9999] bg-blue-500 text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-medium mx-auto"
-            style={{ 
-              top: 'max(1rem, env(safe-area-inset-top, 1rem))',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)'
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
-              <span className="leading-relaxed">{titleChangedNotice}</span>
+
+  const handleEmojiClick = (emoji: string) => {
+    setNewPostContent((prev) => prev + emoji);
+    setShowEmojiPicker(false);
+  };
+
+  const handleFormatText = (format: "bold" | "italic" | "link") => {
+    const textarea = newPostRef.current;
+    if (!textarea) return;
+
+    textarea.focus();
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = newPostContent.substring(start, end);
+
+    let formattedText = "";
+    let newCursorPos = start;
+
+    switch (format) {
+      case "bold":
+        if (selectedText) {
+          formattedText = `**${selectedText}**`;
+          newCursorPos = start + formattedText.length;
+        } else {
+          formattedText = "**bold text**";
+          newCursorPos = start + 2;
+        }
+        break;
+      case "italic":
+        if (selectedText) {
+          formattedText = `*${selectedText}*`;
+          newCursorPos = start + 1;
+        } else {
+          formattedText = "*italic text*";
+          newCursorPos = start + 1;
+        }
+        break;
+      case "link":
+        if (selectedText) {
+          formattedText = `[${selectedText}](https://example.com)`;
+          newCursorPos = start + formattedText.length - 18;
+        } else {
+          formattedText = "[Click here](https://example.com)";
+          newCursorPos = start + formattedText.length - 18;
+        }
+        break;
+    }
+
+    const newText =
+      newPostContent.substring(0, start) +
+      formattedText +
+      newPostContent.substring(end);
+
+    setNewPostContent(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 10);
+  };
+
+  const renderMarkdown = (text: string) => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.*?)\*/g, "<em>$1</em>")
+      .replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-[#0E3D8B] hover:underline">$1</a>'
+      );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="relative h-screen w-screen overflow-hidden text-[#FFFFFF]">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0F0F1A] via-[#1A1A2E] to-[#16213E]">
+          <div className="absolute top-10 left-10 w-96 h-96 bg-gradient-to-br from-[#A855F7] to-[#EC4899] rounded-full opacity-30 blur-3xl animate-pulse"></div>
+          <div className="absolute top-32 right-16 w-80 h-80 bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] rounded-full opacity-25 blur-3xl"></div>
+          <div className="absolute bottom-20 left-20 w-72 h-72 bg-gradient-to-br from-[#EF4444] to-[#F97316] rounded-full opacity-20 blur-3xl"></div>
+          <div className="absolute bottom-32 right-32 w-64 h-64 bg-gradient-to-br from-[#10B981] to-[#059669] rounded-full opacity-25 blur-3xl"></div>
+          </div>
+        
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        
+        <div className="relative z-10 flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="flex justify-center mb-8">
+              <div className="relative">
+                <div className="w-24 h-24 bg-black/30 backdrop-blur-xl border border-white/20 rounded-2xl flex items-center justify-center shadow-2xl animate-bounce">
+                  <FaComments className="w-12 h-12 text-[#A55EEA]" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] rounded-full animate-ping"></div>
+              </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center"
-      >
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 flex items-center justify-center gap-2 sm:gap-3">
-          <FiActivity className="text-blue-500 w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12" />
-          Focus Insights
-        </h1>
-        <p className="text-gray-600 text-base sm:text-lg lg:text-xl mt-2 sm:mt-3 font-medium">Track your productivity with precision</p>
-            </motion.div>
-      {renderTodayTab()}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ delay: 0.5, type: "spring", stiffness: 200, damping: 20 }}
-        className="fixed z-40"
-        style={{ 
-          bottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))',
-          right: 'max(1.5rem, env(safe-area-inset-right, 1.5rem))'
-        }}
-      >
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          transition={{ type: "spring", stiffness: 400, damping: 17 }}
-          onClick={() => setShowAddModal(true)}
-          className="relative w-16 h-16 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 rounded-full cursor-pointer flex items-center justify-center overflow-hidden group transition-colors duration-200"
-          style={{ 
-            boxShadow: '0 4px 16px rgba(59, 130, 246, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1)',
-            WebkitTapHighlightColor: 'transparent'
-          }}
-          aria-label="Add new focus session"
-        >
-          <FiPlus 
-            className="w-8 h-8 text-white" 
-            strokeWidth={2.5}
-          />
-        </motion.button>
-      </motion.div>
+            <h1 className="text-5xl font-bold text-white mb-2 tracking-wide">
+            CommunityHub
+          </h1>
+            <div className="w-32 h-1 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] rounded-full mx-auto mb-6"></div>
+            <p className="text-xl text-white/80 mb-8">
+            Connecting developers worldwide
+          </p>
+            <div className="flex justify-center space-x-1">
+              <div className="w-2 h-2 bg-[#A55EEA] rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-[#A55EEA] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-[#A55EEA] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-      <Portal>
-        <AnimatePresence>
-          {showAddModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="modal-backdrop-overlay flex items-end sm:items-center justify-center p-0 sm:p-4 cursor-pointer"
-              onClick={() => {
-                setShowAddModal(false);
-                setAddSessionError('');
-                setConflictingSessionId(null);
-                setTitleChangedNotice('');
-              }}
-            >
-              <motion.div
-                initial={{ y: '100%', opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: '100%', opacity: 0 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-sm sm:w-full shadow-xl border border-gray-200 sm:border-white/20 max-h-[85vh] sm:max-h-[90vh] flex flex-col"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex-shrink-0 p-6 pb-4">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-semibold text-gray-900">Add Focus Session</h3>
-                    <button
-                      onClick={() => {
-                        setShowAddModal(false);
-                        setAddSessionError('');
-                        setConflictingSessionId(null);
-                        setTitleChangedNotice('');
-                      }}
-                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
-                    >
-                      <FiX className="w-6 h-6" />
-                    </button>
+  return (
+    <>
+      <div className="relative h-screen w-screen overflow-hidden text-[#FFFFFF]">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0F0F1A] via-[#1A1A2E] to-[#16213E]">
+          <div className="absolute top-10 left-10 w-96 h-96 bg-gradient-to-br from-[#A855F7] to-[#EC4899] rounded-full opacity-30 blur-3xl animate-pulse"></div>
+          <div className="absolute top-32 right-16 w-80 h-80 bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] rounded-full opacity-25 blur-3xl"></div>
+          <div className="absolute bottom-20 left-20 w-72 h-72 bg-gradient-to-br from-[#EF4444] to-[#F97316] rounded-full opacity-20 blur-3xl"></div>
+          <div className="absolute bottom-32 right-32 w-64 h-64 bg-gradient-to-br from-[#10B981] to-[#059669] rounded-full opacity-25 blur-3xl"></div>
+        </div>
+        
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        
+        <div className="relative z-10 flex flex-col lg:flex-row h-full w-full">
+          <button
+            onClick={() => setShowSidebar(!showSidebar)}
+            className="lg:hidden fixed left-0 top-1/2 transform -translate-y-1/2 z-50 p-2 bg-black/20 backdrop-blur-md border border-white/10 rounded-r-lg hover:bg-white/10 transition cursor-pointer"
+          >
+            {showSidebar ? (
+                <FaChevronLeft className="text-white/60" />
+            ) : (
+                <FaChevronRight className="text-white/60" />
+            )}
+          </button>
+
+          {showWelcomeModal && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-black/30 backdrop-blur-xl border border-white/20 rounded-2xl max-w-md w-full p-8 text-center shadow-2xl">
+                <div className="flex justify-center mb-4">
+                  <div className="bg-[#A55EEA]/20 p-6 rounded-full">
+                    <FaComments className="w-16 h-16 text-[#A55EEA]" />
                   </div>
                 </div>
-                <div ref={addModalScrollRef} className="flex-1 overflow-y-auto px-6">
-                  <div className="space-y-5">
-                  <div>
-                    <label className="block text-base font-medium text-gray-700 mb-2">Session Title</label>
-                    <input
-                      type="text"
-                      value={newSessionTitle}
-                      onChange={(e) => setNewSessionTitle(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
-                      placeholder="e.g., Deep Work Session"
-                      autoFocus
-                    />
-                  </div>
-                  <TimePicker
-                    value={newSessionStartTime}
-                    onChange={(time) => setNewSessionStartTime(time)}
-                    label="Start Time"
-                    isStartTime={true}
-                    isAddModal={true}
-                  />
-                  <TimePicker
-                    value={newSessionEndTime}
-                    onChange={(time) => setNewSessionEndTime(time)}
-                    label="End Time"
-                    isStartTime={false}
-                    isAddModal={true}
-                  />
-                  <DurationPicker
-                    startTime={newSessionStartTime}
-                    endTime={newSessionEndTime}
-                    isAddModal={true}
-                  />
-                  {addSessionError && (
-                    <div className="text-red-600 text-base bg-red-50 p-3 rounded-xl border border-red-200">
-                      {addSessionError}
-                  </div>
-                  )}
-                  </div>
-                </div>
-                <div className="flex-shrink-0 p-6 pt-4" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))' }}>
-                  <div className="space-y-3">
-                    <button
-                      onClick={handleAddSession}
-                      className="w-full px-6 py-4 bg-blue-500 text-white rounded-2xl hover:bg-blue-600 transition-colors font-semibold text-base"
-                    >
-                      Add Session
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowAddModal(false);
-                        setAddSessionError('');
-                        setConflictingSessionId(null);
-                        setTitleChangedNotice('');
-                      }}
-                      className="w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-2xl hover:bg-gray-200 transition-colors font-medium text-base"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
+                <h2 className="text-2xl font-bold text-white mb-3">Welcome to CommunityHub!</h2>
+                <p className="text-base text-white/60 mb-6 leading-relaxed">
+                  Join our vibrant community of developers. Share knowledge, ask questions, and connect.
+                </p>
+                <button
+                  onClick={() => setShowWelcomeModal(false)}
+                  className="w-full py-3 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white rounded-lg font-semibold hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 transition-colors cursor-pointer text-base"
+                >
+                  Get Started
+                </button>
+              </div>
+            </div>
           )}
-        </AnimatePresence>
-      </Portal>
 
-      <Portal>
-        <AnimatePresence>
-          {showEditModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="modal-backdrop-overlay flex items-end sm:items-center justify-center p-0 sm:p-4 cursor-pointer"
-              onClick={() => {
-                setShowEditModal(false);
-                setEditSessionError('');
-                setConflictingSessionId(null);
-                setTitleChangedNotice('');
-              }}
-            >
-              <motion.div
-                initial={{ y: '100%', opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: '100%', opacity: 0 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-sm sm:w-full shadow-xl border border-gray-200 sm:border-white/20 max-h-[85vh] sm:max-h-[90vh] flex flex-col"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex-shrink-0 p-6 pb-4">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-semibold text-gray-900">Edit Focus Session</h3>
-                    <button
-                      onClick={handleCancelEdit}
-                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
-                    >
-                      <FiX className="w-6 h-6" />
-                    </button>
-                  </div>
+          {showProfileModal && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-black/30 backdrop-blur-xl border border-white/20 rounded-2xl max-w-lg w-full p-8 shadow-2xl">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-white">Profile</h2>
+                  <button
+                    onClick={() => setShowProfileModal(false)}
+                    className="text-white/60 hover:text-white text-xl cursor-pointer"
+                  >
+                    <FaTimes />
+                  </button>
                 </div>
-                <div ref={editModalScrollRef} className="flex-1 overflow-y-auto px-6">
-                  <div className="space-y-5">
-                  <div>
-                    <label className="block text-base font-medium text-gray-700 mb-2">Session Title</label>
-                    <input
-                      type="text"
-                      value={editSessionTitle}
-                      onChange={(e) => setEditSessionTitle(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
-                      placeholder="e.g., Deep Work Session"
-                      autoFocus
-                    />
+                
+                <div className="text-center mb-8">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
+                    JD
                   </div>
-                  <TimePicker
-                    value={editSessionStartTime}
-                    onChange={(time) => setEditSessionStartTime(time)}
-                    label="Start Time"
-                    isStartTime={true}
-                    isAddModal={false}
-                  />
-                  <TimePicker
-                    value={editSessionEndTime}
-                    onChange={(time) => setEditSessionEndTime(time)}
-                    label="End Time"
-                    isStartTime={false}
-                    isAddModal={false}
-                  />
-                  <DurationPicker
-                    startTime={editSessionStartTime}
-                    endTime={editSessionEndTime}
-                    isAddModal={false}
-                  />
-                  {editSessionError && (
-                    <div className="text-red-600 text-base bg-red-50 p-3 rounded-xl border border-red-200">
-                      {editSessionError}
+                  <h3 className="text-xl font-semibold text-white mb-2">John Developer</h3>
+                  <p className="text-white/60">Full Stack Developer</p>
+              </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  {Object.entries(getUserStats()).map(([key, value]) => (
+                    <div key={key} className="text-center p-4 bg-white/10 rounded-lg">
+                      <div className="text-2xl font-bold text-white mb-1">{value}</div>
+                      <div className="text-sm text-white/60 capitalize">{key}</div>
                     </div>
-                  )}
+                  ))}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/60">Joined</span>
+                    <span className="text-white">January 2024</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/60">Status</span>
+                    <span className="text-green-400">Online</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/60">Reputation</span>
+                    <span className="text-white">Advanced</span>
                   </div>
                 </div>
-                <div className="flex-shrink-0 p-6 pt-4" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))' }}>
-                  <div className="space-y-3">
-                    <button
-                      onClick={handleSaveEdit}
-                      className="w-full px-6 py-4 bg-blue-500 text-white rounded-2xl hover:bg-blue-600 transition-colors font-semibold text-base"
-                    >
-                      Save Changes
-                    </button>
-                    <button
-                      onClick={handleCancelEdit}
-                      className="w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-2xl hover:bg-gray-200 transition-colors font-medium text-base"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
           )}
-        </AnimatePresence>
-      </Portal>
-    </div>
+
+          {showSettingsModal && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-black/30 backdrop-blur-xl border border-white/20 rounded-2xl max-w-lg w-full p-8 shadow-2xl">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-white">Settings</h2>
+                    <button
+                    onClick={() => setShowSettingsModal(false)}
+                    className="text-white/60 hover:text-white text-xl cursor-pointer"
+                  >
+                    ×
+                    </button>
+            </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-white">Notifications</h3>
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/80">Push Notifications</span>
+              <button
+                        onClick={() => setUserSettings(prev => ({ ...prev, notifications: !prev.notifications }))}
+                        className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
+                          userSettings.notifications ? 'bg-[#A55EEA]' : 'bg-white/20'
+                        }`}
+                      >
+                        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${
+                          userSettings.notifications ? 'translate-x-6' : 'translate-x-0.5'
+                        }`} />
+              </button>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/80">Email Alerts</span>
+                  <button
+                        onClick={() => setUserSettings(prev => ({ ...prev, emailAlerts: !prev.emailAlerts }))}
+                        className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
+                          userSettings.emailAlerts ? 'bg-[#A55EEA]' : 'bg-white/20'
+                        }`}
+                      >
+                        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${
+                          userSettings.emailAlerts ? 'translate-x-6' : 'translate-x-0.5'
+                        }`} />
+                  </button>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/80">Auto-save Drafts</span>
+                  <button
+                        onClick={() => setUserSettings(prev => ({ ...prev, autoSave: !prev.autoSave }))}
+                        className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
+                          userSettings.autoSave ? 'bg-[#A55EEA]' : 'bg-white/20'
+                        }`}
+                      >
+                        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${
+                          userSettings.autoSave ? 'translate-x-6' : 'translate-x-0.5'
+                        }`} />
+                  </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-white">Theme</h3>
+                    <div className="space-y-2">
+                      {['dark', 'light', 'auto'].map((theme) => (
+                  <button
+                          key={theme}
+                          onClick={() => setUserSettings(prev => ({ ...prev, theme }))}
+                          className={`w-full p-3 rounded-lg text-left transition-colors cursor-pointer ${
+                            userSettings.theme === theme 
+                              ? 'bg-[#A55EEA]/20 text-[#A55EEA] border border-[#A55EEA]/30' 
+                              : 'bg-white/10 text-white/60 hover:bg-white/20'
+                          }`}
+                        >
+                          <span className="capitalize">{theme}</span>
+                  </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setShowSettingsModal(false);
+                      toast.success('Settings saved successfully');
+                    }}
+                    className="w-full py-3 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white rounded-lg font-semibold hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 transition-colors cursor-pointer"
+                  >
+                    Save Settings
+                  </button>
+                </div>
+              </div>
+                </div>
+              )}
+
+                    <aside
+            className={`${showSidebar ? 'translate-x-0' : '-translate-x-full'
+              } lg:translate-x-0 fixed lg:relative inset-y-0 left-0 z-40 w-64 bg-black/30 backdrop-blur-xl border-r border-white/20 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl`}
+          >
+            <div className="overflow-auto flex-1">
+              <div className="px-6 py-6">
+                <h1 className="text-2xl font-bold text-white mb-0">CommunityHub</h1>
+                
+                <div className="mt-3 mb-6">
+                  <div className="w-16 h-1 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] rounded-full"></div>
+            </div>
+
+                <div className="relative mb-6">
+                  <input
+                    type="text"
+                    placeholder="Search topics..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-4 bg-white/10 border border-white/30 rounded-xl focus:outline-none focus:border-[#A55EEA] focus:ring-2 focus:ring-[#A55EEA]/20 text-base text-white placeholder:text-white/60 transition-all duration-300 backdrop-blur-sm hover:bg-white/15"
+                  />
+                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60" />
+                </div>
+
+                <h2 className="text-sm font-semibold mb-4 text-white/60 uppercase tracking-wide">Trending</h2>
+                <ul className="space-y-1">
+                  {filteredTopics.map((topic) => (
+                    <li key={topic.id}>
+                        <button
+                        onClick={() => {
+                          setSelectedTopic(topic.id)
+                        }}
+                        className={`w-full px-4 py-3 rounded-xl text-left flex items-center gap-3 text-base transition-all duration-300 cursor-pointer min-h-[56px]
+                  ${topic.id === selectedTopic
+                            ? 'bg-white/10 border border-white/20 text-white font-medium backdrop-blur-sm shadow-lg'
+                            : 'hover:bg-white/5 text-white/60 hover:border-white/10 border border-transparent'
+                          }`}
+                      >
+                        <span className="text-base flex-shrink-0">{topic.icon}</span>
+                        <span className="truncate">{topic.title}</span>
+                        </button>
+                    </li>
+                      ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="relative px-6 py-4 border-t border-white/10">
+                      <button
+                onClick={() => setShowProfileModal(true)}
+                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center text-white font-semibold">
+                  JD
+                </div>
+                <div className="text-left flex-1">
+                  <p className="font-medium text-base text-white">John Developer</p>
+                  <p className="text-sm text-white/60">Online</p>
+                </div>
+                      </button>
+                  </div>
+          </aside>
+
+          <main className="flex-1 flex flex-col overflow-auto lg:ml-0 text-[#FFFFFF]">
+            <div className="border-b border-white/20 px-4 lg:px-8 py-6 bg-black/30 backdrop-blur-xl shadow-lg">
+              <div className="flex items-center gap-4">
+                <h1 className="text-2xl font-bold text-white mb-0">
+                  {trendingTopics.find((t) => t.id === selectedTopic)?.title || "Select a topic"}
+                </h1>
+              </div>
+            </div>
+
+            <section className="flex-1 overflow-auto">
+              <div className="p-6 lg:p-8 bg-black/30 backdrop-blur-xl shadow-lg create-post-section">
+                <div className="flex flex-row gap-4">
+                  <div className="flex-shrink-0">
+                      <div className="sm:w-12 sm:h-12 w-10 h-10 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center">
+                      <FaUser className="text-white text-lg" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                      <div className={`flex gap-4 ${isCreatePostExpanded ? 'flex-col' : 'flex-row items-start'}`}>
+                        <div className="relative flex-1">
+                      <textarea
+                        ref={newPostRef}
+                        value={newPostContent}
+                        onChange={(e) => setNewPostContent(e.target.value)}
+                            onFocus={() => setIsCreatePostExpanded(true)}
+                            onBlur={(e) => {
+                              setTimeout(() => {
+                                if (!e.relatedTarget?.closest('.create-post-section') && !newPostContent.trim()) {
+                                  setIsCreatePostExpanded(false);
+                                }
+                              }, 150);
+                            }}
+                            placeholder={isCreatePostExpanded ? "Share your thoughts..." : "What's on your mind?"}
+                            className={`w-full bg-white/10 border border-white/30 rounded-xl focus:outline-none focus:border-[#A55EEA] focus:ring-2 focus:ring-[#A55EEA]/20 text-white placeholder:text-white/60 transition-colors duration-300 backdrop-blur-sm hover:bg-white/15 ${!isCreatePostExpanded ? 'h-[56px] px-4 py-3 resize-none' : 'p-4'}`}
+                            rows={isCreatePostExpanded ? 3 : 1}
+                        maxLength={500}
+                      />
+                          {isCreatePostExpanded && (
+                            <div className="absolute bottom-2 right-2 text-xs text-white/60">
+                        {newPostContent.length}/500
+                      </div>
+                          )}
+                    </div>
+
+                        {!isCreatePostExpanded && (
+                          <button
+                            onClick={handleCreatePost}
+                            disabled={!newPostContent.trim()}
+                            className={`px-6 rounded-xl font-semibold transition-colors duration-300 flex items-center justify-center gap-2 flex-shrink-0 h-[56px] border border-transparent ${newPostContent.trim()
+                              ? "bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 cursor-pointer shadow-lg"
+                              : "bg-white/10 text-white/40 cursor-not-allowed"
+                              }`}
+                          >
+                            <FaPaperPlane className="text-base" />
+                            <span className="text-base">Post</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                        isCreatePostExpanded ? 'max-h-24 opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0'
+                      }`}>
+                        <div className="flex justify-between items-center gap-4">
+                      <div className="flex gap-2">
+                        <div className="relative">
+                          <button
+                            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white cursor-pointer transition-colors"
+                          >
+                            <FaSmile />
+                          </button>
+                          {showEmojiPicker && (
+                                <div className="absolute bottom-12 left-0 bg-black/30 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-4 z-20 w-64">
+                              <div className="grid grid-cols-8 gap-1">
+                                {["😊", "👍", "❤️", "🎉", "🔥", "💡", "🚀", "⭐", "😄", "👏", "💪", "🎯", "✨", "🌟", "💎", "🏆"].map(
+                                  (emoji) => (
+                                    <button
+                                      key={emoji}
+                                      onClick={() => handleEmojiClick(emoji)}
+                                          className="p-1 hover:bg-white/10 rounded text-lg cursor-pointer"
+                                    >
+                                      {emoji}
+                                    </button>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                            <button onClick={() => handleFormatText("bold")} className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white cursor-pointer transition-colors"><FaBold /></button>
+                            <button onClick={() => handleFormatText("italic")} className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white cursor-pointer transition-colors"><FaItalic /></button>
+                            <button onClick={() => handleFormatText("link")} className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white cursor-pointer transition-colors"><FaLink /></button>
+                      </div>
+
+                      <button
+                        onClick={handleCreatePost}
+                        disabled={!newPostContent.trim()}
+                            className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 h-[48px] ${newPostContent.trim()
+                              ? "bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 cursor-pointer shadow-lg"
+                              : "bg-white/10 text-white/40 cursor-not-allowed"
+                              }`}
+                          >
+                            <FaPaperPlane className="text-base" />
+                            <span className="text-base">Post</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+                </div>
+
+              <div className="px-6 lg:px-8 pt-4 pb-2">
+                <div className="flex flex-wrap gap-2">
+                  {filters.map((filter) => (
+                    <button
+                      key={filter}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 cursor-pointer flex items-center gap-2 border
+            ${activeFilter === filter
+                          ? "bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white border-white/20 shadow-lg"
+                          : "bg-white/10 text-white/60 hover:bg-white/20 hover:border-white/30 border-white/20 backdrop-blur-sm"
+                        }`}
+                      onClick={() => setActiveFilter(filter)}
+                    >
+                      {filter === "Bookmarks" && (
+                        <FaBookmark className={activeFilter === filter ? "text-white" : "text-[#A55EEA]"} />
+                      )}
+                      <span>{filter}</span>
+                      {filter === "Bookmarks" && (
+                        <span className={`text-sm px-2 py-0.5 rounded-full ${
+                          activeFilter === filter 
+                            ? "bg-white/20 text-white" 
+                            : "bg-[#A55EEA]/20 text-[#A55EEA]"
+                        }`}>
+                          {Object.values(discussions).flat().filter(d => d.bookmarked).length}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="px-6 lg:px-8 pt-4 pb-6 lg:pb-8">
+              {(() => {
+                if (filteredDiscussions.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full text-white/60 py-16">
+                      <div className="bg-white/10 border border-white/20 rounded-xl w-20 h-20 mb-6 flex items-center justify-center">
+                        {activeFilter === "Bookmarks" ? (
+                          <FaBookmark className="text-3xl text-[#A55EEA]" />
+                        ) : (
+                          <FaComments className="text-3xl text-[#A55EEA]" />
+                        )}
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2 text-white">
+                        {activeFilter === "Bookmarks" ? "No bookmarked posts" : "No discussions yet"}
+                      </h3>
+                      <p className="mb-6 text-base text-white/60">
+                        {activeFilter === "Bookmarks"
+                          ? "Start bookmarking posts to see them here!"
+                          : "Be the first to start a conversation!"}
+                      </p>
+                      {activeFilter !== "Bookmarks" && (
+                        <button
+                          onClick={() => newPostRef.current?.focus()}
+                          className="px-6 py-3 bg-[#A55EEA]/20 text-[#A55EEA] rounded-lg hover:bg-[#A55EEA]/30 transition-colors cursor-pointer font-medium text-base"
+                        >
+                          Create a post
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <ul className="space-y-8 max-w-4xl mx-auto">
+                    {filteredDiscussions.map((d) => (
+                      <li
+                        key={d.id}
+                        className="bg-black/30 backdrop-blur-xl border border-white/20 rounded-xl p-6 sm:p-8 shadow-xl hover:shadow-2xl hover:bg-black/40 transition-all duration-300"
+                      >
+                        <div className="flex gap-4">
+                          <div className="flex justify-center sm:block">
+                            <div className="sm:w-12 sm:h-12 w-10 h-10 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center text-white font-semibold">
+                              {d.author.charAt(0).toUpperCase()}
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-semibold text-base text-white">{d.author}</span>
+                              <span className="text-sm text-white/60">{formatRelativeTime(d.timestamp)}</span>
+                              {d.replies.length > 0 ? (
+                                <span className="ml-2 px-2 py-0.5 bg-[#2EA043]/20 text-[#2EA043] text-sm rounded-full">Answered</span>
+                              ) : (
+                                <span className="ml-2 px-2 py-0.5 bg-[#FB8500]/20 text-[#FB8500] text-sm rounded-full">Unanswered</span>
+                              )}
+                            </div>
+                            <div
+                              className="text-white mb-4 text-base leading-relaxed"
+                              dangerouslySetInnerHTML={{
+                                __html: renderMarkdown(d.content),
+                              }}
+                            ></div>
+
+                            <div className="flex items-center gap-4 text-white/60">
+                              <button onClick={() => toggleLike(d.id)} className="flex items-center gap-1 hover:text-[#F85149] cursor-pointer">
+                                {d.likedByUser ? <FaHeart className="text-[#F85149]" /> : <FaRegHeart />}
+                                <span>{d.likes}</span>
+                              </button>
+
+                              <button onClick={() => toggleReplyExpansion(d.id)} className="flex items-center gap-1 hover:text-[#A55EEA] cursor-pointer">
+                                <FaReply />
+                                <span>
+                                  {expandedPost === d.id ? "Hide" : "View"} {d.replies.length} {d.replies.length === 1 ? "reply" : "replies"}
+                                </span>
+                              </button>
+
+                              <div className="relative reaction-picker-container">
+                                <button 
+                                  onClick={() => setShowReactionPicker(showReactionPicker === d.id ? null : d.id)}
+                                  className="flex items-center gap-1 hover:text-[#A55EEA] cursor-pointer"
+                                >
+                                  <FaSmile />
+                                  <span>React</span>
+                                </button>
+                                
+                                {showReactionPicker === d.id && (
+                                  <div className="absolute bottom-8 left-0 bg-black/60 backdrop-blur-xl border border-white/30 rounded-xl shadow-2xl p-4 z-20">
+                                    <div className="flex gap-1">
+                                      {getReactionEmojis().map((emoji) => (
+                                        <button
+                                          key={emoji}
+                                          onClick={() => addReaction(d.id, emoji)}
+                                          className="flex items-center justify-center w-10 h-10 hover:bg-white/20 rounded-lg text-2xl transition-all duration-200 cursor-pointer hover:scale-110 active:scale-95"
+                                          style={{ fontSize: '20px', lineHeight: '1' }}
+                                        >
+                                          <span role="img" aria-label={`React with ${emoji}`}>
+                                            {emoji}
+                                          </span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              <button onClick={() => toggleBookmark(d.id)} className="ml-auto flex items-center gap-1 hover:text-[#A55EEA] cursor-pointer">
+                                {d.bookmarked ? <FaBookmark className="text-[#A55EEA]" /> : <FaRegBookmark />}
+                                <span>Bookmark</span>
+                              </button>
+                            </div>
+
+                            {d.reactions && Object.keys(d.reactions).length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-4">
+                                {Object.entries(d.reactions).map(([emoji, reaction]) => (
+                                  <button
+                                    key={emoji}
+                                    onClick={() => addReaction(d.id, emoji)}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 ${
+                                      reaction.users.includes("You")
+                                        ? "bg-[#A55EEA]/30 text-[#A55EEA] border-2 border-[#A55EEA]/50 shadow-lg"
+                                        : "bg-white/15 text-white/80 hover:bg-white/25 border-2 border-white/20 hover:border-white/30"
+                                    }`}
+                                  >
+                                    <span className="text-lg" style={{ fontSize: '18px', lineHeight: '1' }}>
+                                      {emoji}
+                                    </span>
+                                    <span className="text-sm font-semibold">{reaction.count}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            {expandedPost === d.id && (
+                              <div className="mt-6">
+                                {d.replies.length > 0 && (
+                                  <div className="mb-4">
+                                    <h4 className="font-bold text-xl text-white mb-4">Replies</h4>
+                                    <div className="space-y-4">
+                                      {d.replies.map((reply) => (
+                                        <div key={reply.id} className="flex flex-row gap-3">
+                                          <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white/60 text-sm">
+                                            {reply.author.charAt(0)}
+                                          </div>
+                                          <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <span className="font-medium text-base text-white">
+                                                {reply.author}
+                                              </span>
+                                              <span className="text-sm text-white/60">
+                                                {formatRelativeTime(reply.timestamp)}
+                                              </span>
+                                            </div>
+                                            <p className="text-white text-base leading-relaxed">
+                                              {renderMarkdown(reply.content)}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                <div className="flex gap-3 mt-4">
+                                  <div className="flex-shrink-0">
+                                    <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                                      <FaUser className="text-white/60" />
+                                    </div>
+                                  </div>
+                                  <div className="flex-1">
+                                    <textarea
+                                      ref={(el) => {
+                                        replyRefs.current[d.id] = el;
+                                      }}
+                                      value={replyContent[d.id] || ""}
+                                      onChange={(e) =>
+                                        setReplyContent((prev) => ({
+                                          ...prev,
+                                          [d.id]: e.target.value,
+                                        }))
+                                      }
+                                      placeholder="Write a reply..."
+                                      className="w-full p-3 border border-white/30 rounded-xl focus:outline-none focus:border-[#A55EEA] focus:ring-2 focus:ring-[#A55EEA]/20 bg-white/10 text-white placeholder:text-white/60 transition-all duration-300 backdrop-blur-sm hover:bg-white/15"
+                                      rows={2}
+                                    />
+                                    <div className="flex justify-end mt-2">
+                                      <button
+                                        onClick={() => handleReply(d.id)}
+                                        className="px-4 py-2 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white rounded-lg text-base font-medium hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 transition cursor-pointer h-[40px] flex items-center gap-2"
+                                      >
+                                        <FaPaperPlane className="text-sm" />
+                                        Reply
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
+              </div>
+            </section>
+          </main>
+
+
+          <button
+            onClick={() => setShowRightSidebar(!showRightSidebar)}
+              className="lg:hidden fixed right-0 top-1/2 transform -translate-y-1/2 z-50 p-2 bg-black/20 backdrop-blur-md rounded-l-lg border border-white/10 border-r-0 hover:bg-white/10 transition-all duration-200 cursor-pointer"
+          >
+            {showRightSidebar ? (
+                <FaChevronRight className="text-white/60 text-sm" />
+            ) : (
+                <FaChevronLeft className="text-white/60 text-sm" />
+            )}
+          </button>
+
+          <aside
+            className={`${showRightSidebar ? "translate-x-0" : "translate-x-full"
+              } lg:translate-x-0 fixed lg:relative inset-y-0 right-0 z-40 w-full sm:w-80 bg-black/30 backdrop-blur-xl border-l border-white/20 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl`}
+          >
+            <div className="overflow-auto flex-1">
+              <div className="px-6 py-6">
+                <h2 className="text-2xl font-bold mb-6 text-white flex items-center">
+                  <span className="bg-[#A55EEA]/20 p-1 rounded mr-2">
+                    <FaCrown className="text-[#A55EEA]" />
+                  </span>
+                  Moderators
+                </h2>
+                <ul className="space-y-4">
+                  {moderators.map((mod) => (
+                    <li
+                      key={mod.name}
+                      className="flex items-center gap-4 p-3 hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center text-white">
+                        {mod.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-base truncate text-white">
+                          {mod.name}
+                        </p>
+                        <p className="text-sm text-white/60 truncate">
+                          {mod.role}
+                        </p>
+                      </div>
+                      <span className="text-sm px-2 py-1 bg-[#2EA043]/20 text-[#2EA043] rounded-full">
+                        Online
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="px-6 py-6">
+                <h2 className="text-2xl font-bold mb-6 text-white flex items-center">
+                  <span className="bg-[#A55EEA]/20 p-1 rounded mr-2">
+                    <FaUser className="text-[#A55EEA]" />
+                  </span>
+                  Active Now
+                </h2>
+                <ul className="space-y-3">
+                  {activeUsers.map((user) => (
+                    <li
+                      key={user.name}
+                      className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                      <div className="relative">
+                        <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white/60 text-sm">
+                          {user.name.charAt(0)}
+                        </div>
+                        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#2EA043] rounded-full border-2 border-black/20"></div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-base truncate text-white">
+                          {user.name}
+                        </p>
+                      </div>
+                      <span className="text-sm text-white/60">
+                        {user.activity}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+
+            </div>
+
+            <footer className="px-6 py-4 text-sm text-white/60">
+              <p className="font-semibold text-base text-white mb-0">CommunityHub v1.0</p>
+              <p className="mt-1">Connecting developers worldwide</p>
+              <p className="mt-2">
+                {new Date().getFullYear()} All rights reserved
+              </p>
+            </footer>
+          </aside>
+        </div>
+      </div>
+      <Toaster position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: "rgba(0, 0, 0, 0.3)",
+            backdropFilter: "blur(16px)",
+            color: "#FFFFFF",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+            borderRadius: "12px",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+          },
+          success: {
+            style: {
+              background: "linear-gradient(135deg, rgba(165, 94, 234, 0.2), rgba(255, 107, 157, 0.2))",
+              backdropFilter: "blur(16px)",
+              border: "1px solid rgba(165, 94, 234, 0.3)",
+            },
+            iconTheme: {
+              primary: "#A55EEA",
+              secondary: "#FFFFFF",
+            },
+          },
+          error: {
+            style: {
+              background: "rgba(239, 68, 68, 0.2)",
+              backdropFilter: "blur(16px)",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+            },
+            iconTheme: {
+              primary: "#ef4444",
+              secondary: "#FFFFFF",
+            },
+          },
+        }}
+      />
+      <style>{`
+             @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+      
+              body {
+                font-family: 'Poppins', sans-serif;
+              }
+              
+              *::-webkit-scrollbar {
+                display: none;
+              }
+              
+              * {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+              }
+              
+              `}
+      </style>
+    </>
   );
 };
-export default FocusInsightsWidget;
+
+export default CommunityDashboard;
