@@ -1,2152 +1,1190 @@
-"use client"
-import React, { useState, useEffect, useRef } from 'react';
-import "@fontsource/poppins";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  RadialBarChart,
-  RadialBar,
-  Legend
-} from 'recharts';
+"use client";
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import ReactDOM from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  FiTrendingUp, 
+  FiClock, 
+  FiEdit2,  
+  FiX, 
+  FiPlus,
+  FiMinus,
+  FiActivity,
+  FiAward,
+  FiZap,
+  FiTarget,
+  FiPlay,
+  FiPause,
+  FiSquare
+} from 'react-icons/fi';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
 
-interface NavigationItem {
-  id: string;
-  label: string;
-  icon?: React.ReactNode;
-  path: string;
-  dropdown?: NavigationItem[];
-  hasNotification?: boolean;
-}
+const Portal: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
-interface BookmarkItem {
-  id: string;
-  label: string;
-  path: string;
-  iconType?: 'dashboard' | 'reports' | 'settings' | 'default';
-}
-
-interface NavigationData {
-  main: NavigationItem[];
-  bookmarks: NavigationItem[];
-}
-
-const Icon = ({ path, className = 'w-6 h-6' }: { path: string; className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d={path} />
-  </svg>
-);
-
-const navigationData: NavigationData = {
-  main: [
-    {
-      id: 'dashboard',
-      label: 'Dashboard',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-        </svg>
-      ),
-      path: '/dashboard/overview',
-      dropdown: [
-        { id: 'overview', label: 'Overview', path: '/dashboard/overview' },
-        { id: 'metrics', label: 'Key Metrics', path: '/dashboard/metrics' },
-        { id: 'performance', label: 'Performance', path: '/dashboard/performance' },
-        { id: 'recent-activity', label: 'Recent Activity', path: '/dashboard/recent-activity' },
-      ],
-    },
-    {
-      id: 'reports',
-      label: 'Reports',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-        </svg>
-      ),
-      path: '/reports',
-      dropdown: [
-        { id: 'sales', label: 'Sales Reports', path: '/reports/sales' },
-        { id: 'inventory', label: 'Inventory Reports', path: '/reports/inventory' },
-        { id: 'customers', label: 'Customer Reports', path: '/reports/customers' },
-        { id: 'analytics', label: 'Analytics', path: '/reports/analytics' },
-      ],
-    },
-    
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      ),
-      path: '/settings',
-      dropdown: [
-        { id: 'account', label: 'Account Settings', path: '/settings/account' },
-      ],
-    },
-  ],
-  bookmarks: [
-    {
-      id: 'sales-report',
-      label: 'Sales Reports',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
-        </svg>
-      ),
-      path: '/reports/sales',
-    },
-    {
-      id: 'analytics',
-      label: 'Analytics',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-        </svg>
-      ),
-      path: '/reports/analytics',
-    },
-    {
-      id: 'account-settings',
-      label: 'Account Settings',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-        </svg>
-      ),
-      path: '/settings/account',
-    },
-  ],
+  return mounted ? ReactDOM.createPortal(children, document.body) : null;
 };
 
-const BookmarkIcon = () => <Icon path="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />;
+interface FocusSession {
+  id: string;
+  title: string;
+  duration: number;
+  startTime: Date;
+  endTime: Date;
+  score: number;
+}
+if (typeof window !== 'undefined') {
+  const link = document.createElement('link');
+  link.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap';
+  link.rel = 'stylesheet';
+  document.head.appendChild(link);
 
-const NavigationComponent: React.FC = () => {
-  const [currentPath, setCurrentPath] = useState('/dashboard/overview');
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [sidebarExpanded, setSidebarExpanded] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
-  const [notifications, setNotifications] = useState(3);
-  const [toasts, setToasts] = useState<Array<{
-    id: string;
-    message: string;
-    type: 'success' | 'error' | 'info' | 'warning';
-    duration?: number;
-  }>>([]);
-  const [userBookmarks, setUserBookmarks] = useState<BookmarkItem[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [accountData, setAccountData] = useState({
-    fullName: 'John Doe',
-    email: 'john.doe@example.com'
-  });
-  const [isMobile, setIsMobile] = useState(false);
-  
-  const dropdownRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
-  const userDropdownRef = useRef<HTMLDivElement>(null);
-  const sidebarRef = useRef<HTMLDivElement>(null);
+  const style = document.createElement('style');
+  style.id = 'focus-insights-styles';
+  style.textContent = `
+    html, body {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    html::-webkit-scrollbar, body::-webkit-scrollbar {
+      display: none;
+    }
+    html.modal-open,
+    body.modal-open {
+      overflow: hidden !important;
+    }
+    .modal-backdrop-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.2);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      z-index: 50;
+    }
+  `;
+  if (!document.getElementById('focus-insights-styles')) {
+    document.head.appendChild(style);
+  }
+}
+const FocusInsightsWidget: React.FC = () => {
+  const [sessions, setSessions] = useState<FocusSession[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingSession, setEditingSession] = useState<FocusSession | null>(null);
+  const addModalScrollRef = useRef<HTMLDivElement>(null);
+  const editModalScrollRef = useRef<HTMLDivElement>(null);
 
-  // Load bookmarks and account data from localStorage on component mount
   useEffect(() => {
-    const savedBookmarks = localStorage.getItem('userBookmarks');
-    if (savedBookmarks) {
-      try {
-        setUserBookmarks(JSON.parse(savedBookmarks));
-      } catch (error) {
-        console.error('Error loading bookmarks:', error);
-      }
+    const isModalOpen = showAddModal || showEditModal;
+    const htmlElement = document.documentElement;
+
+    if (isModalOpen) {
+      htmlElement.classList.add('modal-open');
+    } else {
+      htmlElement.classList.remove('modal-open');
     }
 
-    const savedAccountData = localStorage.getItem('accountData');
-    if (savedAccountData) {
-      try {
-        setAccountData(JSON.parse(savedAccountData));
-      } catch (error) {
-        console.error('Error loading account data:', error);
-      }
-    }
-  }, []);
-
-  // Handle screen size detection for mobile/desktop
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Save bookmarks to localStorage whenever bookmarks change
-  useEffect(() => {
-    localStorage.setItem('userBookmarks', JSON.stringify(userBookmarks));
-  }, [userBookmarks]);
-
-  // Handle keyboard navigation and clicks outside dropdowns
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpenDropdown(null);
-        setUserDropdownOpen(false);
-      }
-      
-      if (e.key === 'Tab' && openDropdown) {
-        const dropdown = dropdownRefs.current[openDropdown];
-        if (dropdown) {
-          const focusableElements = dropdown.querySelectorAll('a, button');
-          const firstElement = focusableElements[0];
-          const lastElement = focusableElements[focusableElements.length - 1];
-          
-          if (e.shiftKey && document.activeElement === firstElement) {
-            (lastElement as HTMLElement).focus();
-            e.preventDefault();
-          } else if (!e.shiftKey && document.activeElement === lastElement) {
-            (firstElement as HTMLElement).focus();
-            e.preventDefault();
-          }
-        }
-      }
-    };
-    
-    const handleClickOutside = (e: MouseEvent) => {
-      if (openDropdown && dropdownRefs.current[openDropdown] && 
-          !dropdownRefs.current[openDropdown]?.contains(e.target as Node)) {
-        setOpenDropdown(null);
-      }
-      
-      if (userDropdownOpen && userDropdownRef.current && 
-          !userDropdownRef.current.contains(e.target as Node)) {
-        setUserDropdownOpen(false);
-      }
-      
-      if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node)) {
-        setSidebarExpanded(false);
-      }
-    };
-    
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('mousedown', handleClickOutside);
-    
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('mousedown', handleClickOutside);
+      htmlElement.classList.remove('modal-open');
     };
-  }, [openDropdown, userDropdownOpen]);
-  
+  }, [showAddModal, showEditModal]);
 
-    // Initialize dark mode and add the Tailwind dark mode script
-    useEffect(() => {
-      // Add the Tailwind dark mode script
-      const script = document.createElement('script');
-      script.src = 'https://cdn.tailwindcss.com';
-      script.onload = () => {
-        // Configure Tailwind to use class-based dark mode
-        // @ts-ignore
-        tailwind.config = {
-          darkMode: 'class'
-        };
-      };
-      document.head.appendChild(script);
+  const [newSessionTitle, setNewSessionTitle] = useState('');
+  const [newSessionStartTime, setNewSessionStartTime] = useState({ hour: '09', minute: '00', period: 'AM' });
+  const [newSessionEndTime, setNewSessionEndTime] = useState({ hour: '10', minute: '00', period: 'AM' });
+
+  const [editSessionTitle, setEditSessionTitle] = useState('');
+  const [editSessionStartTime, setEditSessionStartTime] = useState({ hour: '09', minute: '00', period: 'AM' });
+  const [editSessionEndTime, setEditSessionEndTime] = useState({ hour: '10', minute: '00', period: 'AM' });
   
-      // Check for saved preference or system preference
-      const savedMode = localStorage.getItem('darkMode');
-      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      
-      if (savedMode !== null) {
-        setDarkMode(savedMode === 'true');
-      } else if (systemPrefersDark) {
-        setDarkMode(true);
+  const [addSessionError, setAddSessionError] = useState('');
+  const [editSessionError, setEditSessionError] = useState('');
+  const [conflictingSessionId, setConflictingSessionId] = useState<string | null>(null);
+  const [titleChangedNotice, setTitleChangedNotice] = useState('');
+  const [streak, setStreak] = useState(0);
+  const [todayScore, setTodayScore] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [timerStartTime, setTimerStartTime] = useState<Date | null>(null);
+  const [currentSessionTitle, setCurrentSessionTitle] = useState('Focus Session');
+
+  const calculateFocusScore = useCallback((duration: number, startTime: Date, title: string): number => {
+    let score = 50;
+    if (duration >= 25 && duration <= 90) {
+      score += Math.min(40, (duration - 25) * 0.6 + 20);
+    } else if (duration > 90) {
+      score += Math.max(20, 40 - (duration - 90) * 0.3);
+    } else if (duration > 0) {
+      score += duration * 0.8;
+    }
+    const hour = startTime.getHours();
+    if (hour >= 9 && hour <= 11) {
+      score += 10; 
+    } else if (hour >= 14 && hour <= 16) {
+      score += 8; 
+    } else if (hour >= 8 && hour <= 12) {
+      score += 6; 
+    } else if (hour >= 13 && hour <= 17) {
+      score += 4; 
+    }
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('deep work') || titleLower.includes('coding') || titleLower.includes('writing')) {
+      score += 10; 
+    } else if (titleLower.includes('review') || titleLower.includes('research') || titleLower.includes('study')) {
+      score += 8; 
+    } else if (titleLower.includes('planning') || titleLower.includes('design')) {
+      score += 6; 
+    } else if (titleLower.includes('meeting') || titleLower.includes('call')) {
+      score += 3; 
+    } else {
+      score += 5; 
+    }
+    score += Math.floor(Math.random() * 11) - 5;
+    return Math.max(0, Math.min(100, Math.round(score)));
+  }, []);
+  const generateMockData = useCallback(() => {
+    const today = new Date();
+    const mockSessions: FocusSession[] = [
+      {
+        id: '1',
+        title: 'Deep Work Session',
+        duration: 90,
+        startTime: new Date(today.setHours(9, 0, 0, 0)),
+        endTime: new Date(today.setHours(10, 30, 0, 0)),
+        score: 0 
+      },
+      {
+        id: '2',
+        title: 'Project Planning',
+        duration: 45,
+        startTime: new Date(today.setHours(11, 0, 0, 0)),
+        endTime: new Date(today.setHours(11, 45, 0, 0)),
+        score: 0 
+      },
+      {
+        id: '3',
+        title: 'Code Review',
+        duration: 60,
+        startTime: new Date(today.setHours(14, 0, 0, 0)),
+        endTime: new Date(today.setHours(15, 0, 0, 0)),
+        score: 0 
       }
-  
-      return () => {
-        document.head.removeChild(script);
-      };
-    }, []);
-
-  // Apply dark mode
+    ];
+    mockSessions.forEach(session => {
+      session.score = calculateFocusScore(session.duration, session.startTime, session.title);
+    });
+    return { mockSessions };
+  }, [calculateFocusScore]);
+  const calculateTodayScore = useCallback(() => {
+    if (sessions.length === 0) return 0;
+    const totalScore = sessions.reduce((acc, session) => acc + session.score, 0);
+    return Math.round(totalScore / sessions.length);
+  }, [sessions]);
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    const { mockSessions } = generateMockData();
+    setSessions(mockSessions);
+    setStreak(5);
+  }, [generateMockData]);
+  useEffect(() => {
+    const newScore = calculateTodayScore();
+    if (newScore > 0) {
+      setTodayScore(newScore);
     }
-  }, [darkMode]);
-  
-  const toggleDropdown = (id: string) => {
-    setOpenDropdown(openDropdown === id ? null : id);
-  };
-  
-  const toggleUserDropdown = () => {
-    setUserDropdownOpen(!userDropdownOpen);
-  };
-  
-  const toggleDarkMode = () => {
-    const newMode = !darkMode;
-    setDarkMode(newMode);
-    localStorage.setItem('darkMode', String(newMode));
-  };
-  
-  const handleNavigation = (path: string) => {
-    // Redirect dashboard root path to overview
-    // Redirect settings root path to account
-    let targetPath = path;
-    if (path === '/dashboard') {
-      targetPath = '/dashboard/overview';
-    } else if (path === '/settings') {
-      targetPath = '/settings/account';
+  }, [sessions, calculateTodayScore]);
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isTimerRunning) {
+      interval = setInterval(() => {
+        setTimerSeconds(prev => prev + 1);
+      }, 1000);
     }
-    setCurrentPath(targetPath);
-    setOpenDropdown(null);
-    setUserDropdownOpen(false);
-  };
-  
-  const isActive = (path: string) => {
-    return currentPath === path || currentPath.startsWith(`${path}/`);
-  };
-  
-  const getPageTitle = () => {
-    if (currentPath === '/dashboard' || currentPath === '/dashboard/overview') return 'Dashboard Overview';
-    if (currentPath === '/dashboard/metrics') return 'Key Metrics';
-    if (currentPath === '/dashboard/performance') return 'Performance';
-    if (currentPath === '/dashboard/recent-activity') return 'Recent Activity';
-    if (currentPath.startsWith('/reports')) return 'Reports';
-    if (currentPath.startsWith('/settings')) return 'Settings';
-    return 'Page';
-  };
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'success', duration: number = 4000) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const newToast = { id, message, type, duration };
-    
-    setToasts(prev => [...prev, newToast]);
-    
-    setTimeout(() => {
-      setToasts(prev => prev.filter(toast => toast.id !== id));
-    }, duration);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  };
-
-
-
-  const clearNotifications = () => {
-    setNotifications(0);
-    showToast('All notifications cleared!', 'info');
-  };
-
-  // Export functions
-  const exportToCSV = (data: any[], filename: string, headers: string[]) => {
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => 
-        headers.map(header => {
-          const value = row[header.toLowerCase().replace(/\s+/g, '')];
-          return typeof value === 'string' ? `"${value}"` : value;
-        }).join(',')
-      )
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${filename}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showToast(`${filename}.csv exported successfully!`, 'success');
-  };
-
-  const exportToExcel = (data: any[], filename: string, headers: string[]) => {
-    // Create CSV content but save as .xlsx for Excel compatibility
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => 
-        headers.map(header => {
-          const value = row[header.toLowerCase().replace(/\s+/g, '')];
-          return typeof value === 'string' ? `"${value}"` : value;
-        }).join(',')
-      )
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${filename}.xlsx`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showToast(`${filename}.xlsx exported successfully!`, 'success');
-  };
-
-  const handleSalesExport = (format: 'csv' | 'excel') => {
-    const headers = ['Product', 'Sales', 'Revenue', 'Rating'];
-    const data = productPerformanceData.map(product => ({
-      product: product.name,
-      sales: product.sales,
-      revenue: product.revenue,
-      rating: product.rating
-    }));
-
-    if (format === 'csv') {
-      exportToCSV(data, 'sales_report', headers);
-    } else {
-      exportToExcel(data, 'sales_report', headers);
-    }
-  };
-
-  const handleInventoryExport = () => {
-    const headers = ['Category', 'In Stock', 'Low Stock', 'Out of Stock', 'Status'];
-    const data = inventoryData.map(item => ({
-      category: item.category,
-      instock: item.inStock,
-      lowstock: item.lowStock,
-      outofstock: item.outOfStock,
-      status: item.outOfStock > 20 ? 'Critical' : item.lowStock > 50 ? 'Warning' : 'Good'
-    }));
-
-    exportToCSV(data, 'inventory_report', headers);
-  };
-
-  const handleCustomerExport = () => {
-    const headers = ['Segment', 'Customers', 'Revenue', 'Avg Order', 'Growth'];
-    const data = customerSegmentData.map(segment => ({
-      segment: segment.segment,
-      customers: segment.customers,
-      revenue: segment.revenue,
-      avgorder: segment.avgOrder,
-      growth: segment.segment === 'Premium' ? '+15.3%' :
-              segment.segment === 'Regular' ? '+8.1%' :
-              segment.segment === 'New' ? '+24.7%' : '-5.2%'
-    }));
-
-    exportToCSV(data, 'customer_report', headers);
-  };
-
-  const handleAnalyticsExport = () => {
-    const headers = ['Source', 'Visitors', 'Conversions', 'Rate', 'Trend'];
-    const data = trafficSourceData.map(source => ({
-      source: source.source,
-      visitors: source.visitors,
-      conversions: source.conversions,
-      rate: source.rate,
-      trend: source.rate > 8 ? 'Excellent' : source.rate > 6 ? 'Good' : 'Average'
-    }));
-
-    exportToCSV(data, 'analytics_report', headers);
-  };
-
-  const handleSaveAccountSettings = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    setIsSaving(true);
-    setIsSaved(false);
-
-    // Get form data
-    const formData = new FormData(e.currentTarget);
-    const fullName = formData.get('fullName') as string;
-    const email = formData.get('email') as string;
-
-    const newAccountData = { fullName, email };
-
-    // Simulate saving delay
-    setTimeout(() => {
-      // Save to localStorage
-      localStorage.setItem('accountData', JSON.stringify(newAccountData));
-      setAccountData(newAccountData);
-      
-      setIsSaving(false);
-      setIsSaved(true);
-      
-      showToast('Account settings saved successfully!', 'success');
-
-      // Reset saved state after 3 seconds
-      setTimeout(() => {
-        setIsSaved(false);
-      }, 3000);
-    }, 2000);
-  };
-
-  // Bookmark management functions
-  const isBookmarked = (path: string) => {
-    // Check both default bookmarks and user bookmarks
-    const isDefaultBookmark = navigationData.bookmarks.some(bookmark => bookmark.path === path);
-    const isUserBookmark = userBookmarks.some(bookmark => bookmark.path === path);
-    return isDefaultBookmark || isUserBookmark;
-  };
-
-  const getIconTypeFromPath = (path: string): 'dashboard' | 'reports' | 'settings' | 'default' => {
-    if (path.includes('/dashboard')) return 'dashboard';
-    if (path.includes('/reports')) return 'reports';
-    if (path.includes('/settings')) return 'settings';
-    return 'default';
-  };
-
-  const getIconFromType = (iconType: 'dashboard' | 'reports' | 'settings' | 'default'): React.ReactNode => {
-    switch (iconType) {
-      case 'dashboard':
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-          </svg>
-        );
-      case 'reports':
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-          </svg>
-        );
-      case 'settings':
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        );
-      default:
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-          </svg>
-        );
-    }
-  };
-
-  const addBookmark = (path: string, label: string) => {
-    // Check if it's already a default bookmark
-    const isDefaultBookmark = navigationData.bookmarks.some(bookmark => bookmark.path === path);
-    if (isDefaultBookmark) {
-      showToast('This page is already in your default bookmarks!', 'info');
-      return;
-    }
-
-    // Check if it's already in user bookmarks
-    const isUserBookmark = userBookmarks.some(bookmark => bookmark.path === path);
-    if (isUserBookmark) {
-      showToast('Page is already bookmarked!', 'info');
-      return;
-    }
-
-    const newBookmark: BookmarkItem = {
-      id: `bookmark-${Date.now()}`,
-      label: label,
-      path: path,
-      iconType: getIconTypeFromPath(path)
+    return () => clearInterval(interval);
+  }, [isTimerRunning]);
+  const timeToObject = (date: Date) => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 || 12;
+    return {
+      hour: hour12.toString().padStart(2, '0'),
+      minute: minutes.toString().padStart(2, '0'),
+      period
     };
-
-    setUserBookmarks(prev => [...prev, newBookmark]);
-    showToast(`${label} added to bookmarks!`, 'success');
   };
-
-  const removeBookmark = (path: string) => {
-    // Check if it's a default bookmark (cannot be removed)
-    const isDefaultBookmark = navigationData.bookmarks.some(bookmark => bookmark.path === path);
-    if (isDefaultBookmark) {
-      showToast('Default bookmarks cannot be removed!', 'warning');
-      return;
-    }
-
-    const bookmark = userBookmarks.find(b => b.path === path);
-    if (!bookmark) {
-      showToast('Bookmark not found!', 'error');
-      return;
-    }
-
-    setUserBookmarks(prev => prev.filter(bookmark => bookmark.path !== path));
-    showToast(`${bookmark.label} removed from bookmarks!`, 'success');
+  const objectToTime = (timeObj: { hour: string; minute: string; period: string }) => {
+    let hour = parseInt(timeObj.hour);
+    if (timeObj.period === 'PM' && hour !== 12) hour += 12;
+    if (timeObj.period === 'AM' && hour === 12) hour = 0;
+    const date = new Date();
+    date.setHours(hour, parseInt(timeObj.minute), 0, 0);
+    return date;
   };
-
-  const toggleBookmark = (path: string, label: string) => {
-    // Check if it's a default bookmark
-    const isDefaultBookmark = navigationData.bookmarks.some(bookmark => bookmark.path === path);
+  const calculateDuration = (startTime: { hour: string; minute: string; period: string }, endTime: { hour: string; minute: string; period: string }) => {
+    const start = objectToTime(startTime);
+    const end = objectToTime(endTime);
+    const durationMs = end.getTime() - start.getTime();
+    return Math.round(durationMs / (1000 * 60));
+  };
+  const adjustDuration = (startTime: { hour: string; minute: string; period: string }, durationMinutes: number) => {
+    const start = objectToTime(startTime);
+    const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+    return timeToObject(end);
+  };
+  const changeDuration = (currentStartTime: { hour: string; minute: string; period: string }, currentEndTime: { hour: string; minute: string; period: string }, change: number, isAddModal: boolean) => {
+    const currentDuration = calculateDuration(currentStartTime, currentEndTime);
+    const newDuration = Math.max(15, Math.min(480, currentDuration + change));
+    const newEndTime = adjustDuration(currentStartTime, newDuration);
     
-    if (isDefaultBookmark) {
-      showToast('This is a default bookmark and cannot be removed!', 'info');
+    const scrollRef = isAddModal ? addModalScrollRef : editModalScrollRef;
+    const scrollTop = scrollRef.current?.scrollTop || 0;
+    
+    if (isAddModal) {
+      setNewSessionEndTime(newEndTime);
+      setAddSessionError('');
+    } else {
+      setEditSessionEndTime(newEndTime);
+      setEditSessionError('');
+    }
+    setConflictingSessionId(null);
+    
+    requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollTop;
+      }
+    });
+  };
+  const generateUniqueTitle = (proposedTitle: string, excludeSessionId?: string) => {
+    const existingTitles = sessions
+      .filter(session => excludeSessionId ? session.id !== excludeSessionId : true)
+      .map(session => session.title.toLowerCase());
+    if (!existingTitles.includes(proposedTitle.toLowerCase())) {
+      return proposedTitle;
+    }
+    let counter = 2;
+    let uniqueTitle = `${proposedTitle} (${counter})`;
+    while (existingTitles.includes(uniqueTitle.toLowerCase())) {
+      counter++;
+      uniqueTitle = `${proposedTitle} (${counter})`;
+    }
+    return uniqueTitle;
+  };
+  const checkTimeConflicts = (startTime: Date, endTime: Date, excludeSessionId?: string) => {
+    const conflictingSessions = sessions.filter(session => {
+      if (excludeSessionId && session.id === excludeSessionId) {
+        return false;
+      }
+      return (startTime < session.endTime) && (endTime > session.startTime);
+    });
+    return conflictingSessions;
+  };
+  const validateTimeRange = (startTime: { hour: string; minute: string; period: string }, endTime: { hour: string; minute: string; period: string }, excludeSessionId?: string) => {
+    const start = objectToTime(startTime);
+    const end = objectToTime(endTime);
+    if (end <= start) {
+      return 'End time must be after start time';
+    }
+    const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+    if (durationMinutes > 480) { 
+      return 'Session duration cannot exceed 8 hours';
+    }
+    const conflictingSessions = checkTimeConflicts(start, end, excludeSessionId);
+    if (conflictingSessions.length > 0) {
+      const conflictSession = conflictingSessions[0];
+      const conflictStart = formatTime(conflictSession.startTime);
+      const conflictEnd = formatTime(conflictSession.endTime);
+      setConflictingSessionId(conflictSession.id);
+      return `Time conflict with "${conflictSession.title}" (${conflictStart} - ${conflictEnd})`;
+    }
+    setConflictingSessionId(null);
+    return '';
+  };
+  const handleEdit = (session: FocusSession) => {
+    setEditingSession(session);
+    setEditSessionTitle(session.title);
+    setEditSessionStartTime(timeToObject(session.startTime));
+    setEditSessionEndTime(timeToObject(session.endTime));
+    setShowEditModal(true);
+  };
+  const handleSaveEdit = () => {
+    if (!editingSession || !editSessionTitle) {
+      setEditSessionError('Please enter a session title');
       return;
     }
-
-    // For user bookmarks, toggle normally
-    const isUserBookmark = userBookmarks.some(bookmark => bookmark.path === path);
-    if (isUserBookmark) {
-      removeBookmark(path);
+    const validationError = validateTimeRange(editSessionStartTime, editSessionEndTime, editingSession.id);
+    if (validationError) {
+      setEditSessionError(validationError);
+      return;
+    }
+    const startTime = objectToTime(editSessionStartTime);
+    const endTime = objectToTime(editSessionEndTime);
+    const duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+    const uniqueTitle = generateUniqueTitle(editSessionTitle, editingSession.id);
+    const updatedSession = {
+      ...editingSession,
+      title: uniqueTitle,
+      startTime,
+      endTime,
+      duration,
+      score: calculateFocusScore(duration, startTime, uniqueTitle)
+    };
+    setSessions(sessions.map(session => 
+      session.id === editingSession.id ? updatedSession : session
+    ));
+    if (uniqueTitle !== editSessionTitle) {
+      setTitleChangedNotice(`Title changed to "${uniqueTitle}" to avoid duplicates`);
+      setTimeout(() => setTitleChangedNotice(''), 3000);
+    }
+    setShowEditModal(false);
+    setEditingSession(null);
+    setEditSessionTitle('');
+    setEditSessionError('');
+    setConflictingSessionId(null);
+    setTitleChangedNotice('');
+  };
+  const handleCancelEdit = () => {
+    setShowEditModal(false);
+    setEditingSession(null);
+    setEditSessionTitle('');
+    setEditSessionError('');
+    setConflictingSessionId(null);
+    setTitleChangedNotice('');
+  };
+  const startTimer = () => {
+    if (!timerStartTime) {
+      setTimerStartTime(new Date());
+    }
+    setIsTimerRunning(true);
+  };
+  const pauseTimer = () => {
+    setIsTimerRunning(false);
+  };
+  const stopTimer = () => {
+    if (timerSeconds > 0 && timerStartTime) {
+      const now = new Date();
+      const actualDuration = Math.round((now.getTime() - timerStartTime.getTime()) / (1000 * 60));
+      const uniqueTitle = generateUniqueTitle(currentSessionTitle);
+      const newSession: FocusSession = {
+        id: Date.now().toString(),
+        title: uniqueTitle,
+        duration: actualDuration,
+        startTime: timerStartTime,
+        endTime: now,
+        score: calculateFocusScore(actualDuration, timerStartTime, uniqueTitle)
+      };
+      setSessions([...sessions, newSession]);
+      if (uniqueTitle !== currentSessionTitle) {
+        setTitleChangedNotice(`Title changed to "${uniqueTitle}" to avoid duplicates`);
+        setTimeout(() => setTitleChangedNotice(''), 3000);
+      }
+    }
+    setIsTimerRunning(false);
+    setTimerSeconds(0);
+    setTimerStartTime(null);
+    setCurrentSessionTitle('Focus Session');
+  };
+  const resetTimer = () => {
+    setIsTimerRunning(false);
+    setTimerSeconds(0);
+    setTimerStartTime(null);
+  };
+  const formatTimerTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+  const handleAddSession = () => {
+    if (!newSessionTitle) {
+      setAddSessionError('Please enter a session title');
+      return;
+    }
+    const validationError = validateTimeRange(newSessionStartTime, newSessionEndTime);
+    if (validationError) {
+      setAddSessionError(validationError);
+      return;
+    }
+    const startTime = objectToTime(newSessionStartTime);
+    const endTime = objectToTime(newSessionEndTime);
+    const duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+    const uniqueTitle = generateUniqueTitle(newSessionTitle);
+      const newSessionObj: FocusSession = {
+        id: Date.now().toString(),
+      title: uniqueTitle,
+        duration: duration,
+        startTime: startTime,
+      endTime: endTime,
+      score: calculateFocusScore(duration, startTime, uniqueTitle)
+      };
+      setSessions([...sessions, newSessionObj]);
+    if (uniqueTitle !== newSessionTitle) {
+      setTitleChangedNotice(`Title changed to "${uniqueTitle}" to avoid duplicates`);
+      setTimeout(() => setTitleChangedNotice(''), 3000);
+    }
+    setShowAddModal(false);
+    setNewSessionTitle('');
+    setNewSessionStartTime({ hour: '09', minute: '00', period: 'AM' });
+    setNewSessionEndTime({ hour: '10', minute: '00', period: 'AM' });
+    setAddSessionError('');
+    setConflictingSessionId(null);
+    setTitleChangedNotice('');
+  };
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+  const handleStartTimeChange = (newStartTime: { hour: string; minute: string; period: string }, isAddModal: boolean) => {
+    const startTime = objectToTime(newStartTime);
+    let endTime = new Date(startTime.getTime() + 60 * 60 * 1000); 
+    const excludeId = isAddModal ? undefined : editingSession?.id;
+    const conflictingSessions = checkTimeConflicts(startTime, endTime, excludeId);
+    if (conflictingSessions.length > 0) {
+      const conflictingSession = conflictingSessions[0];
+      const maxEndTime = new Date(conflictingSession.startTime.getTime() - 60 * 1000); 
+      if (maxEndTime > startTime) {
+        endTime = maxEndTime;
+      } else {
+        endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+      }
+    }
+    const newEndTime = timeToObject(endTime);
+    if (isAddModal) {
+      setNewSessionStartTime(newStartTime);
+      setNewSessionEndTime(newEndTime);
+      setAddSessionError('');
     } else {
-      addBookmark(path, label);
+      setEditSessionStartTime(newStartTime);
+      setEditSessionEndTime(newEndTime);
+      setEditSessionError('');
     }
+    setConflictingSessionId(null);
   };
-
-  const getPageIcon = (path: string) => {
-    if (path.includes('/dashboard')) {
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-        </svg>
-      );
-    } else if (path.includes('/reports')) {
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-        </svg>
-      );
-    } else if (path.includes('/settings')) {
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      );
-    }
-    return (
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-      </svg>
-    );
-  };
-
-  // Chart data and configurations
-  const revenueData = [
-    { month: 'Jan', revenue: 12000, expenses: 8000, profit: 4000 },
-    { month: 'Feb', revenue: 15000, expenses: 9000, profit: 6000 },
-    { month: 'Mar', revenue: 18000, expenses: 10000, profit: 8000 },
-    { month: 'Apr', revenue: 22000, expenses: 12000, profit: 10000 },
-    { month: 'May', revenue: 25000, expenses: 13000, profit: 12000 },
-    { month: 'Jun', revenue: 28000, expenses: 14000, profit: 14000 },
-  ];
-
-  const userGrowthData = [
-    { month: 'Jan', users: 1200, active: 800, new: 120 },
-    { month: 'Feb', users: 1350, active: 920, new: 150 },
-    { month: 'Mar', users: 1500, active: 1050, new: 150 },
-    { month: 'Apr', users: 1680, active: 1200, new: 180 },
-    { month: 'May', users: 1850, active: 1350, new: 170 },
-    { month: 'Jun', users: 2000, active: 1429, new: 150 },
-  ];
-
-  const salesByCategory = [
-    { name: 'Electronics', value: 35, color: '#8B5CF6' },
-    { name: 'Clothing', value: 25, color: '#06B6D4' },
-    { name: 'Home & Garden', value: 20, color: '#10B981' },
-    { name: 'Sports', value: 12, color: '#F59E0B' },
-    { name: 'Books', value: 8, color: '#EF4444' },
-  ];
-
-  const performanceData = [
-    { metric: 'Page Load', score: 85, fill: '#10B981' },
-    { metric: 'SEO', score: 92, fill: '#06B6D4' },
-    { metric: 'Accessibility', score: 78, fill: '#8B5CF6' },
-    { metric: 'Best Practices', score: 88, fill: '#F59E0B' },
-  ];
-
-  const dailyActivityData = [
-    { time: '00:00', views: 45, users: 12 },
-    { time: '04:00', views: 32, users: 8 },
-    { time: '08:00', views: 156, users: 45 },
-    { time: '12:00', views: 289, users: 87 },
-    { time: '16:00', views: 234, users: 76 },
-    { time: '20:00', views: 198, users: 65 },
-  ];
-
-  // Reports data
-  const salesReportData = [
-    { month: 'Jan', sales: 45000, target: 50000, units: 450 },
-    { month: 'Feb', sales: 52000, target: 55000, units: 520 },
-    { month: 'Mar', sales: 48000, target: 50000, units: 480 },
-    { month: 'Apr', sales: 61000, target: 60000, units: 610 },
-    { month: 'May', sales: 55000, target: 58000, units: 550 },
-    { month: 'Jun', sales: 67000, target: 65000, units: 670 },
-  ];
-
-  const inventoryData = [
-    { category: 'Electronics', inStock: 1250, lowStock: 45, outOfStock: 12 },
-    { category: 'Clothing', inStock: 2100, lowStock: 78, outOfStock: 23 },
-    { category: 'Home & Garden', inStock: 890, lowStock: 34, outOfStock: 8 },
-    { category: 'Sports', inStock: 650, lowStock: 28, outOfStock: 15 },
-    { category: 'Books', inStock: 340, lowStock: 12, outOfStock: 5 },
-  ];
-
-  const customerSegmentData = [
-    { segment: 'Premium', customers: 1250, revenue: 450000, avgOrder: 360 },
-    { segment: 'Regular', customers: 3400, revenue: 680000, avgOrder: 200 },
-    { segment: 'New', customers: 890, revenue: 125000, avgOrder: 140 },
-    { segment: 'Inactive', customers: 560, revenue: 45000, avgOrder: 80 },
-  ];
-
-  const trafficSourceData = [
-    { source: 'Organic Search', visitors: 12450, conversions: 892, rate: 7.2 },
-    { source: 'Social Media', visitors: 8900, conversions: 534, rate: 6.0 },
-    { source: 'Direct', visitors: 6780, conversions: 456, rate: 6.7 },
-    { source: 'Email', visitors: 4350, conversions: 387, rate: 8.9 },
-    { source: 'Paid Ads', visitors: 3200, conversions: 289, rate: 9.0 },
-  ];
-
-  const productPerformanceData = [
-    { name: 'UltraMax Pro 2024', sales: 2340, revenue: 234000, rating: 4.8 },
-    { name: 'SmartHome Hub X1', sales: 1890, revenue: 189000, rating: 4.6 },
-    { name: 'FitTracker Elite', sales: 1560, revenue: 156000, rating: 4.7 },
-    { name: 'EcoFriendly Pack', sales: 1234, revenue: 98720, rating: 4.5 },
-    { name: 'TechGadget Mini', sales: 987, revenue: 78960, rating: 4.4 },
-  ];
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-gray-900 p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-xl backdrop-blur-sm">
-          <p className="text-gray-900 dark:text-gray-100 font-medium text-sm mb-1">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center gap-2 text-sm">
-              <div 
-                className="w-3 h-3 rounded-full border border-gray-300 dark:border-gray-500" 
-                style={{ backgroundColor: entry.color }}
-              />
-              <span className="text-gray-800 dark:text-gray-200 font-medium">
-                {entry.name}: {typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}
-                {entry.payload && entry.payload.value && typeof entry.payload.value === 'number' ? `%` : ''}
+  const DurationPicker = ({ 
+    startTime, 
+    endTime, 
+    isAddModal 
+  }: { 
+    startTime: { hour: string; minute: string; period: string }, 
+    endTime: { hour: string; minute: string; period: string }, 
+    isAddModal: boolean 
+  }) => {
+    const duration = calculateDuration(startTime, endTime);
+  return (
+      <div>
+        <label className="block text-base font-medium text-gray-700 mb-2">Duration</label>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => changeDuration(startTime, endTime, -15, isAddModal)}
+            className="flex items-center justify-center w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            <FiMinus className="w-3 h-3 text-gray-600" />
+          </button>
+          <div className="flex-1 text-center">
+            <div className="px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+              <span className="text-base font-semibold text-gray-900">
+                {duration} min
               </span>
-            </div>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
-
-  const BookmarkButton = ({ currentPath, label }: { currentPath: string, label: string }) => (
-    <button
-      onClick={() => toggleBookmark(currentPath, label)}
-      className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-        isBookmarked(currentPath)
-          ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-800'
-          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-      }`}
-      title={isBookmarked(currentPath) ? 'Remove bookmark' : 'Add bookmark'}
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-4 h-4 mr-2"
-        fill={isBookmarked(currentPath) ? 'currentColor' : 'none'}
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-        />
-      </svg>
-      <span className="text-xs sm:text-sm">
-        {isBookmarked(currentPath) ? 'Bookmarked' : 'Bookmark'}
-      </span>
-    </button>
-  );
-
-  const renderPageContent = () => {
-    if (currentPath === '/dashboard' || currentPath === '/dashboard/overview') {
-      return (
-        <div className="space-y-4 sm:space-y-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-            <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  <svg className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                  </svg>
-                </div>
-                <div className="ml-3 lg:ml-4">
-                  <p className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</p>
-                  <p className="text-xl lg:text-2xl font-semibold text-gray-900 dark:text-white">$28,000</p>
-                </div>
-              </div>
-              <div className="mt-3 lg:mt-4">
-                <span className="text-green-500 text-xs lg:text-sm font-medium">+12.5%</span>
-                <span className="text-gray-600 dark:text-gray-400 text-xs lg:text-sm ml-2">vs last month</span>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                  <svg className="w-5 h-5 lg:w-6 lg:h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <div className="ml-3 lg:ml-4">
-                  <p className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">Active Users</p>
-                  <p className="text-xl lg:text-2xl font-semibold text-gray-900 dark:text-white">2,000</p>
-                </div>
-              </div>
-              <div className="mt-3 lg:mt-4">
-                <span className="text-green-500 text-xs lg:text-sm font-medium">+8.2%</span>
-                <span className="text-gray-600 dark:text-gray-400 text-xs lg:text-sm ml-2">vs last month</span>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                  <svg className="w-5 h-5 lg:w-6 lg:h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <div className="ml-3 lg:ml-4">
-                  <p className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">Orders</p>
-                  <p className="text-xl lg:text-2xl font-semibold text-gray-900 dark:text-white">892</p>
-                </div>
-              </div>
-              <div className="mt-3 lg:mt-4">
-                <span className="text-red-500 text-xs lg:text-sm font-medium">-2.1%</span>
-                <span className="text-gray-600 dark:text-gray-400 text-xs lg:text-sm ml-2">vs last month</span>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center">
-                <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-                  <svg className="w-5 h-5 lg:w-6 lg:h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
-                  </svg>
-                </div>
-                <div className="ml-3 lg:ml-4">
-                  <p className="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">Conversions</p>
-                  <p className="text-xl lg:text-2xl font-semibold text-gray-900 dark:text-white">3.2%</p>
-                </div>
-              </div>
-              <div className="mt-3 lg:mt-4">
-                <span className="text-green-500 text-xs lg:text-sm font-medium">+0.3%</span>
-                <span className="text-gray-600 dark:text-gray-400 text-xs lg:text-sm ml-2">vs last month</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Charts Section */}
-          <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6">
-            {/* Revenue Chart */}
-            <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Revenue Overview</h3>
-              <div className="h-48 sm:h-64 lg:h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={revenueData}>
-                    <defs>
-                      <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.1}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                    <XAxis 
-                      dataKey="month" 
-                      stroke={darkMode ? '#9CA3AF' : '#6B7280'}
-                      fontSize={isMobile ? 10 : 12}
-                    />
-                    <YAxis 
-                      stroke={darkMode ? '#9CA3AF' : '#6B7280'}
-                      fontSize={isMobile ? 10 : 12}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#8B5CF6"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#revenueGradient)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Sales by Category */}
-            <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Sales by Category</h3>
-              <div className="h-48 sm:h-64 lg:h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={salesByCategory}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={isMobile ? 60 : 80}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={!isMobile ? ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%` : false}
-                      labelLine={false}
-                    >
-                      {salesByCategory.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    {!isMobile && <Tooltip content={<CustomTooltip />} />}
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              
-              {/* Mobile Legend */}
-              <div className="block sm:hidden mt-4 space-y-2">
-                <div className="grid grid-cols-1 gap-2">
-                  {salesByCategory.map((entry, index) => (
-                    <div key={index} className="flex items-center justify-between text-sm bg-gray-50 dark:bg-gray-700 p-2 rounded">
-                      <div className="flex items-center space-x-2">
-                        <div 
-                          className="w-3 h-3 rounded-full flex-shrink-0" 
-                          style={{ backgroundColor: entry.color }}
-                        />
-                        <span className="text-gray-900 dark:text-white font-medium">
-                          {entry.name}
-                        </span>
-                      </div>
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">
-                        {entry.value}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-
-        </div>
-      );
-    }
-
-    if (currentPath === '/dashboard/metrics') {
-      return (
-        <div className="space-y-6">
-          {/* User Growth Chart */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">User Growth Metrics</h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={userGrowthData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                  <XAxis 
-                    dataKey="month" 
-                    stroke={darkMode ? '#9CA3AF' : '#6B7280'}
-                    fontSize={12}
-                  />
-                  <YAxis 
-                    stroke={darkMode ? '#9CA3AF' : '#6B7280'}
-                    fontSize={12}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="users" 
-                    stroke="#8B5CF6" 
-                    strokeWidth={3}
-                    dot={{ r: 4 }}
-                    name="Total Users"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="active" 
-                    stroke="#10B981" 
-                    strokeWidth={3}
-                    dot={{ r: 4 }}
-                    name="Active Users"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="new" 
-                    stroke="#06B6D4" 
-                    strokeWidth={3}
-                    dot={{ r: 4 }}
-                    name="New Users"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-              <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Monthly Comparison</h4>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                    <XAxis 
-                      dataKey="month" 
-                      stroke={darkMode ? '#9CA3AF' : '#6B7280'}
-                      fontSize={12}
-                    />
-                    <YAxis 
-                      stroke={darkMode ? '#9CA3AF' : '#6B7280'}
-                      fontSize={12}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="revenue" fill="#8B5CF6" name="Revenue" />
-                    <Bar dataKey="expenses" fill="#EF4444" name="Expenses" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-              <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Key Performance Indicators</h4>
-              <div className="space-y-4">
-                {performanceData.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">{item.metric}</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div 
-                          className="h-2 rounded-full transition-all duration-300"
-                          style={{ 
-                            width: `${item.score}%`, 
-                            backgroundColor: item.fill 
-                          }}
-                        />
-                      </div>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white w-8">{item.score}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (currentPath === '/dashboard/performance') {
-      return (
-        <div className="space-y-6">
-          {/* Performance Radial Chart */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Performance Scores</h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="90%" data={performanceData}>
-                  <RadialBar
-                    background
-                    dataKey="score"
-                    cornerRadius={10}
-                    fill="#8884d8"
-                  />
-                  <Legend 
-                    iconSize={18} 
-                    layout="vertical" 
-                    verticalAlign="middle" 
-                    align="right"
-                    wrapperStyle={{
-                      color: darkMode ? '#F3F4F6' : '#374151',
-                      fontSize: isMobile ? '12px' : '14px'
-                    }}
-                  />
-                  {!isMobile && <Tooltip content={<CustomTooltip />} />}
-                </RadialBarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Daily Activity */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Daily Activity Pattern</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dailyActivityData}>
-                  <defs>
-                    <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#06B6D4" stopOpacity={0.1}/>
-                    </linearGradient>
-                    <linearGradient id="usersGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                  <XAxis 
-                    dataKey="time" 
-                    stroke={darkMode ? '#9CA3AF' : '#6B7280'}
-                    fontSize={12}
-                  />
-                  <YAxis 
-                    stroke={darkMode ? '#9CA3AF' : '#6B7280'}
-                    fontSize={12}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="views"
-                    stackId="1"
-                    stroke="#06B6D4"
-                    fill="url(#viewsGradient)"
-                    name="Page Views"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="users"
-                    stackId="2"
-                    stroke="#10B981"
-                    fill="url(#usersGradient)"
-                    name="Active Users"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (currentPath === '/dashboard/recent-activity') {
-      return (
-        <div className="space-y-6">
-          {/* Activity Timeline */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-6">Recent Activity</h3>
-            <div className="space-y-4">
-                             {[
-                 { time: '2 mins ago', action: 'New user registration', user: 'john.doe@email.com', type: 'success' },
-                 { time: '15 mins ago', action: 'Payment processed', amount: '$250.00', type: 'info' },
-                 { time: '1 hour ago', action: 'System backup completed', size: '2.4 GB', type: 'success' },
-                 { time: '2 hours ago', action: 'Login attempt failed', user: 'admin@domain.com', type: 'warning' },
-                 { time: '3 hours ago', action: 'Database optimized', duration: '45 seconds', type: 'info' },
-               ].map((activity, index) => (
-                <div key={index} className="flex items-start space-x-3">
-                  <div className={`flex-shrink-0 w-2 h-2 mt-2 rounded-full ${
-                    activity.type === 'success' ? 'bg-green-500' :
-                    activity.type === 'warning' ? 'bg-yellow-500' :
-                    'bg-blue-500'
-                  }`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {activity.action}
-                    </p>
-                                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                       {activity.user || activity.amount || activity.size || activity.duration}
-                     </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                      {activity.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Activity Chart */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Activity Trends</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dailyActivityData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                  <XAxis 
-                    dataKey="time" 
-                    stroke={darkMode ? '#9CA3AF' : '#6B7280'}
-                    fontSize={12}
-                  />
-                  <YAxis 
-                    stroke={darkMode ? '#9CA3AF' : '#6B7280'}
-                    fontSize={12}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="views" 
-                    stroke="#8B5CF6" 
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    name="Page Views"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="users" 
-                    stroke="#10B981" 
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    name="Active Users"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Sales Reports
-    if (currentPath === '/reports' || currentPath === '/reports/sales') {
-      return (
-        <div className="space-y-6">
-          {/* Sales Overview Chart */}
-          <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Sales Performance</h3>
-            </div>
-            <div className="h-64 lg:h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={salesReportData}>
-                  <defs>
-                    <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
-                    </linearGradient>
-                    <linearGradient id="targetGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                  <XAxis dataKey="month" stroke={darkMode ? '#9CA3AF' : '#6B7280'} fontSize={12} />
-                  <YAxis stroke={darkMode ? '#9CA3AF' : '#6B7280'} fontSize={12} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="sales" stroke="#10B981" fill="url(#salesGradient)" name="Actual Sales" />
-                  <Area type="monotone" dataKey="target" stroke="#8B5CF6" fill="url(#targetGradient)" name="Target" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Top Products Table */}
-          <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Top Performing Products</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Product</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sales</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Revenue</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rating</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {productPerformanceData.map((product, index) => (
-                    <tr key={index}>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{product.name}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{product.sales.toLocaleString()}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${product.revenue.toLocaleString()}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center">
-                          <span className="text-yellow-400">★</span>
-                          <span className="ml-1 text-gray-900 dark:text-white">{product.rating}</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">Export Options</h4>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => handleSalesExport('csv')}
-                className="flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md font-medium transition-colors text-sm cursor-pointer"
-                title="Export CSV"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => handleSalesExport('excel')}
-                className="flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors text-sm cursor-pointer"
-                title="Export Excel"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Inventory Reports
-    if (currentPath === '/reports/inventory') {
-      return (
-        <div className="space-y-6">
-          {/* Inventory Status Chart */}
-          <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Inventory Status Overview</h3>
-            </div>
-            <div className="h-64 lg:h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={inventoryData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                  <XAxis dataKey="category" stroke={darkMode ? '#9CA3AF' : '#6B7280'} fontSize={12} />
-                  <YAxis stroke={darkMode ? '#9CA3AF' : '#6B7280'} fontSize={12} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="inStock" fill="#10B981" name="In Stock" />
-                  <Bar dataKey="lowStock" fill="#F59E0B" name="Low Stock" />
-                  <Bar dataKey="outOfStock" fill="#EF4444" name="Out of Stock" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Inventory Details Table */}
-          <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Inventory Details by Category</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Category</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">In Stock</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Low Stock</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Out of Stock</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {inventoryData.map((item, index) => (
-                    <tr key={index}>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{item.category}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400">{item.inStock.toLocaleString()}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-yellow-600 dark:text-yellow-400">{item.lowStock}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-red-600 dark:text-red-400">{item.outOfStock}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          item.outOfStock > 20 ? 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-100' :
-                          item.lowStock > 50 ? 'bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100' :
-                          'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100'
-                        }`}>
-                          {item.outOfStock > 20 ? 'Critical' : item.lowStock > 50 ? 'Warning' : 'Good'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Inventory Actions */}
-          <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">Export Options</h4>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => handleInventoryExport()}
-                className="flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md font-medium transition-colors text-sm cursor-pointer"
-                title="Export CSV"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Customer Reports
-    if (currentPath === '/reports/customers') {
-      return (
-        <div className="space-y-6">
-          {/* Customer Segments Chart */}
-          <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Customer Segments Analysis</h3>
-              <button
-                onClick={() => handleCustomerExport()}
-                className="flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors text-sm cursor-pointer"
-                title="Export CSV"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </button>
-            </div>
-            <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6">
-              {/* Pie Chart Section */}
-              <div className="w-full">
-                <div className="h-64 sm:h-72 lg:h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={customerSegmentData}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={isMobile ? 60 : 80}
-                        fill="#8884d8"
-                        dataKey="customers"
-                        label={!isMobile ? ({ segment, percent }) => `${segment} ${(percent * 100).toFixed(0)}%` : false}
-                        labelLine={false}
-                      >
-                        {customerSegmentData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={
-                            index === 0 ? '#8B5CF6' : 
-                            index === 1 ? '#10B981' : 
-                            index === 2 ? '#06B6D4' : '#F59E0B'
-                          } />
-                        ))}
-                      </Pie>
-                      {!isMobile && <Tooltip content={<CustomTooltip />} />}
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                
-                {/* Mobile Legend for Customer Segments */}
-                <div className="block lg:hidden mt-4 space-y-2">
-                  <div className="grid grid-cols-2 gap-3">
-                    {customerSegmentData.map((entry, index) => (
-                      <div key={index} className="flex items-center space-x-2 text-sm bg-gray-50 dark:bg-gray-700 p-2 rounded">
-                        <div 
-                          className="w-3 h-3 rounded-full flex-shrink-0" 
-                          style={{ backgroundColor: 
-                            index === 0 ? '#8B5CF6' : 
-                            index === 1 ? '#10B981' : 
-                            index === 2 ? '#06B6D4' : '#F59E0B'
-                          }}
-                        />
-                        <div className="flex flex-col">
-                          <span className="text-gray-900 dark:text-white font-medium text-xs">
-                            {entry.segment}
-                          </span>
-                          <span className="text-gray-600 dark:text-gray-400 text-xs">
-                            {((entry.customers / customerSegmentData.reduce((sum, item) => sum + item.customers, 0)) * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Bar Chart Section */}
-              <div className="w-full">
-                <div className="h-64 sm:h-72 lg:h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={customerSegmentData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                      <XAxis 
-                        dataKey="segment" 
-                        stroke={darkMode ? '#9CA3AF' : '#6B7280'} 
-                        fontSize={isMobile ? 10 : 12}
-                        angle={isMobile ? -45 : 0}
-                        textAnchor={isMobile ? 'end' : 'middle'}
-                        height={isMobile ? 60 : 30}
-                      />
-                      <YAxis stroke={darkMode ? '#9CA3AF' : '#6B7280'} fontSize={isMobile ? 10 : 12} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="revenue" fill="#8B5CF6" name="Revenue" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Customer Details Table */}
-          <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Customer Segment Details</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Segment</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customers</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Revenue</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Avg Order</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Growth</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {customerSegmentData.map((segment, index) => (
-                    <tr key={index}>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{segment.segment}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{segment.customers.toLocaleString()}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${segment.revenue.toLocaleString()}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${segment.avgOrder}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`text-xs font-medium ${
-                          segment.segment === 'Premium' ? 'text-green-600 dark:text-green-400' :
-                          segment.segment === 'Regular' ? 'text-blue-600 dark:text-blue-400' :
-                          segment.segment === 'New' ? 'text-purple-600 dark:text-purple-400' :
-                          'text-red-600 dark:text-red-400'
-                        }`}>
-                          {segment.segment === 'Premium' ? '+15.3%' :
-                           segment.segment === 'Regular' ? '+8.1%' :
-                           segment.segment === 'New' ? '+24.7%' : '-5.2%'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Analytics Reports
-    if (currentPath === '/reports/analytics') {
-      return (
-        <div className="space-y-6">
-          {/* Traffic Sources */}
-          <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Traffic Sources & Conversions</h3>
-              <button
-                onClick={() => handleAnalyticsExport()}
-                className="flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors text-sm cursor-pointer"
-                title="Export CSV"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </button>
-            </div>
-            <div className="h-64 lg:h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={trafficSourceData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                  <XAxis dataKey="source" stroke={darkMode ? '#9CA3AF' : '#6B7280'} fontSize={12} />
-                  <YAxis stroke={darkMode ? '#9CA3AF' : '#6B7280'} fontSize={12} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="visitors" fill="#06B6D4" name="Visitors" />
-                  <Bar dataKey="conversions" fill="#10B981" name="Conversions" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Analytics Table */}
-          <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Traffic Source Performance</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Source</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Visitors</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Conversions</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rate</th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trend</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {trafficSourceData.map((source, index) => (
-                    <tr key={index}>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{source.source}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{source.visitors.toLocaleString()}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{source.conversions.toLocaleString()}</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{source.rate}%</td>
-                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`text-xs font-medium ${
-                          source.rate > 8 ? 'text-green-600 dark:text-green-400' :
-                          source.rate > 6 ? 'text-blue-600 dark:text-blue-400' :
-                          'text-yellow-600 dark:text-yellow-400'
-                        }`}>
-                          {source.rate > 8 ? 'Excellent' : source.rate > 6 ? 'Good' : 'Average'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Analytics Actions */}
-          <div className="bg-white dark:bg-gray-800 p-4 lg:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">Export Options</h4>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => handleAnalyticsExport()}
-                className="flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md font-medium transition-colors text-sm cursor-pointer"
-                title="Export CSV"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (currentPath.startsWith('/settings')) {
-      return (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Account Settings</h3>
-            <form className="space-y-4" onSubmit={handleSaveAccountSettings}>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  name="fullName"
-                  defaultValue={accountData.fullName}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  defaultValue={accountData.email}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  required
-                />
-              </div>
-              <div className="pt-4">
-                <button
-                  type="submit"
-                  disabled={isSaving || isSaved}
-                  className={`px-4 py-2 rounded-md font-medium transition-all duration-200 flex items-center gap-2 ${
-                    isSaved 
-                      ? 'bg-green-600 text-white cursor-default' 
-                      : isSaving 
-                        ? 'bg-blue-400 text-white cursor-not-allowed' 
-                        : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
-                  }`}
-                >
-                  {isSaving && (
-                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  )}
-                  {isSaved && (
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                  {isSaving ? 'Saving...' : isSaved ? 'Saved!' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      );
-    }
-
-    // Default content for other pages
-    return (
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Page Content</h3>
-        <p className="text-gray-600 dark:text-gray-300 mb-4">
-          This is the content area for the current page: <span className="font-medium">{currentPath}</span>
-        </p>
-      </div>
-    );
-  };
-
-  const ToastContainer = () => (
-    <div className="fixed top-4 right-4 left-4 sm:left-auto sm:right-4 sm:top-4 z-50 space-y-2 sm:w-auto w-full max-w-sm sm:max-w-none mx-auto sm:mx-0">
-      {toasts.map((toast) => (
-        <div
-          key={toast.id}
-          className={`flex items-center justify-between p-3 sm:p-4 rounded-lg shadow-lg transform transition-all duration-300 ease-in-out w-full sm:min-w-80 sm:max-w-96 ${
-            toast.type === 'success'
-              ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100 border-l-4 border-green-500'
-              : toast.type === 'error'
-              ? 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-100 border-l-4 border-red-500'
-              : toast.type === 'warning'
-              ? 'bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 border-l-4 border-yellow-500'
-              : 'bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 border-l-4 border-blue-500'
-          }`}
-        >
-          <div className="flex items-start sm:items-center">
-            <div className="flex-shrink-0 mr-2 sm:mr-3 mt-0.5 sm:mt-0">
-              {toast.type === 'success' && (
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              )}
-              {toast.type === 'error' && (
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              )}
-              {toast.type === 'warning' && (
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              )}
-              {toast.type === 'info' && (
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium break-words leading-5">{toast.message}</p>
             </div>
           </div>
           <button
-            onClick={() => removeToast(toast.id)}
-            className="flex-shrink-0 ml-2 sm:ml-4 text-current opacity-70 hover:opacity-100 transition-opacity cursor-pointer p-1"
+            type="button"
+            onClick={() => changeDuration(startTime, endTime, 15, isAddModal)}
+            className="flex items-center justify-center w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
           >
-            <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+            <FiPlus className="w-3 h-3 text-gray-600" />
           </button>
-        </div>
-      ))}
-    </div>
-  );
-  
-
+      </div>
+      </div>
+    );
+  };
+  const TimePicker = ({ 
+    value, 
+    onChange, 
+    label,
+    isStartTime = false,
+    isAddModal = false
+  }: { 
+    value: { hour: string; minute: string; period: string }, 
+    onChange: (newTime: { hour: string; minute: string; period: string }) => void,
+    label: string,
+    isStartTime?: boolean,
+    isAddModal?: boolean
+  }) => {
+    const hours = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+    const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
+    const periods = ['AM', 'PM'];
   return (
-    <>
-      <link
-        href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
-        rel="stylesheet"
-      />
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-        html {
-          font-family: 'Poppins', sans-serif;
-        }
-        
-        /* Specific font weights */
-        .poppins-light { font-weight: 300; }
-        .poppins-regular { font-weight: 400; }
-        .poppins-medium { font-weight: 500; }
-        .poppins-semibold { font-weight: 600; }
-        .poppins-bold { font-weight: 700; }
-        
-        /* Custom shadow for floating sidebar */
-        .hover\\:shadow-3xl:hover {
-          box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.25);
-        }
-      `}</style>
-      
-      <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
-        {/* Top Navigation Bar */}
-        <header className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm z-30">
-          <div className="container px-4">
-            <div className="flex items-center justify-between h-16">
-              {/* Logo and main navigation */}
-              <div className="flex items-center">
-                {/* Mobile menu button */}
-                <button
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="lg:hidden p-2 rounded-md text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 mr-3 cursor-pointer"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {mobileMenuOpen ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    )}
-                  </svg>
-                </button>
-                
-                <div className="flex-shrink-0 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-600 dark:text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M9.504 1.132a1 1 0 01.992 0l1.75 1a1 1 0 11-.992 1.736L10 3.152l-1.254.716a1 1 0 11-.992-1.736l1.75-1zM5.618 4.504a1 1 0 01-.372 1.364L5.016 6l.23.132a1 1 0 11-.992 1.736L4 7.723V8a1 1 0 01-2 0V6a.996.996 0 01.52-.878l1.734-.99a1 1 0 011.364.372zm8.764 0a1 1 0 011.364-.372l1.733.99A1.002 1.002 0 0118 6v2a1 1 0 11-2 0v-.277l-.254.145a1 1 0 11-.992-1.736l.23-.132-.23-.132a1 1 0 01-.372-1.364zm-7 4a1 1 0 011.364-.372L10 8.848l1.254-.716a1 1 0 11.992 1.736L11 10.58V12a1 1 0 11-2 0v-1.42l-1.246-.712a1 1 0 01-.372-1.364zM3 11a1 1 0 011 1v1.42l1.246.712a1 1 0 11-.992 1.736l-1.75-1A1 1 0 012 14v-2a1 1 0 011-1zm14 0a1 1 0 011 1v2a1 1 0 01-.504.868l-1.75 1a1 1 0 11-.992-1.736L16 13.42V12a1 1 0 011-1zm-9.618 5.504a1 1 0 011.364-.372l.254.145V16a1 1 0 112 0v.277l.254-.145a1 1 0 11.992 1.736l-1.735.992a.995.995 0 01-1.022 0l-1.735-.992a1 1 0 01-.372-1.364z" clipRule="evenodd" />
-                  </svg>
-                  <span className="ml-2 text-lg font-semibold text-gray-900 dark:text-white">AppNav</span>
-                </div>
-                
-                <div className="hidden lg:block ml-6">
-                  <div className="flex space-x-1">
-                    {navigationData.main.map((item) => (
-                      <div key={item.id} className="relative">
-                        {item.dropdown ? (
-                          <>
-                            <button
-                              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors relative cursor-pointer
-                                ${isActive(item.path) 
-                                  ? 'text-indigo-700 dark:text-indigo-300 border-b-2 border-indigo-500 dark:border-indigo-400' 
-                                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                              onClick={() => toggleDropdown(item.id)}
-                              aria-expanded={openDropdown === item.id}
-                              aria-haspopup="true"
-                            >
-                              <span className="mr-1">{item.label}</span>
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                              {item.hasNotification && (
-                                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-                              )}
-                            </button>
-                            
-                            {openDropdown === item.id && (
-                              <div
-                                ref={(el: HTMLDivElement | null) => {
-                                  if (el) {
-                                    dropdownRefs.current[item.id] = el;
-                                  }
-                                }}
-                                className="absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
-                                role="menu"
-                                aria-orientation="vertical"
-                                aria-labelledby={`${item.id}-menu-button`}
-                              >
-                                <div className="py-1" role="none">
-                                  {item.dropdown.map((subItem) => (
-                                    <a
-                                      key={subItem.id}
-                                      href="#"
-                                      className={`block px-4 py-2 text-sm transition-colors cursor-pointer
-                                        ${isActive(subItem.path)
-                                          ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-                                          : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        handleNavigation(subItem.path);
-                                      }}
-                                      role="menuitem"
-                                    >
-                                      {subItem.label}
-                                    </a>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <a
-                            href="#"
-                            className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors relative cursor-pointer
-                              ${isActive(item.path) 
-                                ? 'text-indigo-700 dark:text-indigo-300 border-b-2 border-indigo-500 dark:border-indigo-400' 
-                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleNavigation(item.path);
-                            }}
-                          >
-                            {item.label}
-                            {item.hasNotification && (
-                              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-                            )}
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Mobile Navigation Menu */}
-          {mobileMenuOpen && (
-            <div className="lg:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-              <div className="px-2 pt-2 pb-3 space-y-1">
-                {navigationData.main.map((item) => (
-                  <div key={item.id}>
-                    {item.dropdown ? (
-                      <>
-                        <div className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 border-b border-gray-100 dark:border-gray-600">
-                          {item.label}
-                        </div>
-                        {item.dropdown.map((subItem) => (
-                          <a
-                            key={subItem.id}
-                            href="#"
-                            className={`block px-6 py-2 text-sm transition-colors cursor-pointer ${
-                              isActive(subItem.path)
-                                ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleNavigation(subItem.path);
-                              setMobileMenuOpen(false);
-                            }}
-                          >
-                            {subItem.label}
-                          </a>
-                        ))}
-                      </>
-                    ) : (
-                      <a
-                        href="#"
-                        className={`block px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${
-                          isActive(item.path)
-                            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleNavigation(item.path);
-                          setMobileMenuOpen(false);
-                        }}
-                      >
-                        <div className="flex items-center">
-                          {item.icon}
-                          <span className="ml-3">{item.label}</span>
-                        </div>
-                      </a>
-                    )}
-                  </div>
-                ))}
-                
-                {/* Dark mode toggle for mobile */}
-                <button
-                  onClick={() => {
-                    toggleDarkMode();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                >
-                  {darkMode ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                  )}
-                  <span className="ml-3">{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </header>
-        
-        <div className="flex flex-1 overflow-hidden">
-          {/* Floating Sidebar */}
-          <aside 
-            ref={sidebarRef}
-            className={`fixed top-16 left-1 sm:left-2 md:left-4 bottom-2 sm:bottom-4 bg-white/95 dark:bg-gray-800/95 backdrop-blur-lg rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 z-20 transition-all duration-300 ease-in-out ${sidebarExpanded ? 'w-48 sm:w-56 md:w-64' : 'w-12 sm:w-14 md:w-16'} overflow-hidden hover:shadow-indigo-500/10 hover:shadow-3xl`}
-            onMouseEnter={() => setSidebarExpanded(true)}
-            onMouseLeave={() => setSidebarExpanded(false)}
-            onTouchStart={() => setSidebarExpanded(true)}
+      <div>
+        <label className="block text-base font-medium text-gray-700 mb-3">{label}</label>
+        <div className="flex gap-3">
+          <select
+            value={value.hour}
+            onChange={(e) => {
+              const newTime = { ...value, hour: e.target.value };
+              if (isStartTime) {
+                handleStartTimeChange(newTime, isAddModal);
+              } else {
+                onChange(newTime);
+                setConflictingSessionId(null);
+                if (isAddModal) {
+                  setAddSessionError('');
+                } else {
+                  setEditSessionError('');
+                }
+              }
+            }}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-medium text-center appearance-none bg-white"
           >
-            {/* Main navigation items */}
-            <div className="mt-2 sm:mt-4 px-1 md:px-2">
-              {navigationData.main.map((item) => (
-                <a
-                  key={item.id}
-                  href="#"
-                  className={`flex items-center ${sidebarExpanded ? 'px-1 sm:px-2 md:px-3 justify-start' : 'px-1 sm:px-2 md:px-3 justify-center'} py-2 sm:py-3 mb-1 text-xs sm:text-sm transition-colors relative group rounded-lg sm:rounded-xl cursor-pointer
-                    ${isActive(item.path)
-                      ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100/70 dark:hover:bg-gray-700/50'}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleNavigation(item.path);
-                  }}
-                >
-                  <div className="flex-shrink-0 flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5">{item.icon}</div>
-                  {sidebarExpanded && (
-                    <span className="ml-2 sm:ml-3 whitespace-nowrap transition-opacity duration-300 opacity-100 text-xs sm:text-sm">
-                      {item.label}
-                    </span>
-                  )}
-                  {item.hasNotification && (
-                    <span className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full"></span>
-                  )}
-                  
-                  {/* Tooltip for collapsed state */}
-                  {!sidebarExpanded && (
-                    <div className="absolute left-full ml-2 sm:ml-4 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transform transition-all duration-300 shadow-lg whitespace-nowrap z-50">
-                      {item.label}
-                    </div>
-                  )}
-                </a>
-              ))}
-            </div>
-            
-            <div className="border-t border-gray-200/50 dark:border-gray-700/50 mx-2 md:mx-4 my-4"></div>
-            
-            {/* Bookmarks section */}
-            <div className="mt-2 px-1 md:px-2">
-              <h3 className={`text-xs font-semibold text-gray-500 dark:text-gray-400 ${sidebarExpanded ? 'px-1 sm:px-2 md:px-3 py-1 justify-start' : 'flex justify-center px-1 sm:px-2 md:px-3 py-1'} uppercase tracking-wider transition-opacity duration-300`}>
-                {sidebarExpanded ? 'Bookmarks' : <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center"><BookmarkIcon/></div>}
-              </h3>
-              
-              <div className="mt-2 space-y-1">
-                {/* Default bookmarks */}
-                {navigationData.bookmarks.map((bookmark) => (
-                  <a
-                    key={bookmark.id}
-                    href="#"
-                    className={`flex items-center ${sidebarExpanded ? 'px-2 md:px-3 justify-start' : 'px-2 md:px-3 justify-center'} py-2 mb-1 text-sm transition-colors group rounded-xl cursor-pointer
-                      ${isActive(bookmark.path)
-                        ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300'
-                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100/70 dark:hover:bg-gray-700/50'}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleNavigation(bookmark.path);
-                    }}
-                  >
-                    <div className="flex-shrink-0 flex items-center justify-center w-5 h-5">{bookmark.icon}</div>
-                    {sidebarExpanded && (
-                      <span className="ml-3 whitespace-nowrap transition-opacity duration-300 opacity-100">
-                        {bookmark.label}
-                      </span>
-                    )}
-                    
-                    {/* Tooltip for collapsed state */}
-                    {!sidebarExpanded && (
-                      <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transform transition-all duration-300 shadow-lg whitespace-nowrap z-50">
-                        {bookmark.label}
-                      </div>
-                    )}
-                  </a>
-                ))}
-
-                {/* User bookmarks */}
-                {userBookmarks.length > 0 && (
-                  <>
-                    {userBookmarks.map((bookmark) => (
-                      <div key={bookmark.id} className="relative group">
-                        <a
-                          href="#"
-                          className={`flex items-center ${sidebarExpanded ? 'px-2 md:px-3 justify-start' : 'px-2 md:px-3 justify-center'} py-2 mb-1 text-sm transition-colors group rounded-xl cursor-pointer
-                            ${isActive(bookmark.path)
-                              ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300'
-                              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100/70 dark:hover:bg-gray-700/50'}`}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleNavigation(bookmark.path);
-                          }}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            removeBookmark(bookmark.path);
-                          }}
-                        >
-                          <div className="flex-shrink-0 flex items-center justify-center w-5 h-5">{getIconFromType(bookmark.iconType || 'default')}</div>
-                          {sidebarExpanded && (
-                            <span className="ml-3 whitespace-nowrap transition-opacity duration-300 opacity-100">
-                              {bookmark.label}
-                            </span>
-                          )}
-                          
-                          {/* Remove bookmark button */}
-                          {sidebarExpanded && (
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                removeBookmark(bookmark.path);
-                              }}
-                              className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-100 dark:hover:bg-red-900 text-red-500 dark:text-red-400 cursor-pointer"
-                              title="Remove bookmark"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          )}
-                          
-                          {/* Tooltip for collapsed state */}
-                          {!sidebarExpanded && (
-                            <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transform transition-all duration-300 shadow-lg whitespace-nowrap z-50">
-                              <div>{bookmark.label}</div>
-                              <div className="text-xs opacity-75">Right-click to remove</div>
-                            </div>
-                          )}
-                        </a>
-                      </div>
-                    ))}
-                  </>
-                )}
-                
-                {/* Empty state for bookmarks */}
-                {userBookmarks.length === 0 && navigationData.bookmarks.length === 0 && sidebarExpanded && (
-                  <div className="px-2 md:px-3 py-3 text-xs text-gray-500 dark:text-gray-400 italic">
-                    No bookmarks yet. Use the bookmark button on any page to add it here.
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="border-t border-gray-200/50 dark:border-gray-700/50 mx-2 md:mx-4 my-4"></div>
-            
-            {/* Theme toggle */}
-            <div className="px-1 md:px-2 pb-2">
-              <button
-                onClick={toggleDarkMode}
-                className={`flex items-center ${sidebarExpanded ? 'px-2 md:px-3 justify-start' : 'px-2 md:px-3 justify-center'} py-3 mb-1 text-sm transition-colors relative group rounded-xl w-full text-gray-600 dark:text-gray-300 hover:bg-gray-100/70 dark:hover:bg-gray-700/50 cursor-pointer`}
-              >
-                <div className="flex-shrink-0 flex items-center justify-center w-5 h-5">
-                  {darkMode ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                  )}
-                </div>
-                {sidebarExpanded && (
-                  <span className="ml-3 whitespace-nowrap transition-opacity duration-300 opacity-100">
-                    {darkMode ? 'Light Mode' : 'Dark Mode'}
-                  </span>
-                )}
-                
-                {/* Tooltip for collapsed state */}
-                {!sidebarExpanded && (
-                  <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transform transition-all duration-300 shadow-lg whitespace-nowrap z-50">
-                    {darkMode ? 'Light Mode' : 'Dark Mode'}
-                  </div>
-                )}
-              </button>
-            </div>
-          </aside>
-          
-          {/* Main content area */}
-          <main className={`flex-1 overflow-auto transition-all duration-300 ${sidebarExpanded ? 'ml-50 sm:ml-60 lg:ml-60 xl:ml-72' : 'ml-14 sm:ml-16 lg:ml-16 xl:ml-24'}`}>
-            <div className="container mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-4 sm:pb-8 max-w-full">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3">
-                  <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
-                    {getPageTitle()}
-                  </h1>
-                  <BookmarkButton currentPath={currentPath} label={getPageTitle()} />
-                </div>
-                
-                {renderPageContent()}
-              </div>
-            </div>
-          </main>
+            {hours.map(hour => (
+              <option key={hour} value={hour}>{hour}</option>
+            ))}
+          </select>
+          <span className="px-2 py-3 text-gray-500 text-xl font-bold">:</span>
+          <select
+            value={value.minute}
+            onChange={(e) => {
+              const newTime = { ...value, minute: e.target.value };
+              if (isStartTime) {
+                handleStartTimeChange(newTime, isAddModal);
+              } else {
+                onChange(newTime);
+                setConflictingSessionId(null);
+                if (isAddModal) {
+                  setAddSessionError('');
+                } else {
+                  setEditSessionError('');
+                }
+              }
+            }}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-medium text-center appearance-none bg-white"
+          >
+            {minutes.map(minute => (
+              <option key={minute} value={minute}>{minute}</option>
+            ))}
+          </select>
+          <select
+            value={value.period}
+            onChange={(e) => {
+              const newTime = { ...value, period: e.target.value };
+              if (isStartTime) {
+                handleStartTimeChange(newTime, isAddModal);
+              } else {
+                onChange(newTime);
+                setConflictingSessionId(null);
+                if (isAddModal) {
+                  setAddSessionError('');
+                } else {
+                  setEditSessionError('');
+                }
+              }
+            }}
+            className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-medium text-center appearance-none bg-white min-w-[80px]"
+          >
+            {periods.map(period => (
+              <option key={period} value={period}>{period}</option>
+            ))}
+          </select>
         </div>
       </div>
-      
-      {/* Toast Container */}
-      <ToastContainer />
-    </>
-    
+    );
+  };
+  const totalFocusTime = sessions.reduce((acc, session) => acc + session.duration, 0);
+  const sparklineData = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - index));
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayName = dayNames[date.getDay()];
+    let score;
+    if (index === 6) {
+      score = todayScore || 85;
+    } else {
+      const baseScore = todayScore || 85;
+      const variation = Math.random() * 20 - 10; 
+      const trendFactor = (index - 3) * 2; 
+      const weekendFactor = (date.getDay() === 0 || date.getDay() === 6) ? -5 : 0; 
+      score = Math.max(40, Math.min(100, Math.round(baseScore + variation + trendFactor + weekendFactor)));
+    }
+    return {
+      day: index + 1,
+      score: score,
+      dayName: index === 6 ? 'Today' : dayName,
+      date: date.toISOString().split('T')[0]
+    };
+  });
+  const getScoreColor = (score: number) => {
+    if (score >= 85) return 'text-green-600';
+    if (score >= 75) return 'text-blue-600';
+    if (score >= 65) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+  const getScoreBg = (score: number) => {
+    if (score >= 85) return 'bg-green-50 border-green-200';
+    if (score >= 75) return 'bg-blue-50 border-blue-200';
+    if (score >= 65) return 'bg-yellow-50 border-yellow-200';
+    return 'bg-red-50 border-red-200';
+  };
+  const renderTodayTab = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+          className={`p-6 rounded-2xl border-2 ${getScoreBg(todayScore)}`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Today's Score</p>
+              <motion.p 
+                key={todayScore}
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                className={`text-4xl font-bold ${getScoreColor(todayScore)}`}
+              >
+                {todayScore}%
+              </motion.p>
+              <p className="text-xs text-gray-500 mt-1">
+                {todayScore >= 85 ? 'Excellent focus!' : todayScore >= 75 ? 'Good performance!' : 'Room for improvement'}
+              </p>
+            </div>
+            <FiTarget className="w-8 h-8 text-gray-400" />
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-500">Past 7 days</span>
+              <FiTrendingUp className="w-3 h-3 text-gray-400" />
+            </div>
+            <div className="h-8">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={sparklineData}>
+                <Line 
+                  type="monotone" 
+                    dataKey="score" 
+                    stroke={todayScore >= 85 ? '#16A34A' : todayScore >= 75 ? '#3B82F6' : todayScore >= 65 ? '#F59E0B' : '#DC2626'}
+                  strokeWidth={2}
+                    dot={{ r: 2, fill: todayScore >= 85 ? '#16A34A' : todayScore >= 75 ? '#3B82F6' : todayScore >= 65 ? '#F59E0B' : '#DC2626', strokeWidth: 0 }}
+                    activeDot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            </div>
+          </div>
+        </motion.div>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="p-6 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Focus Streak</p>
+              <motion.p 
+                key={streak}
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                className="text-4xl font-bold text-purple-600"
+              >
+                {streak}
+              </motion.p>
+            </div>
+            <FiAward className="w-8 h-8 text-purple-400" />
+          </div>
+          <div className="flex items-center gap-2 mb-2">
+            <FiZap className="w-4 h-4 text-purple-500" />
+            <p className="text-sm text-purple-700 font-medium">
+              {streak >= 7 ? 'Amazing!' : streak >= 3 ? 'Keep going!' : 'Build momentum!'}
+            </p>
+          </div>
+          <p className="text-xs text-gray-500">Consecutive days ≥75%</p>
+        </motion.div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="lg:col-span-2 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-200 p-6"
+        >
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center justify-center gap-2">
+            <FiClock className="text-indigo-500" />
+            Focus Timer
+          </h3>
+          <div className="mb-4">
+            <input
+              type="text"
+              value={currentSessionTitle}
+              onChange={(e) => setCurrentSessionTitle(e.target.value)}
+              className="text-center bg-white/80 border border-indigo-200 rounded-lg px-4 py-2 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Session title"
+              disabled={isTimerRunning}
+            />
+            </div>
+          <div className="mb-6">
+            <div className="text-5xl font-mono font-bold text-indigo-700 mb-2">
+              {formatTimerTime(timerSeconds)}
+          </div>
+            <div className="text-sm text-gray-600">
+              {isTimerRunning ? 'Timer running...' : 'Ready to focus'}
+      </div>
+      </div>
+          <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+            {!isTimerRunning ? (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+                onClick={startTimer}
+                className="flex items-center justify-center gap-2 px-6 py-4 bg-indigo-500 text-white rounded-2xl hover:bg-indigo-600 transition-colors font-medium cursor-pointer col-span-2 min-h-[56px]"
+          >
+                <FiPlay className="w-5 h-5" />
+                <span className="text-base font-semibold">Start Focus</span>
+          </motion.button>
+            ) : (
+              <>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={pauseTimer}
+                  className="flex items-center justify-center gap-2 px-4 py-4 bg-yellow-500 text-white rounded-2xl hover:bg-yellow-600 transition-colors font-medium cursor-pointer min-h-[56px]"
+                >
+                  <FiPause className="w-5 h-5 stroke-2" />
+                  <span className="text-sm font-semibold">Pause</span>
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={stopTimer}
+                  className="flex items-center justify-center gap-2 px-4 py-4 bg-green-500 text-white rounded-2xl hover:bg-green-600 transition-colors font-medium cursor-pointer min-h-[56px]"
+                >
+                  <FiSquare className="w-5 h-5" />
+                  <span className="text-sm font-semibold">Stop</span>
+                </motion.button>
+              </>
+            )}
+            {timerSeconds > 0 && !isTimerRunning && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={resetTimer}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-500 text-white rounded-2xl hover:bg-gray-600 transition-colors font-medium cursor-pointer col-span-2 min-h-[48px]"
+              >
+                <FiX className="w-4 h-4" />
+                <span className="text-sm font-semibold">Reset Timer</span>
+              </motion.button>
+            )}
+        </div>
+        </div>
+      </motion.div>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="lg:hidden flex justify-between items-center p-4 bg-gray-50 rounded-xl"
+        >
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gray-900">{sessions.length}</p>
+            <p className="text-sm text-gray-600">Sessions</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gray-900">
+              {Math.floor(totalFocusTime / 60)}h {totalFocusTime % 60}m
+            </p>
+            <p className="text-sm text-gray-600">Focus Time</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gray-900">
+              {sessions.length > 0 ? Math.round(totalFocusTime / sessions.length) : 0}m
+            </p>
+            <p className="text-sm text-gray-600">Avg Session</p>
+          </div>
+        </motion.div>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="hidden lg:block space-y-4"
+        >
+          <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+            <p className="text-3xl font-bold text-gray-900">{sessions.length}</p>
+            <p className="text-sm text-gray-600">Sessions</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+            <p className="text-xl font-bold text-gray-900">
+              {Math.floor(totalFocusTime / 60)}h {totalFocusTime % 60}m
+            </p>
+            <p className="text-sm text-gray-600">Focus Time</p>
+            </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+            <p className="text-3xl font-bold text-gray-900">
+              {sessions.length > 0 ? Math.round(totalFocusTime / sessions.length) : 0}m
+            </p>
+            <p className="text-sm text-gray-600">Avg Session</p>
+          </div>
+        </motion.div>
+      </div>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.45 }}
+        className="bg-white rounded-2xl border border-gray-200 shadow-sm"
+      >
+        <div className="p-4 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <FiClock className="text-blue-500" />
+            Today's Sessions
+          </h3>
+          </div>
+        </div>
+        <div className="p-4">
+        <AnimatePresence>
+          {sessions.length === 0 ? (
+              <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+                className="text-center py-12"
+              >
+                <FiActivity className="w-16 h-16 text-gray-300 mx-auto mb-6" />
+                <p className="text-gray-500 mb-6 text-lg">No focus sessions yet today</p>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="px-8 py-4 bg-blue-500 text-white rounded-2xl hover:bg-blue-600 transition-colors font-semibold cursor-pointer text-base min-w-[200px]"
+                >
+                  Start Your First Session
+                </button>
+              </motion.div>
+          ) : (
+              <div className="space-y-3">
+                {[...sessions].reverse().map((session, index) => (
+                <motion.div
+                  key={session.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ delay: index * 0.1 }}
+                    className={`p-4 rounded-xl border transition-all active:scale-98 ${
+                      session.id === conflictingSessionId 
+                        ? 'border-red-300 bg-red-50 shadow-md' 
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  onClick={() => handleEdit(session)}
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between mb-3">
+                          <h4 className="font-semibold text-gray-900 text-lg truncate pr-2">{session.title}</h4>
+                          <div className={`px-3 py-1 rounded-full text-sm font-medium flex-shrink-0 ${
+                            session.score >= 85 ? 'bg-green-100 text-green-800' :
+                            session.score >= 75 ? 'bg-blue-100 text-blue-800' :
+                            session.score >= 65 ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {session.score}%
+                          </div>
+                      </div>
+                        <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 text-base text-gray-600">
+                            <div className="flex items-center gap-2">
+                              <FiClock className="w-4 h-4" />
+                              <span className="font-medium">{session.duration} min</span>
+                            </div>
+                            <span className="text-sm">{formatTime(session.startTime)} - {formatTime(session.endTime)}</span>
+                        </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-400">
+                            <span className="hidden sm:inline">Tap to edit</span>
+                            <FiEdit2 className="w-4 h-4" />
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+              </div>
+          )}
+        </AnimatePresence>
+      </div>
+      </motion.div>
+    </div>
+  );
+  return (
+    <div className="w-full max-w-2xl lg:max-w-6xl xl:max-w-7xl mx-auto p-4 lg:p-8 space-y-6 pb-24 touch-manipulation" style={{ fontFamily: 'Poppins, sans-serif' }}>
+      <AnimatePresence>
+        {titleChangedNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-safe left-4 right-4 sm:left-1/2 sm:right-auto sm:transform sm:-translate-x-1/2 sm:max-w-md z-[9999] bg-blue-500 text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-medium mx-auto"
+            style={{ 
+              top: 'max(1rem, env(safe-area-inset-top, 1rem))',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)'
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
+              <span className="leading-relaxed">{titleChangedNotice}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center"
+      >
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 flex items-center justify-center gap-2 sm:gap-3">
+          <FiActivity className="text-blue-500 w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12" />
+          Focus Insights
+        </h1>
+        <p className="text-gray-600 text-base sm:text-lg lg:text-xl mt-2 sm:mt-3 font-medium">Track your productivity with precision</p>
+            </motion.div>
+      {renderTodayTab()}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ delay: 0.5, type: "spring", stiffness: 200, damping: 20 }}
+        className="fixed z-40"
+        style={{ 
+          bottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))',
+          right: 'max(1.5rem, env(safe-area-inset-right, 1.5rem))'
+        }}
+      >
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          onClick={() => setShowAddModal(true)}
+          className="relative w-16 h-16 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 rounded-full cursor-pointer flex items-center justify-center overflow-hidden group transition-colors duration-200"
+          style={{ 
+            boxShadow: '0 4px 16px rgba(59, 130, 246, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1)',
+            WebkitTapHighlightColor: 'transparent'
+          }}
+          aria-label="Add new focus session"
+        >
+          <FiPlus 
+            className="w-8 h-8 text-white" 
+            strokeWidth={2.5}
+          />
+        </motion.button>
+      </motion.div>
+
+      <Portal>
+        <AnimatePresence>
+          {showAddModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="modal-backdrop-overlay flex items-end sm:items-center justify-center p-0 sm:p-4 cursor-pointer"
+              onClick={() => {
+                setShowAddModal(false);
+                setAddSessionError('');
+                setConflictingSessionId(null);
+                setTitleChangedNotice('');
+              }}
+            >
+              <motion.div
+                initial={{ y: '100%', opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: '100%', opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-sm sm:w-full shadow-xl border border-gray-200 sm:border-white/20 max-h-[85vh] sm:max-h-[90vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex-shrink-0 p-6 pb-4">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900">Add Focus Session</h3>
+                    <button
+                      onClick={() => {
+                        setShowAddModal(false);
+                        setAddSessionError('');
+                        setConflictingSessionId(null);
+                        setTitleChangedNotice('');
+                      }}
+                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
+                    >
+                      <FiX className="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
+                <div ref={addModalScrollRef} className="flex-1 overflow-y-auto px-6">
+                  <div className="space-y-5">
+                  <div>
+                    <label className="block text-base font-medium text-gray-700 mb-2">Session Title</label>
+                    <input
+                      type="text"
+                      value={newSessionTitle}
+                      onChange={(e) => setNewSessionTitle(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+                      placeholder="e.g., Deep Work Session"
+                      autoFocus
+                    />
+                  </div>
+                  <TimePicker
+                    value={newSessionStartTime}
+                    onChange={(time) => setNewSessionStartTime(time)}
+                    label="Start Time"
+                    isStartTime={true}
+                    isAddModal={true}
+                  />
+                  <TimePicker
+                    value={newSessionEndTime}
+                    onChange={(time) => setNewSessionEndTime(time)}
+                    label="End Time"
+                    isStartTime={false}
+                    isAddModal={true}
+                  />
+                  <DurationPicker
+                    startTime={newSessionStartTime}
+                    endTime={newSessionEndTime}
+                    isAddModal={true}
+                  />
+                  {addSessionError && (
+                    <div className="text-red-600 text-base bg-red-50 p-3 rounded-xl border border-red-200">
+                      {addSessionError}
+                  </div>
+                  )}
+                  </div>
+                </div>
+                <div className="flex-shrink-0 p-6 pt-4" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))' }}>
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleAddSession}
+                      className="w-full px-6 py-4 bg-blue-500 text-white rounded-2xl hover:bg-blue-600 transition-colors font-semibold text-base"
+                    >
+                      Add Session
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAddModal(false);
+                        setAddSessionError('');
+                        setConflictingSessionId(null);
+                        setTitleChangedNotice('');
+                      }}
+                      className="w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-2xl hover:bg-gray-200 transition-colors font-medium text-base"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Portal>
+
+      <Portal>
+        <AnimatePresence>
+          {showEditModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="modal-backdrop-overlay flex items-end sm:items-center justify-center p-0 sm:p-4 cursor-pointer"
+              onClick={() => {
+                setShowEditModal(false);
+                setEditSessionError('');
+                setConflictingSessionId(null);
+                setTitleChangedNotice('');
+              }}
+            >
+              <motion.div
+                initial={{ y: '100%', opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: '100%', opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-sm sm:w-full shadow-xl border border-gray-200 sm:border-white/20 max-h-[85vh] sm:max-h-[90vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex-shrink-0 p-6 pb-4">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900">Edit Focus Session</h3>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
+                    >
+                      <FiX className="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
+                <div ref={editModalScrollRef} className="flex-1 overflow-y-auto px-6">
+                  <div className="space-y-5">
+                  <div>
+                    <label className="block text-base font-medium text-gray-700 mb-2">Session Title</label>
+                    <input
+                      type="text"
+                      value={editSessionTitle}
+                      onChange={(e) => setEditSessionTitle(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+                      placeholder="e.g., Deep Work Session"
+                      autoFocus
+                    />
+                  </div>
+                  <TimePicker
+                    value={editSessionStartTime}
+                    onChange={(time) => setEditSessionStartTime(time)}
+                    label="Start Time"
+                    isStartTime={true}
+                    isAddModal={false}
+                  />
+                  <TimePicker
+                    value={editSessionEndTime}
+                    onChange={(time) => setEditSessionEndTime(time)}
+                    label="End Time"
+                    isStartTime={false}
+                    isAddModal={false}
+                  />
+                  <DurationPicker
+                    startTime={editSessionStartTime}
+                    endTime={editSessionEndTime}
+                    isAddModal={false}
+                  />
+                  {editSessionError && (
+                    <div className="text-red-600 text-base bg-red-50 p-3 rounded-xl border border-red-200">
+                      {editSessionError}
+                    </div>
+                  )}
+                  </div>
+                </div>
+                <div className="flex-shrink-0 p-6 pt-4" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 1.5rem))' }}>
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleSaveEdit}
+                      className="w-full px-6 py-4 bg-blue-500 text-white rounded-2xl hover:bg-blue-600 transition-colors font-semibold text-base"
+                    >
+                      Save Changes
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-2xl hover:bg-gray-200 transition-colors font-medium text-base"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Portal>
+    </div>
   );
 };
-
-export default NavigationComponent;
+export default FocusInsightsWidget;
