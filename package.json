@@ -41,7 +41,7 @@
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.2",
     "emoji-picker-react": "^4.12.2",
-    "framer-motion": "^12.19.1",
+    "framer-motion": "^12.23.0",
     "fullcalendar": "^6.1.17",
     "motion": "^12.10.5",
     "next": "15.3.1",

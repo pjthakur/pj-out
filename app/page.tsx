@@ -1,1909 +1,3557 @@
-"use client"
-import type React from "react"
-if (typeof document !== 'undefined') {
-  const link = document.createElement('link')
-  link.href = 'https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;500;600;700&display=swap'
-  link.rel = 'stylesheet'
-  document.head.appendChild(link)
-  const style = document.createElement('style')
-  style.textContent = `
-    ::-webkit-scrollbar {
-      display: none;
-    }
-    * {
-      scrollbar-width: none;
-    }
-    * {
-      -ms-overflow-style: none;
-    }
-    html, body {
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-    }
-    html::-webkit-scrollbar, body::-webkit-scrollbar {
-      display: none;
-    }
-  `
-  document.head.appendChild(style)
+"use client";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  FaGift, 
+  FaRocket, 
+  FaCheckCircle, 
+  FaTimesCircle
+} from "react-icons/fa";
+
+interface IconProps {
+  className?: string;
+  width?: number;
+  height?: number;
+  x?: number;
+  y?: number;
 }
-import { useState, useEffect, useCallback, useRef } from "react"
-import {
-  FaPlay as Play,
-  FaPause as Pause,
-  FaBolt as Zap,
-  FaGem as Gem,
-  FaAtom as Atom,
-  FaStar as Star,
-  FaRocket as Rocket,
-  FaCog as Cog,
-  FaShieldAlt as Shield,
-  FaBullseye as Target,
-  FaClock as Clock,
-  FaMicrochip as Cpu,
-  FaDatabase as Database,
-  FaSatellite as Satellite,
-  FaGlobe as Globe,
-  FaIndustry as Factory,
-  FaWrench as Wrench,
-  FaFlask as Beaker,
-  FaCrown as Crown,
-  FaCog as Settings,
-  FaFire as Flame,
-  FaSave as Save,
-  FaSkull as Skull,
-  FaSun as Sun,
-  FaPlane as Plane,
-  FaHome as Home,
-  FaMicroscope as Microscope,
-  FaCircle as Circle,
-  FaGem as Diamond,
-  FaChartLine as TrendingUp,
-  FaUsers as Users,
-  FaBuilding as Building,
-  FaBookOpen as BookOpen,
-  FaMap as Map,
-  FaDollarSign as DollarSign,
-  FaChartBar as BarChart3,
-  FaTrophy as Trophy,
-  FaVolumeUp as Volume2,
-  FaVolumeMute as VolumeX,
-  FaBell as Bell,
-  FaTimes as X,
-  FaCheck as Check,
-  FaExclamationTriangle as AlertTriangle,
-  FaInfoCircle as Info,
-  FaCheckCircle as CheckCircle,
-  FaTimesCircle as XCircle,
-  FaBars as Menu,
-  FaEllipsisV as MoreVertical,
-} from "react-icons/fa"
-interface GameState {
-  resources: {
-    energy: number
-    minerals: number
-    darkMatter: number
-    antimatter: number
-    quantumFlux: number
-    nanobots: number
-    crystals: number
-    plasma: number
-  }
-  buildings: {
-    solarPanels: number
-    miners: number
-    reactors: number
-    collectors: number
-    refineries: number
-    laboratories: number
-    factories: number
-    shipyards: number
-  }
-  fleet: {
-    scouts: number
-    frigates: number
-    destroyers: number
-    battleships: number
-    carriers: number
-    dreadnoughts: number
-  }
-  research: {
-    energyEfficiency: number
-    miningSpeed: number
-    fleetCapacity: number
-    darkMatterTech: number
-    antimatterTech: number
-    quantumComputing: number
-    nanotechnology: number
-    crystalTech: number
-    plasmaTech: number
-    warpDrive: number
-    shielding: number
-    weaponSystems: number
-  }
-  territories: {
-    solarSystems: number
-    planets: number
-    moons: number
-    asteroids: number
-    spaceStations: number
-  }
-  achievements: { [key: string]: boolean }
-  stats: {
-    totalEarnings: number
-    prestigeLevel: number
-    lastSave: number
-    totalPlayTime: number
-    startTime: number
-    totalClicks: number
-    buildingsBuilt: number
-    shipsLaunched: number
-    researchCompleted: number
-  }
-  market: {
-    prices: { [key: string]: number }
-    lastUpdate: number
-  }
+
+export const Activity = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+  </svg>
+);
+
+export const BookOpen = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+
+export const Brain = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-5 0v-15A2.5 2.5 0 0 1 9.5 2z" />
+    <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 5 0v-15A2.5 2.5 0 0 0 14.5 2z" />
+  </svg>
+);
+
+export const Droplets = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 6 5.3 2.5 3.5 2.5 5.7c0 2.22 1.8 4.05 4 4.05z" />
+    <path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97" />
+  </svg>
+);
+
+export const Salad = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M7 21h10" />
+    <path d="M12 21a9 9 0 0 0 9-9H3a9 9 0 0 0 9 9z" />
+    <path d="M11.38 12a2.4 2.4 0 0 1-.4-4.77 2.4 2.4 0 0 1 3.2-2.77 2.4 2.4 0 0 1 3.47-.63 2.4 2.4 0 0 1 3.37 3.37 2.4 2.4 0 0 1-1.1 3.7 2.51 2.51 0 0 1 .03 1.1" />
+    <path d="m13 12 4-4" />
+    <path d="M10.9 7.25A3.99 3.99 0 0 0 4 10c0 .73.2 1.41.54 2" />
+  </svg>
+);
+
+export const Dumbbell = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M6.5 6.5h11" />
+    <path d="M6.5 17.5h11" />
+    <path d="M6.5 6.5v11" />
+    <path d="M17.5 6.5v11" />
+    <path d="M3 12h18" />
+  </svg>
+);
+
+export const Target = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="6" />
+    <circle cx="12" cy="12" r="2" />
+  </svg>
+);
+
+export const PenTool = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="m12 19 7-7 3 3-7 7-3-3z" />
+    <path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+    <path d="m2 2 7.586 7.586" />
+    <circle cx="11" cy="11" r="2" />
+  </svg>
+);
+
+export const Music = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M9 18V5l12-2v13" />
+    <circle cx="6" cy="18" r="3" />
+    <circle cx="18" cy="16" r="3" />
+  </svg>
+);
+
+export const Smartphone = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
+    <path d="M12 18h.01" />
+  </svg>
+);
+
+export const User = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
+
+export const Palette = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <circle cx="13.5" cy="6.5" r=".5" />
+    <circle cx="17.5" cy="10.5" r=".5" />
+    <circle cx="8.5" cy="7.5" r=".5" />
+    <circle cx="6.5" cy="12.5" r=".5" />
+    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+  </svg>
+);
+
+export const Star = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+
+export const Zap = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  </svg>
+);
+
+export const Flame = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+  </svg>
+);
+
+export const Lightbulb = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M9 18h6" />
+    <path d="M10 22h4" />
+    <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8a6 6 0 0 0-12 0c0 1.23.5 2.4 1.5 3.5.76.76 1.23 1.52 1.41 2.5" />
+  </svg>
+);
+
+export const Gamepad2 = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <line x1="6" x2="10" y1="12" y2="12" />
+    <line x1="8" x2="8" y1="10" y2="14" />
+    <line x1="15" x2="15.01" y1="13" y2="13" />
+    <line x1="18" x2="18.01" y1="11" y2="11" />
+    <rect width="20" height="12" x="2" y="6" rx="2" />
+  </svg>
+);
+
+export const Home = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />
+  </svg>
+);
+
+export const Info = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 16v-4" />
+    <path d="M12 8h.01" />
+  </svg>
+);
+
+export const Plus = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M5 12h14" />
+    <path d="M12 5v14" />
+  </svg>
+);
+
+export const ChevronLeft = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="m15 18-6-6 6-6" />
+  </svg>
+);
+
+export const ChevronRight = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
+
+export const Check = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+export const BarChart3 = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M3 3v18h18" />
+    <path d="M18 17V9" />
+    <path d="M13 17V5" />
+    <path d="M8 17v-3" />
+  </svg>
+);
+
+export const TrendingUp = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+    <polyline points="16 7 22 7 22 13" />
+  </svg>
+);
+
+export const Trophy = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+    <path d="M4 22h16" />
+    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+  </svg>
+);
+
+export const Crown = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7z" />
+    <path d="M12 8v7" />
+    <path d="M8 9v2" />
+    <path d="M16 9v2" />
+  </svg>
+);
+
+export const Diamond = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M2.7 10.3 12 21l9.3-10.7" />
+    <path d="M12 3 2.7 10.3l9.3 10.7 9.3-10.7L12 3Z" />
+  </svg>
+);
+
+export const Sparkles = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+    <path d="M5 3v4" />
+    <path d="M19 17v4" />
+    <path d="M3 5h4" />
+    <path d="M17 19h4" />
+  </svg>
+);
+
+export const Heart = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+  </svg>
+);
+
+export const Coffee = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
+    <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
+    <line x1="6" x2="6" y1="2" y2="4" />
+    <line x1="10" x2="10" y1="2" y2="4" />
+    <line x1="14" x2="14" y1="2" y2="4" />
+  </svg>
+);
+
+export const Sprout = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="M17 20h5v-2a3 3 0 0 0-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 1 5.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 0 1 9.288 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm6 3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
+  </svg>
+);
+
+export const CircleDot = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="1" />
+  </svg>
+);
+
+export const X = ({
+  className,
+  width = 24,
+  height = 24,
+  x,
+  y,
+}: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={width}
+    height={height}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    x={x}
+    y={y}
+  >
+    <path d="m18 6-12 12" />
+    <path d="m6 6 12 12" />
+  </svg>
+);
+
+interface Habit {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  streak: number;
+  longestStreak: number;
+  completedDates: string[];
+  target: number;
+  category: string;
+  createdAt: string;
+  achievedMilestonesHistory?: Array<{ date: string; milestoneDays: number }>;
 }
-const initialState: GameState = {
-  resources: {
-    energy: 1000,
-    minerals: 500,
-    darkMatter: 0,
-    antimatter: 0,
-    quantumFlux: 0,
-    nanobots: 0,
-    crystals: 0,
-    plasma: 0,
-  },
-  buildings: {
-    solarPanels: 2,
-    miners: 1,
-    reactors: 0,
-    collectors: 0,
-    refineries: 0,
-    laboratories: 0,
-    factories: 0,
-    shipyards: 0,
-  },
-  fleet: {
-    scouts: 0,
-    frigates: 0,
-    destroyers: 0,
-    battleships: 0,
-    carriers: 0,
-    dreadnoughts: 0,
-  },
-  research: {
-    energyEfficiency: 0,
-    miningSpeed: 0,
-    fleetCapacity: 0,
-    darkMatterTech: 0,
-    antimatterTech: 0,
-    quantumComputing: 0,
-    nanotechnology: 0,
-    crystalTech: 0,
-    plasmaTech: 0,
-    warpDrive: 0,
-    shielding: 0,
-    weaponSystems: 0,
-  },
-  territories: {
-    solarSystems: 1,
-    planets: 1,
-    moons: 0,
-    asteroids: 0,
-    spaceStations: 0,
-  },
-  achievements: {},
-  stats: {
-    totalEarnings: 0,
-    prestigeLevel: 0,
-    lastSave: Date.now(),
-    totalPlayTime: 0,
-    startTime: Date.now(),
-    totalClicks: 0,
-    buildingsBuilt: 0,
-    shipsLaunched: 0,
-    researchCompleted: 0,
-  },
-  market: {
-    prices: {
-      energy: 1.0,
-      minerals: 1.2,
-      darkMatter: 10.0,
-      antimatter: 50.0,
-      quantumFlux: 100.0,
-      nanobots: 500.0,
-      crystals: 25.0,
-      plasma: 75.0,
-    },
-    lastUpdate: Date.now(),
-  },
+
+interface DayCompletion {
+  date: string;
+  habits: { [habitId: string]: boolean };
+  timestamp: number;
 }
-const BUILDING_DATA = {
-  solarPanels: {
-    name: "Solar Panel",
-    icon: Sun,
-    description: "Converts stellar radiation into energy",
-    baseProduction: { energy: 3 },
-    baseCost: { energy: 100 },
-    costMultiplier: 1.15,
-    unlocked: true,
-  },
-  miners: {
-    name: "Mining Drone",
-    icon: Gem,
-    description: "Extracts minerals from asteroids",
-    baseProduction: { minerals: 2 },
-    baseCost: { energy: 200, minerals: 50 },
-    costMultiplier: 1.15,
-    unlocked: true,
-  },
-  reactors: {
-    name: "Fusion Reactor",
-    icon: Atom,
-    description: "High-efficiency energy generation",
-    baseProduction: { energy: 25 },
-    baseCost: { energy: 1000, minerals: 400 },
-    costMultiplier: 1.2,
-    unlocked: true,
-  },
-  collectors: {
-    name: "Dark Matter Collector",
-    icon: Database,
-    description: "Harvests exotic dark matter",
-    baseProduction: { darkMatter: 0.2 },
-    baseCost: { energy: 5000, minerals: 2000 },
-    costMultiplier: 1.25,
-    unlocked: true,
-  },
-  refineries: {
-    name: "Antimatter Refinery",
-    icon: Beaker,
-    description: "Processes dark matter into antimatter",
-    baseProduction: { antimatter: 0.05 },
-    baseCost: { energy: 10000, minerals: 5000, darkMatter: 100 },
-    costMultiplier: 1.3,
-    unlockRequirement: { research: { darkMatterTech: 1 } },
-  },
-  laboratories: {
-    name: "Research Laboratory",
-    icon: Microscope,
-    description: "Accelerates research progress",
-    baseProduction: { quantumFlux: 0.1 },
-    baseCost: { energy: 25000, minerals: 10000, darkMatter: 500 },
-    costMultiplier: 1.35,
-    unlockRequirement: { research: { quantumComputing: 1 } },
-  },
-  factories: {
-    name: "Nanobot Factory",
-    icon: Factory,
-    description: "Produces self-replicating nanobots",
-    baseProduction: { nanobots: 1 },
-    baseCost: { energy: 50000, minerals: 25000, antimatter: 100 },
-    costMultiplier: 1.4,
-    unlockRequirement: { research: { nanotechnology: 1 } },
-  },
-  shipyards: {
-    name: "Orbital Shipyard",
-    icon: Wrench,
-    description: "Constructs advanced spacecraft",
-    baseProduction: { crystals: 0.1 },
-    baseCost: { energy: 100000, minerals: 50000, antimatter: 500 },
-    costMultiplier: 1.45,
-    unlockRequirement: { research: { fleetCapacity: 3 } },
-  },
+
+interface Milestone {
+  days: number;
+  title: string;
+  icon: string;
+  color: string;
 }
-const FLEET_DATA = {
-  scouts: {
-    name: "Scout Ship",
-    icon: Satellite,
-    description: "Fast reconnaissance vessel",
-    baseStats: { exploration: 1, combat: 0.1 },
-    baseCost: { energy: 500, minerals: 200 },
-    costMultiplier: 1.1,
-    unlocked: true,
-  },
-  frigates: {
-    name: "Frigate",
-    icon: Shield,
-    description: "Balanced combat vessel",
-    baseStats: { exploration: 0.5, combat: 1 },
-    baseCost: { energy: 2000, minerals: 800, darkMatter: 20 },
-    costMultiplier: 1.15,
-    unlockRequirement: { research: { fleetCapacity: 1 } },
-  },
-  destroyers: {
-    name: "Destroyer",
-    icon: Target,
-    description: "Heavy combat vessel",
-    baseStats: { exploration: 0.3, combat: 2.5 },
-    baseCost: { energy: 8000, minerals: 3000, darkMatter: 100 },
-    costMultiplier: 1.2,
-    unlockRequirement: { research: { weaponSystems: 2 } },
-  },
-  battleships: {
-    name: "Battleship",
-    icon: Globe,
-    description: "Massive warship",
-    baseStats: { exploration: 0.2, combat: 5 },
-    baseCost: { energy: 25000, minerals: 10000, darkMatter: 500, antimatter: 50 },
-    costMultiplier: 1.25,
-    unlockRequirement: { research: { weaponSystems: 5 } },
-  },
-  carriers: {
-    name: "Carrier",
-    icon: Plane,
-    description: "Mobile fleet command center",
-    baseStats: { exploration: 1, combat: 3, support: 2 },
-    baseCost: { energy: 100000, minerals: 40000, antimatter: 200, nanobots: 500 },
-    costMultiplier: 1.3,
-    unlockRequirement: { research: { fleetCapacity: 8 } },
-  },
-  dreadnoughts: {
-    name: "Dreadnought",
-    icon: Skull,
-    description: "Ultimate weapon of war",
-    baseStats: { combat: 15, intimidation: 5 },
-    baseCost: { energy: 500000, minerals: 200000, antimatter: 1000, crystals: 100 },
-    costMultiplier: 1.35,
-    unlockRequirement: { research: { weaponSystems: 10 } },
-  },
+
+interface NewHabitForm {
+  name: string;
+  icon: string;
+  category: string;
 }
-const RESEARCH_DATA = {
-  energyEfficiency: {
-    name: "Energy Efficiency",
-    icon: Zap,
-    description: "Improves energy production by 25% per level",
-    baseCost: { energy: 2000 },
-    costMultiplier: 2.5,
-    maxLevel: 20,
-    unlocked: true,
-  },
-  miningSpeed: {
-    name: "Mining Speed",
-    icon: Gem,
-    description: "Increases mineral extraction by 30% per level",
-    baseCost: { energy: 3000, minerals: 1000 },
-    costMultiplier: 2.5,
-    maxLevel: 20,
-    unlocked: true,
-  },
-  fleetCapacity: {
-    name: "Fleet Capacity",
-    icon: Rocket,
-    description: "Unlocks new ship types and improves fleet effectiveness",
-    baseCost: { energy: 5000, minerals: 2000 },
-    costMultiplier: 3,
-    maxLevel: 15,
-    unlocked: true,
-  },
-  darkMatterTech: {
-    name: "Dark Matter Technology",
-    icon: Atom,
-    description: "Enables dark matter manipulation and improves collection",
-    baseCost: { energy: 10000, minerals: 5000 },
-    costMultiplier: 3.5,
-    maxLevel: 12,
-    unlocked: true,
-  },
-  antimatterTech: {
-    name: "Antimatter Technology",
-    icon: Star,
-    description: "Unlocks antimatter production and applications",
-    baseCost: { energy: 25000, darkMatter: 500 },
-    costMultiplier: 4,
-    maxLevel: 10,
-    unlockRequirement: { research: { darkMatterTech: 3 } },
-  },
-  quantumComputing: {
-    name: "Quantum Computing",
-    icon: Cpu,
-    description: "Enables quantum calculations and advanced research",
-    baseCost: { energy: 50000, minerals: 20000, darkMatter: 1000 },
-    costMultiplier: 4.5,
-    maxLevel: 10,
-    unlockRequirement: { research: { darkMatterTech: 5 } },
-  },
-  nanotechnology: {
-    name: "Nanotechnology",
-    icon: Cog,
-    description: "Enables molecular-scale manufacturing",
-    baseCost: { energy: 100000, antimatter: 500 },
-    costMultiplier: 5,
-    maxLevel: 8,
-    unlockRequirement: { research: { antimatterTech: 3, quantumComputing: 2 } },
-  },
-  crystalTech: {
-    name: "Crystal Technology",
-    icon: Diamond,
-    description: "Harnesses the power of exotic crystals",
-    baseCost: { energy: 200000, nanobots: 1000, quantumFlux: 100 },
-    costMultiplier: 5.5,
-    maxLevel: 8,
-    unlockRequirement: { research: { nanotechnology: 3 } },
-  },
-  plasmaTech: {
-    name: "Plasma Technology",
-    icon: Flame,
-    description: "Controls high-energy plasma states",
-    baseCost: { energy: 500000, crystals: 500, quantumFlux: 250 },
-    costMultiplier: 6,
-    maxLevel: 8,
-    unlockRequirement: { research: { crystalTech: 3 } },
-  },
-  warpDrive: {
-    name: "Warp Drive",
-    icon: Rocket,
-    description: "Enables faster-than-light travel",
-    baseCost: { energy: 1000000, antimatter: 5000, crystals: 1000 },
-    costMultiplier: 7,
-    maxLevel: 10,
-    unlockRequirement: { research: { plasmaTech: 2, fleetCapacity: 8 } },
-  },
-  shielding: {
-    name: "Advanced Shielding",
-    icon: Shield,
-    description: "Protects against cosmic threats",
-    baseCost: { energy: 150000, minerals: 50000, darkMatter: 2000 },
-    costMultiplier: 4,
-    maxLevel: 12,
-    unlockRequirement: { research: { fleetCapacity: 3 } },
-  },
-  weaponSystems: {
-    name: "Weapon Systems",
-    icon: Target,
-    description: "Develops advanced combat technologies",
-    baseCost: { energy: 300000, minerals: 100000, antimatter: 1000 },
-    costMultiplier: 4.5,
-    maxLevel: 20,
-    unlockRequirement: { research: { fleetCapacity: 2 } },
-  },
+
+interface UserProfile {
+  name: string;
+  email: string;
+  image: string;
+  joinedDate: string;
 }
-const ACHIEVEMENTS = {
-  firstStep: {
-    name: "First Step",
-    description: "Build your first structure",
-    icon: Home,
-    requirement: { buildingsBuilt: 1 },
-    reward: { energy: 1000 },
-  },
-  energyMaster: {
-    name: "Energy Master",
-    description: "Reach 1M energy",
-    icon: Zap,
-    requirement: { resources: { energy: 1000000 } },
-    reward: { energy: 10000 },
-  },
-  fleetCommander: {
-    name: "Fleet Commander",
-    description: "Launch 100 ships",
-    icon: Rocket,
-    requirement: { shipsLaunched: 100 },
-    reward: { minerals: 50000 },
-  },
-  researcher: {
-    name: "Researcher",
-    description: "Complete 10 research projects",
-    icon: Beaker,
-    requirement: { researchCompleted: 10 },
-    reward: { darkMatter: 1000 },
-  },
-  industrialist: {
-    name: "Industrialist",
-    description: "Build 1000 structures",
-    icon: Factory,
-    requirement: { buildingsBuilt: 1000 },
-    reward: { antimatter: 500 },
-  },
-  warlord: {
-    name: "Warlord",
-    description: "Launch 1000 warships",
-    icon: Skull,
-    requirement: { shipsLaunched: 1000 },
-    reward: { crystals: 100 },
-  },
-  emperor: {
-    name: "Emperor",
-    description: "Control 100 solar systems",
-    icon: Crown,
-    requirement: { territories: { solarSystems: 100 } },
-    reward: { plasma: 50 },
-  },
-  transcendent: {
-    name: "Transcendent",
-    description: "Reach prestige level 10",
-    icon: Star,
-    requirement: { prestigeLevel: 10 },
-    reward: { quantumFlux: 1000 },
-  },
+
+interface Toast {
+  id: string;
+  message: string;
+  type: "info" | "success" | "warning";
 }
-export default function SpaceIdleGame() {
-  const [gameState, setGameState] = useState<GameState>(initialState)
-  const [gameStarted, setGameStarted] = useState(false)
-  const [hasSavedData, setHasSavedData] = useState(false)
-  useEffect(() => {
-    gameStateRef.current = gameState
-  }, [gameState])
-  const [isPlaying, setIsPlaying] = useState(true)
-  const [activeTab, setActiveTab] = useState("buildings")
-  const [notifications, setNotifications] = useState<
-    Array<{ id: string; message: string; type: string; timestamp: number }>
-  >([])
-  const [showStats, setShowStats] = useState(false)
-  const [showAchievements, setShowAchievements] = useState(false)
-  const [showMobileMenu, setShowMobileMenu] = useState(false)
-  const [showSidebar, setShowSidebar] = useState(true)
-  const [lastUpdate, setLastUpdate] = useState(Date.now())
-  const gameLoopRef = useRef<NodeJS.Timeout | null>(null)
-  const gameStateRef = useRef<GameState>(gameState)
-  const formatNumber = (num: number): string => {
-    if (num >= 1e15) return (num / 1e15).toFixed(2) + "Q"
-    if (num >= 1e12) return (num / 1e12).toFixed(2) + "T"
-    if (num >= 1e9) return (num / 1e9).toFixed(2) + "B"
-    if (num >= 1e6) return (num / 1e6).toFixed(2) + "M"
-    if (num >= 1e3) return (num / 1e3).toFixed(2) + "K"
-    return num.toFixed(1)
-  }
-  const formatTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    const secs = Math.floor(seconds % 60)
-    if (hours > 0) return `${hours}h ${minutes}m`
-    if (minutes > 0) return `${minutes}m ${secs}s`
-    return `${secs}s`
-  }
-  const addNotification = useCallback((message: string, type: "info" | "success" | "warning" | "error" = "info") => {
-    const notification = {
-      id: Date.now().toString(),
-      message,
-      type,
-      timestamp: Date.now(),
-    }
-    setNotifications((prev) => [...prev.slice(-4), notification])
-    setTimeout(() => {
-      setNotifications((prev) => prev.filter((n) => n.id !== notification.id))
-    }, 5000)
-  }, [])
-  const checkAchievements = useCallback(
-    (state: GameState) => {
-      Object.entries(ACHIEVEMENTS).forEach(([key, achievement]) => {
-        if (state.achievements[key]) return
-        let unlocked = false
-        const req = achievement.requirement
-        if ("buildingsBuilt" in req && state.stats.buildingsBuilt >= req.buildingsBuilt) unlocked = true
-        if ("shipsLaunched" in req && state.stats.shipsLaunched >= req.shipsLaunched) unlocked = true
-        if ("researchCompleted" in req && state.stats.researchCompleted >= req.researchCompleted) unlocked = true
-        if ("prestigeLevel" in req && state.stats.prestigeLevel >= req.prestigeLevel) unlocked = true
-        if ("resources" in req) {
-          unlocked = Object.entries(req.resources).every(
-            ([resource, amount]) => state.resources[resource as keyof GameState["resources"]] >= (amount as number),
-          )
-        }
-        if ("territories" in req) {
-          unlocked = Object.entries(req.territories).every(
-            ([territory, amount]) => state.territories[territory as keyof GameState["territories"]] >= (amount as number),
-          )
-        }
-        if (unlocked) {
-          setGameState((prev) => ({
-            ...prev,
-            achievements: { ...prev.achievements, [key]: true },
-            resources: {
-              ...prev.resources,
-              ...Object.fromEntries(
-                Object.entries(achievement.reward).map(([resource, amount]) => [
-                  resource,
-                  prev.resources[resource as keyof GameState["resources"]] + amount,
-                ]),
-              ),
-            },
-          }))
-          addNotification(`Achievement Unlocked: ${achievement.name}!`, "success")
-        }
-      })
-    },
-    [addNotification],
-  )
-  const isUnlocked = useCallback((item: any, state: GameState) => {
-    if (item.unlocked) return true
-    if (!item.unlockRequirement) return false
-    const req = item.unlockRequirement
-    if (req.research) {
-      return Object.entries(req.research).every(
-        ([tech, level]) => state.research[tech as keyof GameState["research"]] >= (level as number),
-      )
-    }
-    return false
-  }, [])
-  const calculateProduction = useCallback((state: GameState) => {
-    const production = {
-      energy: 0,
-      minerals: 0,
-      darkMatter: 0,
-      antimatter: 0,
-      quantumFlux: 0,
-      nanobots: 0,
-      crystals: 0,
-      plasma: 0,
-    }
-    Object.entries(BUILDING_DATA).forEach(([buildingKey, buildingData]) => {
-      const count = state.buildings[buildingKey as keyof GameState["buildings"]]
-      if (count > 0 && buildingData.baseProduction) {
-        Object.entries(buildingData.baseProduction).forEach(([resource, amount]) => {
-          production[resource as keyof typeof production] += amount * count
-        })
+
+const STORAGE_KEYS = {
+  HABITS: "habit-tracker-habits",
+  COMPLETIONS: "habit-tracker-completions",
+  PROFILE: "habit-tracker-profile",
+  LAST_OPENED: "habit-tracker-last-opened",
+  AUTO_CHECKIN_DISMISSED: "habit-tracker-auto-checkin-dismissed",
+};
+
+const HabitTracker: React.FC = () => {
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [currentDate] = useState(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [showCheckIn, setShowCheckIn] = useState(false);
+  const [showAddHabit, setShowAddHabit] = useState(false);
+  const [completions, setCompletions] = useState<DayCompletion[]>([]);
+  const [animatingHabit, setAnimatingHabit] = useState<string | null>(null);
+  const [celebratingMilestone, setCelebratingMilestone] = useState<{
+    habitId: string;
+    milestone: Milestone;
+  } | null>(null);
+  const [selectedHabit, setSelectedHabit] = useState<string | null>(null);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(
+    null
+  );
+  const [viewMode, setViewMode] = useState<
+    "overview" | "timeline" | "analytics"
+  >("overview");
+  const [monthTransition, setMonthTransition] = useState<
+    "none" | "left" | "right"
+  >("none");
+  const [newHabitForm, setNewHabitForm] = useState<NewHabitForm>({
+    name: "",
+    icon: "Target",
+    category: "Health",
+  });
+  const [activeTab, setActiveTab] = useState<"home" | "profile" | "about">(
+    "home"
+  );
+  const [userProfile, setUserProfile] = useState<UserProfile>({
+    name: "Alex Johnson",
+    email: "alex.johnson@email.com",
+    image: "User",
+    joinedDate: new Date().toISOString(),
+  });
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [streakCelebration, setStreakCelebration] = useState<{
+    habitId: string;
+    streak: number;
+  } | null>(null);
+  const [showMilestoneMarkers, setShowMilestoneMarkers] = useState(false);
+  const [pendingCompletions, setPendingCompletions] = useState<{
+    [habitId: string]: boolean;
+  }>({});
+  const [timelineMilestoneDetail, setTimelineMilestoneDetail] = useState<{
+    date: string;
+    milestone: Milestone;
+  } | null>(null);
+  const [shouldAutoOpenCheckIn, setShouldAutoOpenCheckIn] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
+
+
+  const fadeIn = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 0.3 } }
+  };
+
+  const fadeInUp = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+  };
+
+  const fadeInStagger = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { 
+        duration: 0.3,
+        staggerChildren: 0.1 
       }
-    })
-    const energyMult = 1 + state.research.energyEfficiency * 0.25
-    const miningMult = 1 + state.research.miningSpeed * 0.3
-    const darkMatterMult = 1 + state.research.darkMatterTech * 0.4
-    const antimatterMult = 1 + state.research.antimatterTech * 0.5
-    const quantumMult = 1 + state.research.quantumComputing * 0.3
-    const nanoMult = 1 + state.research.nanotechnology * 0.4
-    const crystalMult = 1 + state.research.crystalTech * 0.5
-    const plasmaMult = 1 + state.research.plasmaTech * 0.6
-    production.energy *= energyMult
-    production.minerals *= miningMult
-    production.darkMatter *= darkMatterMult
-    production.antimatter *= antimatterMult
-    production.quantumFlux *= quantumMult
-    production.nanobots *= nanoMult
-    production.crystals *= crystalMult
-    production.plasma *= plasmaMult
-    const fleetBonus = Object.entries(FLEET_DATA).reduce((total, [shipKey, shipData]) => {
-      const count = state.fleet[shipKey as keyof GameState["fleet"]]
-      const explorationValue = "exploration" in shipData.baseStats ? shipData.baseStats.exploration : 0
-      return total + count * explorationValue * 0.1
-    }, 0)
-    Object.keys(production).forEach((resource) => {
-      production[resource as keyof typeof production] += fleetBonus
-    })
-    const territoryMult =
-      1 +
-      (state.territories.solarSystems - 1) * 0.1 +
-      state.territories.planets * 0.05 +
-      state.territories.spaceStations * 0.02
-    Object.keys(production).forEach((resource) => {
-      production[resource as keyof typeof production] *= territoryMult
-    })
-    const prestigeMult = 1 + state.stats.prestigeLevel * 0.1
-    Object.keys(production).forEach((resource) => {
-      production[resource as keyof typeof production] *= prestigeMult
-    })
-    return production
-  }, [])
-  const gameLoop = useCallback(() => {
-    if (!isPlaying) return
-    const now = Date.now()
-    const deltaTime = (now - lastUpdate) / 1000
-    setLastUpdate(now)
-    setGameState((prevState) => {
-      const production = calculateProduction(prevState)
-      const newResources = { ...prevState.resources }
-      Object.entries(production).forEach(([resource, amount]) => {
-        newResources[resource as keyof GameState["resources"]] += amount * deltaTime
-      })
-      const newState = {
-        ...prevState,
-        resources: newResources,
-        stats: {
-          ...prevState.stats,
-          totalEarnings: prevState.stats.totalEarnings + (production.energy + production.minerals) * deltaTime,
-          totalPlayTime: prevState.stats.totalPlayTime + deltaTime,
-        },
-      }
-      checkAchievements(newState)
-      return newState
-    })
-  }, [isPlaying, lastUpdate, calculateProduction, checkAchievements])
-  useEffect(() => {
-    if (isPlaying) {
-      setLastUpdate(Date.now())
     }
-  }, [isPlaying])
-  const calculateOfflineEarnings = useCallback(
-    (lastSave: number, currentTime: number, state: GameState) => {
-      const offlineTime = Math.min((currentTime - lastSave) / 1000, 3600 * 12)
-      const production = calculateProduction(state)
-      const earnings = {
-        energy: production.energy * offlineTime,
-        minerals: production.minerals * offlineTime,
-        darkMatter: production.darkMatter * offlineTime,
-        antimatter: production.antimatter * offlineTime,
-        quantumFlux: production.quantumFlux * offlineTime,
-        nanobots: production.nanobots * offlineTime,
-        crystals: production.crystals * offlineTime,
-        plasma: production.plasma * offlineTime,
-      }
-      return { earnings, offlineTime }
+  };
+
+
+
+
+
+  const expandCollapse = {
+    hidden: { opacity: 0, height: 0, transition: { duration: 0.3 } },
+    visible: { 
+      opacity: 1, 
+      height: "auto", 
+      transition: { 
+        duration: 0.4, 
+        ease: "easeInOut" as const,
+        height: { duration: 0.4 },
+        opacity: { duration: 0.3, delay: 0.1 }
+      } 
+    }
+  };
+
+  const tabContentVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { 
+        duration: 0.5, 
+        ease: "easeOut" as const,
+        staggerChildren: 0.1 
+      } 
     },
-    [calculateProduction],
-  )
-  const saveGame = useCallback(() => {
-    const currentGameState = gameStateRef.current
-    const saveData = {
-      ...currentGameState,
-      stats: {
-        ...currentGameState.stats,
-        lastSave: Date.now(),
+    exit: { 
+      opacity: 0, 
+      y: -20, 
+      transition: { duration: 0.3 } 
+    }
+  };
+
+  const buttonHover = {
+    rest: { scale: 1 },
+    hover: { scale: 1.02, transition: { duration: 0.2 } },
+    tap: { scale: 0.98, transition: { duration: 0.1 } }
+  };
+
+  const iconMap = useMemo(
+    () => ({
+      Activity,
+      BookOpen,
+      Brain,
+      Droplets,
+      Salad,
+      Dumbbell,
+      Target,
+      PenTool,
+      Music,
+      Smartphone,
+      Coffee,
+      Palette,
+      Star,
+      Zap,
+      Flame,
+      Lightbulb,
+      Gamepad2,
+      Home,
+      Info,
+      Plus,
+      ChevronLeft,
+      ChevronRight,
+      Check,
+      BarChart3,
+      TrendingUp,
+      Trophy,
+      Crown,
+      Diamond,
+      Sparkles,
+      Heart,
+      X,
+    }),
+    []
+  );
+
+  const milestones: Milestone[] = useMemo(
+    () => [
+      {
+        days: 3,
+        title: "First Steps",
+        icon: "Sprout",
+        color: "from-green-400 to-emerald-500",
       },
-    }
-    localStorage.setItem("spaceIdleGame", JSON.stringify(saveData))
-    addNotification("Game saved successfully", "success")
-  }, [addNotification])
-  const loadGame = useCallback(() => {
+      {
+        days: 7,
+        title: "One Week Strong",
+        icon: "Sparkles",
+        color: "from-emerald-400 to-green-500",
+      },
+      {
+        days: 14,
+        title: "Two Week Warrior",
+        icon: "Zap",
+        color: "from-green-400 to-teal-500",
+      },
+      {
+        days: 21,
+        title: "Habit Former",
+        icon: "Trophy",
+        color: "from-teal-400 to-green-500",
+      },
+      {
+        days: 30,
+        title: "Monthly Master",
+        icon: "Crown",
+        color: "from-lime-400 to-green-500",
+      },
+      {
+        days: 60,
+        title: "Consistency Champion",
+        icon: "Flame",
+        color: "from-green-500 to-emerald-500",
+      },
+      {
+        days: 90,
+        title: "Quarterly Queen/King",
+        icon: "Diamond",
+        color: "from-emerald-500 to-green-600",
+      },
+      {
+        days: 180,
+        title: "Half-Year Hero",
+        icon: "Star",
+        color: "from-green-600 to-teal-600",
+      },
+      {
+        days: 365,
+        title: "Year-Long Legend",
+        icon: "Target",
+        color: "from-gradient-rainbow",
+      },
+    ],
+    []
+  );
+
+  const habitIcons = useMemo(
+    () => [
+      "Activity",
+      "BookOpen",
+      "Brain",
+      "Droplets",
+      "Salad",
+      "Dumbbell",
+      "Target",
+      "PenTool",
+      "Music",
+      "Smartphone",
+      "Coffee",
+      "Palette",
+      "Star",
+      "Zap",
+      "Flame",
+      "Lightbulb",
+      "Gamepad2",
+      "Home",
+    ],
+    []
+  );
+
+  const categories = useMemo(
+    () => [
+      "Health",
+      "Learning",
+      "Wellness",
+      "Productivity",
+      "Creative",
+      "Social",
+    ],
+    []
+  );
+
+  const profileIcons = useMemo(
+    () => [
+      "User",
+      "Star",
+      "Zap",
+      "Flame",
+      "Diamond",
+      "Target",
+      "Dumbbell",
+      "Brain",
+      "BookOpen",
+      "Palette",
+      "Trophy",
+      "Crown",
+    ],
+    []
+  );
+
+  const navItems = useMemo(
+    () => [
+      { id: "home", label: "Home", icon: Home },
+      { id: "profile", label: "Profile", icon: User },
+      { id: "about", label: "About", icon: Info },
+    ],
+    []
+  );
+
+  const getIconComponent = useCallback(
+    (iconName: string) => {
+      return iconMap[iconName as keyof typeof iconMap] || Target;
+    },
+    [iconMap]
+  );
+
+  const formatDate = useCallback((date: Date): string => {
+    return date.toISOString().split("T")[0];
+  }, []);
+
+  const saveToStorage = useCallback((key: string, data: any) => {
     try {
-      const saved = localStorage.getItem("spaceIdleGame")
-      if (saved) {
-        const parsedState = JSON.parse(saved)
-        const currentTime = Date.now()
-        const { earnings, offlineTime } = calculateOfflineEarnings(parsedState.stats.lastSave, currentTime, parsedState)
-        if (offlineTime > 60) {
-          const totalValue = Object.values(earnings).reduce((sum, val) => sum + val, 0)
-          if (totalValue > 0) {
-            addNotification(`Welcome back! Offline for ${formatTime(offlineTime)}`, "info")
-            addNotification(`Offline earnings: ${formatNumber(totalValue)} total resources`, "success")
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (error) {
+    }
+  }, []);
+
+  const loadFromStorage = useCallback((key: string) => {
+    try {
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : null;
+    } catch (error) {
+      return null;
+    }
+  }, []);
+
+  const generateInitialData = useCallback(() => {
+    const mockHabits: Habit[] = [
+      {
+        id: "1",
+        name: "Morning Workout",
+        color: "from-green-500 to-emerald-600",
+        icon: "Dumbbell",
+        streak: 5,
+        longestStreak: 12,
+        completedDates: [],
+        target: 30,
+        category: "Health",
+        createdAt: new Date(
+          Date.now() - 30 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+        achievedMilestonesHistory: [],
+      },
+      {
+        id: "2",
+        name: "Read 30 Minutes",
+        color: "from-emerald-500 to-teal-500",
+        icon: "BookOpen",
+        streak: 3,
+        longestStreak: 8,
+        completedDates: [],
+        target: 30,
+        category: "Learning",
+        createdAt: new Date(
+          Date.now() - 25 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+        achievedMilestonesHistory: [],
+      },
+      {
+        id: "3",
+        name: "Meditation",
+        color: "from-teal-500 to-green-500",
+        icon: "Brain",
+        streak: 7,
+        longestStreak: 15,
+        completedDates: [],
+        target: 30,
+        category: "Wellness",
+        createdAt: new Date(
+          Date.now() - 20 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+        achievedMilestonesHistory: [],
+      },
+      {
+        id: "4",
+        name: "Drink Water",
+        color: "from-blue-500 to-teal-500",
+        icon: "Droplets",
+        streak: 2,
+        longestStreak: 10,
+        completedDates: [],
+        target: 30,
+        category: "Health",
+        createdAt: new Date(
+          Date.now() - 15 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+        achievedMilestonesHistory: [],
+      },
+    ];
+
+    const mockCompletions: DayCompletion[] = [];
+    const today = new Date();
+
+    for (let i = 30; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = formatDate(date);
+
+      const dayCompletion: DayCompletion = {
+        date: dateStr,
+        habits: {},
+        timestamp: date.getTime(),
+      };
+
+      mockHabits.forEach((habit) => {
+        let completionChance = 0.7;
+        
+        if (habit.id === "1") {
+          const dayOfWeek = date.getDay();
+          if (dayOfWeek === 0 || dayOfWeek === 6) {
+            completionChance = 0.3;
+          } else {
+            completionChance = 0.8;
           }
         }
-        setGameState({
-          ...parsedState,
-          resources: {
-            energy: parsedState.resources.energy + earnings.energy,
-            minerals: parsedState.resources.minerals + earnings.minerals,
-            darkMatter: parsedState.resources.darkMatter + earnings.darkMatter,
-            antimatter: parsedState.resources.antimatter + earnings.antimatter,
-            quantumFlux: parsedState.resources.quantumFlux + earnings.quantumFlux,
-            nanobots: parsedState.resources.nanobots + earnings.nanobots,
-            crystals: parsedState.resources.crystals + earnings.crystals,
-            plasma: parsedState.resources.plasma + earnings.plasma,
-          },
-          stats: {
-            ...parsedState.stats,
-            lastSave: currentTime,
-            totalPlayTime: parsedState.stats.totalPlayTime + offlineTime,
-          },
-        })
-      }
-    } catch (error) {
-      console.error("Failed to load game:", error)
-      addNotification("Failed to load saved game", "error")
+        
+        if (habit.id === "2") {
+          completionChance = 0.6;
+          if (i >= 15 && i <= 20) {
+            completionChance = 0.2;
+          }
+        }
+        
+        if (habit.id === "3") {
+          completionChance = 0.85;
+          if (i >= 20 && i <= 25) {
+            completionChance = 0.3;
+          }
+        }
+        
+        if (habit.id === "4") {
+          completionChance = 0.5;
+          if (i === 5 || i === 12 || i === 18 || i === 22) {
+            completionChance = 0.1;
+          }
+        }
+
+        if (Math.random() < completionChance) {
+          dayCompletion.habits[habit.id] = true;
+        }
+      });
+
+      mockCompletions.push(dayCompletion);
     }
-  }, [calculateOfflineEarnings, addNotification])
-  const startNewGame = useCallback(() => {
-    setGameState(initialState)
-    setGameStarted(true)
-    addNotification("Welcome to Cosmic Empire!", "info")
-  }, [addNotification])
-  const continueGame = useCallback(() => {
-    loadGame()
-    setGameStarted(true)
-  }, [loadGame])
-  const exitToMenu = useCallback(() => {
-    setGameStarted(false)
-  }, [])
+
+    return { habits: mockHabits, completions: mockCompletions };
+  }, [formatDate]);
+
   useEffect(() => {
-    setLastUpdate(Date.now())
-    try {
-      const saved = localStorage.getItem("spaceIdleGame")
-      setHasSavedData(saved !== null)
-    } catch (error) {
-      setHasSavedData(false)
+    if (!isInitialized) {
+      const savedHabits = loadFromStorage(STORAGE_KEYS.HABITS);
+      const savedCompletions = loadFromStorage(STORAGE_KEYS.COMPLETIONS);
+      const savedProfile = loadFromStorage(STORAGE_KEYS.PROFILE);
+      const lastOpened = loadFromStorage(STORAGE_KEYS.LAST_OPENED);
+
+      if (savedHabits && savedCompletions) {
+        const migratedHabits = savedHabits.map((h: Habit) => ({
+          ...h,
+          achievedMilestonesHistory: h.achievedMilestonesHistory || [],
+        }));
+        setHabits(migratedHabits);
+        setCompletions(savedCompletions);
+      } else {
+        const initialData = generateInitialData();
+        setHabits(initialData.habits);
+        setCompletions(initialData.completions);
+      }
+
+      if (savedProfile) {
+        setUserProfile(savedProfile);
+      }
+
+      const today = formatDate(new Date());
+      const lastOpenedDate = lastOpened || '';
+      
+      if (lastOpenedDate !== today) {
+        setShouldAutoOpenCheckIn(true);
+        saveToStorage(STORAGE_KEYS.LAST_OPENED, today);
+      }
+
+      setIsInitialized(true);
     }
-  }, [])
+  }, [isInitialized, loadFromStorage, generateInitialData, formatDate, saveToStorage]);
+
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      const currentGameState = gameStateRef.current
-      const saveData = {
-        ...currentGameState,
-        stats: {
-          ...currentGameState.stats,
-          lastSave: Date.now(),
-        },
-      }
-      localStorage.setItem("spaceIdleGame", JSON.stringify(saveData))
+    if (isInitialized && habits.length > 0) {
+      saveToStorage(STORAGE_KEYS.HABITS, habits);
     }
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        handleBeforeUnload()
-      }
+  }, [habits, isInitialized, saveToStorage]);
+
+  useEffect(() => {
+    if (isInitialized && completions.length > 0) {
+      saveToStorage(STORAGE_KEYS.COMPLETIONS, completions);
     }
-    window.addEventListener("beforeunload", handleBeforeUnload)
-    document.addEventListener("visibilitychange", handleVisibilityChange)
+  }, [completions, isInitialized, saveToStorage]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      saveToStorage(STORAGE_KEYS.PROFILE, userProfile);
+    }
+  }, [userProfile, isInitialized, saveToStorage]);
+
+
+
+  useEffect(() => {
+    const isAnyModalOpen =
+      showCheckIn ||
+      showAddHabit ||
+      celebratingMilestone !== null ||
+      streakCelebration !== null ||
+      timelineMilestoneDetail !== null;
+    document.body.style.overflow = isAnyModalOpen ? "hidden" : "unset";
     return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload)
-      document.removeEventListener("visibilitychange", handleVisibilityChange)
-    }
-  }, [])
-  useEffect(() => {
-    const isAnyModalOpen = showStats || showAchievements
-    if (isAnyModalOpen) {
-      const scrollY = window.scrollY
-      document.body.style.position = 'fixed'
-      document.body.style.top = `-${scrollY}px`
-      document.body.style.left = '0'
-      document.body.style.right = '0'
-      document.body.style.overflow = 'hidden'
-      return () => {
-        document.body.style.position = ''
-        document.body.style.top = ''
-        document.body.style.left = ''
-        document.body.style.right = ''
-        document.body.style.overflow = ''
-        window.scrollTo(0, scrollY)
+      document.body.style.overflow = "unset";
+    };
+  }, [
+    showCheckIn,
+    showAddHabit,
+    celebratingMilestone,
+    streakCelebration,
+    timelineMilestoneDetail,
+  ]);
+
+  const calculateStreakWithCompletions = useCallback(
+    (habit: Habit, currentCompletions: DayCompletion[]): number => {
+      const today = new Date();
+      let streak = 0;
+      let checkDate = new Date(today);
+
+      const todayStr = formatDate(today);
+      const todayCompletion = currentCompletions.find(
+        (c) => c.date === todayStr
+      );
+
+      if (!todayCompletion?.habits[habit.id]) {
+        checkDate.setDate(checkDate.getDate() - 1);
       }
-    }
-  }, [showStats, showAchievements])
-  useEffect(() => {
-    if (gameLoopRef.current) clearInterval(gameLoopRef.current)
-    gameLoopRef.current = setInterval(gameLoop, 100)
-    return () => {
-      if (gameLoopRef.current) clearInterval(gameLoopRef.current)
-    }
-  }, [gameLoop])
-  const canAfford = useCallback(
-    (costs: Partial<GameState["resources"]>) => {
-      return Object.entries(costs).every(
-        ([resource, cost]) => gameState.resources[resource as keyof GameState["resources"]] >= cost,
-      )
-    },
-    [gameState.resources],
-  )
-  const spendResources = useCallback((costs: Partial<GameState["resources"]>) => {
-    setGameState((prev) => ({
-      ...prev,
-      resources: {
-        ...prev.resources,
-        energy: prev.resources.energy - (costs.energy || 0),
-        minerals: prev.resources.minerals - (costs.minerals || 0),
-        darkMatter: prev.resources.darkMatter - (costs.darkMatter || 0),
-        antimatter: prev.resources.antimatter - (costs.antimatter || 0),
-        quantumFlux: prev.resources.quantumFlux - (costs.quantumFlux || 0),
-        nanobots: prev.resources.nanobots - (costs.nanobots || 0),
-        crystals: prev.resources.crystals - (costs.crystals || 0),
-        plasma: prev.resources.plasma - (costs.plasma || 0),
-      },
-      stats: {
-        ...prev.stats,
-        totalClicks: prev.stats.totalClicks + 1,
-      },
-    }))
-  }, [])
-  const buyBuilding = useCallback(
-    (buildingKey: keyof GameState["buildings"], costs: Partial<GameState["resources"]>) => {
-      if (!canAfford(costs)) return
-      spendResources(costs)
-      setGameState((prev) => ({
-        ...prev,
-        buildings: {
-          ...prev.buildings,
-          [buildingKey]: prev.buildings[buildingKey] + 1,
-        },
-        stats: {
-          ...prev.stats,
-          buildingsBuilt: prev.stats.buildingsBuilt + 1,
-        },
-      }))
-      const buildingData = BUILDING_DATA[buildingKey]
-      addNotification(`Built ${buildingData.name}!`, "success")
-    },
-    [canAfford, spendResources, addNotification],
-  )
-  const buyShip = useCallback(
-    (shipKey: keyof GameState["fleet"], costs: Partial<GameState["resources"]>) => {
-      if (!canAfford(costs)) return
-      spendResources(costs)
-      setGameState((prev) => ({
-        ...prev,
-        fleet: {
-          ...prev.fleet,
-          [shipKey]: prev.fleet[shipKey] + 1,
-        },
-        stats: {
-          ...prev.stats,
-          shipsLaunched: prev.stats.shipsLaunched + 1,
-        },
-      }))
-      const shipData = FLEET_DATA[shipKey]
-      addNotification(`Launched ${shipData.name}!`, "success")
-    },
-    [canAfford, spendResources, addNotification],
-  )
-  const buyResearch = useCallback(
-    (techKey: keyof GameState["research"], costs: Partial<GameState["resources"]>) => {
-      const techData = RESEARCH_DATA[techKey]
-      if (!canAfford(costs) || gameState.research[techKey] >= techData.maxLevel) return
-      spendResources(costs)
-      setGameState((prev) => ({
-        ...prev,
-        research: {
-          ...prev.research,
-          [techKey]: prev.research[techKey] + 1,
-        },
-        stats: {
-          ...prev.stats,
-          researchCompleted: prev.stats.researchCompleted + 1,
-        },
-      }))
-      addNotification(`Researched ${techData.name} Level ${gameState.research[techKey] + 1}!`, "success")
-    },
-    [canAfford, spendResources, gameState.research, addNotification],
-  )
-  const prestige = useCallback(() => {
-    if (gameState.stats.totalEarnings < 10000000) {
-      addNotification("Need 10M total earnings to prestige", "warning")
-      return
-    }
-    if (!confirm("Prestige will reset most progress but grant permanent bonuses. Continue?")) return
-    setGameState((prev) => ({
-      ...initialState,
-      stats: {
-        ...initialState.stats,
-        prestigeLevel: prev.stats.prestigeLevel + 1,
-        totalPlayTime: prev.stats.totalPlayTime,
-        startTime: Date.now(),
-        lastSave: Date.now(),
-      },
-      achievements: prev.achievements,
-    }))
-    addNotification("Prestige activated! Starting fresh with bonuses!", "success")
-  }, [gameState.stats.totalEarnings, addNotification])
-  const getBuildingCost = useCallback(
-    (buildingKey: keyof GameState["buildings"]) => {
-      const buildingData = BUILDING_DATA[buildingKey]
-      const count = gameState.buildings[buildingKey]
-      const costs: Partial<GameState["resources"]> = {}
-      Object.entries(buildingData.baseCost).forEach(([resource, baseCost]) => {
-        costs[resource as keyof GameState["resources"]] = Math.floor(
-          baseCost * Math.pow(buildingData.costMultiplier, count),
-        )
-      })
-      return costs
-    },
-    [gameState.buildings],
-  )
-  const getShipCost = useCallback(
-    (shipKey: keyof GameState["fleet"]) => {
-      const shipData = FLEET_DATA[shipKey]
-      const count = gameState.fleet[shipKey]
-      const costs: Partial<GameState["resources"]> = {}
-      Object.entries(shipData.baseCost).forEach(([resource, baseCost]) => {
-        costs[resource as keyof GameState["resources"]] = Math.floor(
-          baseCost * Math.pow(shipData.costMultiplier, count),
-        )
-      })
-      return costs
-    },
-    [gameState.fleet],
-  )
-  const getResearchCost = useCallback(
-    (techKey: keyof GameState["research"]) => {
-      const techData = RESEARCH_DATA[techKey]
-      const level = gameState.research[techKey]
-      const costs: Partial<GameState["resources"]> = {}
-      Object.entries(techData.baseCost).forEach(([resource, baseCost]) => {
-        costs[resource as keyof GameState["resources"]] = Math.floor(
-          baseCost * Math.pow(techData.costMultiplier, level),
-        )
-      })
-      return costs
-    },
-    [gameState.research],
-  )
-  const expandTerritory = useCallback(
-    (territoryType: keyof GameState["territories"]) => {
-      const costs = {
-        solarSystems: { energy: 1000000, minerals: 500000, darkMatter: 10000, antimatter: 1000 },
-        planets: { energy: 100000, minerals: 50000, darkMatter: 1000 },
-        moons: { energy: 50000, minerals: 25000 },
-        asteroids: { energy: 25000, minerals: 10000 },
-        spaceStations: { energy: 500000, minerals: 200000, antimatter: 500, crystals: 100 },
+
+      while (checkDate >= new Date(habit.createdAt)) {
+        const dateStr = formatDate(checkDate);
+        const completion = currentCompletions.find((c) => c.date === dateStr);
+
+        if (completion && completion.habits[habit.id]) {
+          streak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
       }
-      const cost = costs[territoryType]
-      const currentCount = gameState.territories[territoryType]
-      const adjustedCost: Partial<GameState["resources"]> = {}
-      Object.entries(cost).forEach(([resource, baseCost]) => {
-        adjustedCost[resource as keyof GameState["resources"]] = Math.floor(baseCost * Math.pow(1.5, currentCount))
-      })
-      if (!canAfford(adjustedCost)) return
-      spendResources(adjustedCost)
-      setGameState((prev) => ({
-        ...prev,
-        territories: {
-          ...prev.territories,
-          [territoryType]: prev.territories[territoryType] + 1,
-        },
-      }))
-      addNotification(`Expanded to new ${territoryType.replace(/([A-Z])/g, " $1").toLowerCase()}!`, "success")
+
+      return streak;
     },
-    [canAfford, spendResources, gameState.territories, addNotification],
-  )
-  const production = calculateProduction(gameState)
-  const totalAchievements = Object.keys(ACHIEVEMENTS).length
-  const unlockedAchievements = Object.values(gameState.achievements).filter(Boolean).length
-  const NotificationIcon = ({ type }: { type: string }) => {
-    switch (type) {
-      case "success":
-        return <CheckCircle className="w-4 h-4 text-green-400" />
-      case "warning":
-        return <AlertTriangle className="w-4 h-4 text-yellow-400" />
-      case "error":
-        return <XCircle className="w-4 h-4 text-red-400" />
-      default:
-        return <Info className="w-4 h-4 text-blue-400" />
+    [formatDate]
+  );
+
+  const calculateStreak = useCallback(
+    (habit: Habit): number => {
+      return calculateStreakWithCompletions(habit, completions);
+    },
+    [completions, calculateStreakWithCompletions]
+  );
+
+  const getHabitCompletion = useCallback(
+    (habitId: string, date: Date): boolean => {
+      const dateStr = formatDate(date);
+      const completion = completions.find((c) => c.date === dateStr);
+      return completion?.habits[habitId] || false;
+    },
+    [completions, formatDate]
+  );
+
+  const showToast = useCallback(
+    (message: string, type: "info" | "success" | "warning" = "info") => {
+      const id = Date.now().toString();
+      const newToast = { id, message, type };
+      setToasts((prev) => [...prev, newToast]);
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+      }, 3000);
+    },
+    []
+  );
+
+
+  useEffect(() => {
+    if (isInitialized && shouldAutoOpenCheckIn && habits.length > 0 && activeTab === "home") {
+
+      const today = formatDate(new Date());
+      const todayCompletion = completions.find((c) => c.date === today);
+      const hasCheckedInToday = todayCompletion && Object.keys(todayCompletion.habits).length > 0;
+      const autoDismissedDate = loadFromStorage(STORAGE_KEYS.AUTO_CHECKIN_DISMISSED);
+      const hasAutoDismissedToday = autoDismissedDate === today;
+      
+              if (!hasCheckedInToday && !hasAutoDismissedToday) {
+          const timer = setTimeout(() => {
+            setShowCheckIn(true);
+            setShouldAutoOpenCheckIn(false);
+            
+            const hour = new Date().getHours();
+            let message = "Time for your daily check-in!";
+            
+            if (hour >= 5 && hour < 12) {
+              message = "Good morning! Ready to start your day strong?";
+            } else if (hour >= 12 && hour < 17) {
+              message = "Good afternoon! Time for your daily check-in";
+            } else if (hour >= 17 && hour < 21) {
+              message = "Good evening! Let's check in on your habits";
+            } else {
+              message = "Ready to check in on your daily habits?";
+            }
+            
+            showToast(message, "info");
+          }, 1000);
+          
+          return () => clearTimeout(timer);
+        } else {
+          setShouldAutoOpenCheckIn(false);
+        }
     }
-  }
-  if (!gameStarted) {
+  }, [isInitialized, shouldAutoOpenCheckIn, habits.length, activeTab, showToast, formatDate, completions, loadFromStorage]);
+
+  const getCurrentDayCompletions = useCallback(() => {
+    const today = formatDate(currentDate);
+    const todayCompletion = completions.find((c) => c.date === today);
+    const actualCompletions = todayCompletion?.habits || {};
+    return { ...actualCompletions, ...pendingCompletions };
+  }, [currentDate, formatDate, completions, pendingCompletions]);
+
+  const toggleHabitCompletion = useCallback(
+    (habitId: string) => {
+      const currentCompletions = getCurrentDayCompletions();
+      const isCurrentlyCompleted = currentCompletions[habitId] || false;
+
+      setPendingCompletions((prev) => ({
+        ...prev,
+        [habitId]: !isCurrentlyCompleted,
+      }));
+    },
+    [getCurrentDayCompletions]
+  );
+
+  const submitCheckIn = useCallback(() => {
+    const today = formatDate(currentDate);
+    const existingCompletion = completions.find((c) => c.date === today);
+
+    let newCompletions: DayCompletion[];
+
+    if (existingCompletion) {
+      newCompletions = completions.map((c) =>
+        c.date === today
+          ? {
+              ...c,
+              habits: { ...c.habits, ...pendingCompletions },
+              timestamp: Date.now(),
+            }
+          : c
+      );
+    } else {
+      const newCompletion: DayCompletion = {
+        date: today,
+        habits: { ...pendingCompletions },
+        timestamp: Date.now(),
+      };
+      newCompletions = [...completions, newCompletion];
+    }
+
+    setCompletions(newCompletions);
+
+    const updatedHabits = habits.map((habit) => {
+      const newStreak = calculateStreakWithCompletions(habit, newCompletions);
+      let newAchievedHistory = habit.achievedMilestonesHistory
+        ? [...habit.achievedMilestonesHistory]
+        : [];
+
+      const wasCompletedInThisCheckin = pendingCompletions[habit.id];
+      if (wasCompletedInThisCheckin) {
+        const achievedMilestoneForThisHabitNow = milestones.find(
+          (m) => m.days === newStreak
+        );
+        if (achievedMilestoneForThisHabitNow) {
+          const historyEntry = {
+            date: today,
+            milestoneDays: achievedMilestoneForThisHabitNow.days,
+          };
+          const alreadyLogged = newAchievedHistory.some(
+            (entry) =>
+              entry.date === today &&
+              entry.milestoneDays === achievedMilestoneForThisHabitNow.days
+          );
+          if (!alreadyLogged) {
+            newAchievedHistory.push(historyEntry);
+          }
+        }
+      }
+
+      return {
+        ...habit,
+        streak: newStreak,
+        longestStreak: Math.max(habit.longestStreak || 0, newStreak),
+        completedDates: newCompletions
+          .filter((c) => c.habits[habit.id])
+          .map((c) => c.date),
+        achievedMilestonesHistory: newAchievedHistory,
+      };
+    });
+
+    setHabits(updatedHabits);
+
+    Object.entries(pendingCompletions).forEach(([habitId, isCompleted]) => {
+      if (isCompleted) {
+        const habit = updatedHabits.find((h) => h.id === habitId);
+        if (habit) {
+          setTimeout(() => {
+            setAnimatingHabit(habitId);
+            
+            if (habit.streak > 1) {
+              setTimeout(() => {
+                setStreakCelebration({ habitId, streak: habit.streak });
+                setTimeout(() => setStreakCelebration(null), 2000);
+              }, 200);
+            } else if (habit.streak === 1) {
+              setTimeout(() => {
+                showToast(`Great start on ${habit.name}!`, "success");
+              }, 200);
+            }
+
+            const achievedMilestone = milestones.find(
+              (m) => m.days === habit.streak
+            );
+            if (achievedMilestone) {
+              setTimeout(() => {
+                setCelebratingMilestone({
+                  habitId,
+                  milestone: achievedMilestone,
+                });
+                setTimeout(() => setCelebratingMilestone(null), 4000);
+              }, 2500);
+            }
+
+            setTimeout(() => setAnimatingHabit(null), 1500);
+          }, 100);
+        }
+      }
+    });
+
+    setPendingCompletions({});
+    setShowCheckIn(false);
+  }, [
+    currentDate,
+    formatDate,
+    completions,
+    pendingCompletions,
+    habits,
+    calculateStreakWithCompletions,
+    milestones,
+  ]);
+
+  const navigateMonth = useCallback((direction: "next" | "prev") => {
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    setMonthTransition(direction === "next" ? "left" : "right");
+
+    animationFrameRef.current = requestAnimationFrame(() => {
+      setTimeout(() => {
+        setSelectedMonth((prev) =>
+          direction === "next"
+            ? new Date(prev.getFullYear(), prev.getMonth() + 1)
+            : new Date(prev.getFullYear(), prev.getMonth() - 1)
+        );
+        setTimeout(() => setMonthTransition("none"), 150);
+      }, 150);
+    });
+  }, []);
+
+  const addNewHabit = useCallback(() => {
+    if (!newHabitForm.name.trim()) return;
+
+    const newHabit: Habit = {
+      id: Date.now().toString(),
+      name: newHabitForm.name.trim(),
+      icon: newHabitForm.icon,
+      category: newHabitForm.category,
+      color: "from-green-500 to-emerald-500",
+      streak: 0,
+      longestStreak: 0,
+      completedDates: [],
+      target: 30,
+      createdAt: new Date().toISOString(),
+      achievedMilestonesHistory: [],
+    };
+
+    setHabits((prev) => [...prev, newHabit]);
+    setNewHabitForm({ name: "", icon: "Target", category: "Health" });
+    setShowAddHabit(false);
+    showToast("New habit added successfully!", "success");
+  }, [newHabitForm, showToast]);
+
+  const getDaysInMonth = useCallback((date: Date): number => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  }, []);
+
+  const getMonthName = useCallback((date: Date): string => {
+    return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  }, []);
+
+  const getCircularTimelineData = useCallback(
+    (habit: Habit) => {
+      const daysInMonth = getDaysInMonth(selectedMonth);
+      const centerX = 120;
+      const centerY = 120;
+      const radius = 75;
+      const days = [];
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const angle = (day / daysInMonth) * 2 * Math.PI - Math.PI / 2;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+
+        const numberRadius = radius + 20;
+        const numberX = centerX + numberRadius * Math.cos(angle);
+        const numberY = centerY + numberRadius * Math.sin(angle);
+
+        const date = new Date(
+          selectedMonth.getFullYear(),
+          selectedMonth.getMonth(),
+          day
+        );
+        const isCompleted = getHabitCompletion(habit.id, date);
+        const isToday =
+          formatDate(date) === formatDate(currentDate) &&
+          selectedMonth.getMonth() === currentDate.getMonth() &&
+          selectedMonth.getFullYear() === currentDate.getFullYear();
+
+        const dateStr = formatDate(date);
+        const milestoneEntry = habit.achievedMilestonesHistory?.find(
+          (entry) => entry.date === dateStr
+        );
+        const achievedMilestoneOnThisDay = milestoneEntry
+          ? milestones.find((m) => m.days === milestoneEntry.milestoneDays)
+          : null;
+
+        days.push({
+          day,
+          x,
+          y,
+          numberX,
+          numberY,
+          isCompleted,
+          isToday,
+          date,
+          achievedMilestoneOnThisDay,
+        });
+      }
+
+      return days;
+    },
+    [selectedMonth, getDaysInMonth, getHabitCompletion, formatDate, currentDate]
+  );
+
+  const getMonthProgress = useCallback(
+    (habit: Habit): number => {
+      const daysInMonth = getDaysInMonth(selectedMonth);
+      let completedDays = 0;
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(
+          selectedMonth.getFullYear(),
+          selectedMonth.getMonth(),
+          day
+        );
+        if (getHabitCompletion(habit.id, date)) {
+          completedDays++;
+        }
+      }
+
+      return daysInMonth > 0 ? (completedDays / daysInMonth) * 100 : 0;
+    },
+    [selectedMonth, getDaysInMonth, getHabitCompletion]
+  );
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (!touchStart) return;
+
+      const touchEnd = {
+        x: e.changedTouches[0].clientX,
+        y: e.changedTouches[0].clientY,
+      };
+      const deltaX = touchStart.x - touchEnd.x;
+      const deltaY = touchStart.y - touchEnd.y;
+
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+        if (deltaX > 0) {
+          navigateMonth("next");
+        } else {
+          navigateMonth("prev");
+        }
+      }
+
+      setTouchStart(null);
+    },
+    [touchStart, navigateMonth]
+  );
+
+  const getNextMilestone = useCallback(
+    (habit: Habit): Milestone | null => {
+      return milestones.find((m) => m.days > habit.streak) || null;
+    },
+    [milestones]
+  );
+
+  const getAchievedMilestones = useCallback(
+    (habit: Habit): Milestone[] => {
+      return milestones.filter((m) => m.days <= habit.longestStreak);
+    },
+    [milestones]
+  );
+
+  const getTodayCompletionRate = useCallback((): number => {
+    const today = formatDate(currentDate);
+    const todayCompletion = completions.find((c) => c.date === today);
+    const completedCount = habits.filter(
+      (h) => todayCompletion?.habits[h.id]
+    ).length;
+    return habits.length > 0 ? (completedCount / habits.length) * 100 : 0;
+  }, [currentDate, formatDate, completions, habits]);
+
+  const updateProfile = useCallback(() => {
+    setIsEditingProfile(false);
+    showToast("Profile updated successfully!", "success");
+  }, [showToast]);
+
+  const getTotalStats = useCallback(() => {
+    const totalHabits = habits.length;
+    const totalCompletions = completions.reduce((acc, comp) => {
+      return acc + Object.values(comp.habits).filter(Boolean).length;
+    }, 0);
+    const bestStreak = Math.max(...habits.map((h) => h.longestStreak || 0), 0);
+    const daysActive = new Set(completions.map((c) => c.date)).size;
+    return { totalHabits, totalCompletions, bestStreak, daysActive };
+  }, [habits, completions]);
+
+  if (!isInitialized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white flex flex-col items-center justify-center font-['Oxanium',sans-serif] overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=&quot;100&quot; height=&quot;100&quot; viewBox=&quot;0 0 100 100&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cg fill=&quot;%23ffffff&quot; fillOpacity=&quot;0.03&quot;%3E%3Ccircle cx=&quot;50&quot; cy=&quot;50&quot; r=&quot;1&quot;/%3E%3Ccircle cx=&quot;25&quot; cy=&quot;25&quot; r=&quot;0.5&quot;/%3E%3Ccircle cx=&quot;75&quot; cy=&quot;75&quot; r=&quot;0.5&quot;/%3E%3Ccircle cx=&quot;25&quot; cy=&quot;75&quot; r=&quot;0.5&quot;/%3E%3Ccircle cx=&quot;75&quot; cy=&quot;25&quot; r=&quot;0.5&quot;/%3E%3C/g%3E%3C/svg%3E')] opacity-60"></div>
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-gradient-to-br from-purple-400/20 to-pink-600/20 rounded-full blur-2xl animate-pulse delay-1000"></div>
-          <div className="absolute top-1/2 right-1/3 w-32 h-32 bg-gradient-to-br from-cyan-400/20 to-blue-600/20 rounded-full blur-xl animate-pulse delay-500"></div>
-        </div>
-        <div className="relative z-10 text-center max-w-4xl mx-auto p-8">
-          <div className="mb-8">
-            <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 rounded-3xl flex items-center justify-center shadow-[0_20px_60px_rgba(59,130,246,0.4)] animate-pulse">
-              <Rocket className="w-12 h-12 text-white" />
-            </div>
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-wider mb-4 bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
-              Cosmic Empire
-            </h1>
-            <p className="text-xl sm:text-2xl text-blue-100/80 font-light tracking-wide">
-              Build your galactic civilization
-            </p>
+      <motion.div 
+        className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900 flex items-center justify-center"
+        initial="hidden"
+        animate="visible"
+        variants={fadeIn}
+      >
+        <motion.div 
+          className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-3xl p-8"
+          variants={fadeInUp}
+        >
+          <div className="flex items-center space-x-3">
+            <motion.div 
+              className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full"
+              animate={{
+                opacity: [0.7, 1, 0.7],
+                transition: {
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }
+              }}
+            />
+            <span className="text-white font-medium">
+              Loading your habits...
+            </span>
           </div>
-          <div className="mb-12 max-w-2xl mx-auto">
-            <p className="text-lg text-blue-100/70 leading-relaxed">
-              Command fleets, research advanced technologies, and expand across the cosmos. 
-              Build your empire from a single solar system to a galactic superpower.
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            {hasSavedData && (
-              <button
-                onClick={continueGame}
-                className="group relative px-12 py-4 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-400 hover:via-emerald-400 hover:to-teal-400 rounded-2xl text-white font-semibold text-lg tracking-wide transition-all duration-300 shadow-[0_20px_60px_rgba(34,197,94,0.3)] hover:shadow-[0_25px_80px_rgba(34,197,94,0.4)] active:scale-95 cursor-pointer"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity duration-300"></div>
-                <span className="relative flex items-center gap-3">
-                  <Play className="w-5 h-5" />
-                  Continue Empire
-                </span>
-              </button>
-            )}
-            <button
-              onClick={startNewGame}
-              className="group relative px-12 py-4 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-400 hover:via-purple-400 hover:to-pink-400 rounded-2xl text-white font-semibold text-lg tracking-wide transition-all duration-300 shadow-[0_20px_60px_rgba(59,130,246,0.3)] hover:shadow-[0_25px_80px_rgba(59,130,246,0.4)] active:scale-95 cursor-pointer"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity duration-300"></div>
-              <span className="relative flex items-center gap-3">
-                <Rocket className="w-5 h-5" />
-                {hasSavedData ? "New Empire" : "Start Your Empire"}
-              </span>
-            </button>
-          </div>
-          <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-3xl mx-auto">
-            {[
-              { icon: Building, title: "Build & Expand", desc: "Construct buildings and expand your territory" },
-              { icon: Rocket, title: "Explore Space", desc: "Launch fleets to discover new worlds" },
-              { icon: BookOpen, title: "Research Tech", desc: "Unlock advanced technologies and upgrades" }
-            ].map((feature, index) => (
-              <div key={index} className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20">
-                  <feature.icon className="w-8 h-8 text-blue-300" />
+        </motion.div>
+      </motion.div>
+    );
+  }
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "profile":
+        const stats = getTotalStats();
+        return (
+          <motion.div 
+            className="space-y-6 lg:space-y-8 mb-6"
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={tabContentVariants}
+            key="profile"
+          >
+            <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-3xl p-6 shadow-2xl">
+              <div className="text-center mb-6">
+                <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                  {React.createElement(getIconComponent(userProfile.image), {
+                    className: "w-10 h-10 text-white",
+                  })}
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-sm text-blue-100/60">{feature.desc}</p>
+                {isEditingProfile ? (
+                  <div className="space-y-4">
+                    <input
+                      type="text"
+                      value={userProfile.name}
+                      onChange={(e) =>
+                        setUserProfile((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
+                      className="w-full bg-white/10 border border-white/30 rounded-2xl px-4 py-3 text-white text-center placeholder-white/80 focus:outline-none focus:ring-2 focus:ring-green-400/50"
+                    />
+                    <input
+                      type="email"
+                      value={userProfile.email}
+                      onChange={(e) =>
+                        setUserProfile((prev) => ({
+                          ...prev,
+                          email: e.target.value,
+                        }))
+                      }
+                      className="w-full bg-white/10 border border-white/30 rounded-2xl px-4 py-3 text-white text-center placeholder-white/80 focus:outline-none focus:ring-2 focus:ring-green-400/50"
+                    />
+                    <div className="grid grid-cols-6 lg:grid-cols-8 gap-2">
+                      {profileIcons.map((iconName) => {
+                        const IconComponent = getIconComponent(iconName);
+                        return (
+                          <button
+                            key={iconName}
+                            onClick={() =>
+                              setUserProfile((prev) => ({
+                                ...prev,
+                                image: iconName,
+                              }))
+                            }
+                            className={`p-3 cursor-pointer rounded-xl border transition-all flex items-center justify-center ${
+                              userProfile.image === iconName
+                                ? "border-green-400 bg-white/20"
+                                : "border-white/20 bg-white/10"
+                            }`}
+                          >
+                            <IconComponent className="w-6 h-6 text-white" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={() => setIsEditingProfile(false)}
+                        className="flex-1 bg-white/10 cursor-pointer border border-white/30 text-white py-3 rounded-2xl font-semibold"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={updateProfile}
+                        className="flex-1 bg-gradient-to-r from-green-500 cursor-pointer to-emerald-500 text-white py-3 rounded-2xl font-semibold"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-2">
+                      {userProfile.name}
+                    </h2>
+                    <p className="text-white/90 mb-4">{userProfile.email}</p>
+                    <button
+                      onClick={() => setIsEditingProfile(true)}
+                      className="bg-white/20 border cursor-pointer border-white/30 text-white px-6 py-2 rounded-2xl font-medium hover:bg-white/30 transition-all"
+                    >
+                      Edit Profile
+                    </button>
+                  </div>
+                )}
               </div>
+            </div>
+
+            <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-3xl p-6 shadow-xl">
+              <h3 className="text-white font-bold text-xl mb-4">
+                Your Journey
+              </h3>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+                {[
+                  { label: "Total Habits", value: stats.totalHabits },
+                  { label: "Completions", value: stats.totalCompletions },
+                  { label: "Streak", value: stats.bestStreak },
+                  { label: "Active Days", value: stats.daysActive },
+                ].map((stat, index) => (
+                  <div
+                    key={`stat-${index}`}
+                    className="bg-white/5 rounded-2xl p-4 text-center border border-white/10"
+                  >
+                    <p className="text-3xl font-bold text-white">
+                      {stat.value}
+                    </p>
+                    <p className="text-white/90 text-sm">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-3xl p-6 shadow-xl">
+              <h3 className="text-white font-bold text-xl mb-4">
+                Achievements
+              </h3>
+              <div className="grid grid-cols-3 lg:grid-cols-6 xl:grid-cols-9 gap-3 lg:gap-4">
+                {milestones
+                  .filter((m) => habits.some((h) => h.longestStreak >= m.days))
+                  .map((milestone) => {
+                    const IconComponent = getIconComponent(milestone.icon);
+                    return (
+                      <div
+                        key={milestone.days}
+                        className="bg-white/5 rounded-2xl p-3 text-center border border-white/10"
+                      >
+                        <div className="text-2xl mb-1 flex justify-center">
+                          <IconComponent className="w-6 h-6 text-white" />
+                        </div>
+                        <p className="text-white/90 text-xs font-medium">
+                          {milestone.title}
+                        </p>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-3xl p-6 shadow-xl">
+              <div className={`flex items-center justify-between ${showMilestoneMarkers ? 'mb-4' : 'mb-0'}`}>
+                <h3 className="text-white font-bold text-xl">
+                  Milestone Progress
+                </h3>
+                <button
+                  onClick={() => setShowMilestoneMarkers(!showMilestoneMarkers)}
+                  className="bg-white/20 border cursor-pointer border-white/30 text-white px-4 py-2 rounded-2xl font-medium hover:bg-white/30 transition-all text-sm flex items-center justify-center"
+                >
+                  {showMilestoneMarkers ? "Hide" : "Show"} Details
+                </button>
+              </div>
+
+              <AnimatePresence>
+              {showMilestoneMarkers && (
+                  <motion.div 
+                    className="space-y-4"
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                    variants={expandCollapse}
+                  >
+                  {habits.map((habit) => {
+                    const achievedMilestones = getAchievedMilestones(habit);
+                    const nextMilestone = getNextMilestone(habit);
+                    const IconComponent = getIconComponent(habit.icon);
+
+                    return (
+                      <div
+                        key={habit.id}
+                        className="bg-white/5 rounded-2xl p-4 border border-white/10"
+                      >
+                        <div className="flex items-center space-x-3 mb-3">
+                          <IconComponent className="w-6 h-6 text-white" />
+                          <div className="flex-1">
+                            <h4 className="text-white font-medium">
+                              {habit.name}
+                            </h4>
+                            <p className="text-white/90 text-sm">
+                              Current streak: {habit.streak} days
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {achievedMilestones.map((milestone) => {
+                            const MilestoneIcon = getIconComponent(
+                              milestone.icon
+                            );
+                            return (
+                              <div
+                                key={`${habit.id}-milestone-${milestone.days}`}
+                                className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl px-3 py-1 flex items-center space-x-2"
+                              >
+                                <MilestoneIcon className="w-4 h-4 text-white" />
+                                <span className="text-green-100 text-xs font-medium">
+                                  {milestone.title}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {nextMilestone && (
+                          <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-white/90 text-sm">
+                                Next Milestone:
+                              </span>
+                              <span className="text-green-300 text-sm font-medium">
+                                {nextMilestone.title}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-1000"
+                                  style={{
+                                    width: `${
+                                      (habit.streak / nextMilestone.days) * 100
+                                    }%`,
+                                  }}
+                                ></div>
+                              </div>
+                              <span className="text-white/90 text-xs">
+                                {habit.streak}/{nextMilestone.days}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            </div>
+          </motion.div>
+        );
+
+      case "about":
+        return (
+          <motion.div 
+            className="space-y-6 mb-6"
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={tabContentVariants}
+            key="about"
+          >
+            <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-3xl p-6 shadow-2xl">
+              <div className="text-center mb-6">
+                <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-green-500 to-emerald-500 rounded-3xl flex items-center justify-center">
+                  <Target className="w-10 h-10 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-white to-green-200 bg-clip-text text-transparent mb-2">
+                  Habit Flow
+                </h2>
+                <p className="text-white/90">Version 1.0.0</p>
+              </div>
+
+              <div className="space-y-6">
+                {[
+                  {
+                    title: "About the App",
+                    content:
+                      "Habit Flow is a modern, beautifully designed habit tracking app that helps you build better daily routines. Track your progress with stunning circular timelines, celebrate milestones, and transform your life one habit at a time.",
+                  },
+                  {
+                    title: "Features",
+                    content:
+                      "Beautiful glassmorphism design\nCircular timeline visualization\nInteractive milestone markers\nStreak celebrations & animations\nOffline-first functionality\nComprehensive analytics\nCustomizable habit categories",
+                  },
+                  {
+                    title: "Developer",
+                    content: "Created with React and TypeScript",
+                  },
+                ].map((section, index) => (
+                  <div
+                    key={`about-${index}`}
+                    className="bg-white/5 rounded-2xl p-4 border border-white/10"
+                  >
+                    <h3 className="text-white font-bold mb-2">
+                      {section.title}
+                    </h3>
+                    {section.title === "Developer" ? (
+                      <p className="text-white/90 text-sm leading-relaxed flex items-center space-x-1">
+                        <span>Created with Love using React and TypeScript</span>
+                      </p>
+                    ) : section.title === "Features" ? (
+                      <div className="space-y-2">
+                        {section.content.split('\n').map((feature, featureIndex) => (
+                          <div key={featureIndex} className="flex items-center space-x-2">
+                            <Check className="w-4 h-4 text-green-300 flex-shrink-0" />
+                            <span className="text-white/90 text-sm">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                    <p className="text-white/90 text-sm leading-relaxed whitespace-pre-line">
+                      {section.content}
+                    </p>
+                    )}
+                  </div>
+                ))}
+                </div>
+              </div>
+          </motion.div>
+        );
+
+      default:
+        return (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={tabContentVariants}
+            key="home"
+          >
+            <motion.div 
+              className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-3xl p-6 lg:p-8 mb-6 shadow-2xl"
+              variants={fadeIn}
+            >
+              <div className="flex items-center justify-center mb-6 lg:mb-8">
+                <div className="relative w-32 h-32 lg:w-40 lg:h-40">
+                                      <svg className="transform -rotate-90 w-32 h-32 lg:w-40 lg:h-40">
+                                          <circle
+                        cx="64"
+                        cy="64"
+                        r="56"
+                        stroke="rgba(255,255,255,0.1)"
+                        strokeWidth="8"
+                        fill="transparent"
+                        className="lg:hidden"
+                      />
+                      <circle
+                        cx="80"
+                        cy="80"
+                        r="70"
+                        stroke="rgba(255,255,255,0.1)"
+                        strokeWidth="10"
+                        fill="transparent"
+                        className="hidden lg:block"
+                      />
+                      <circle
+                        cx="64"
+                        cy="64"
+                        r="56"
+                        stroke="url(#todayGradient)"
+                        strokeWidth="8"
+                        fill="transparent"
+                        strokeDasharray={`${2 * Math.PI * 56}`}
+                        strokeDashoffset={`${
+                          2 * Math.PI * 56 * (1 - getTodayCompletionRate() / 100)
+                        }`}
+                        className="transition-all duration-1000 ease-out lg:hidden"
+                        strokeLinecap="round"
+                      />
+                      <circle
+                        cx="80"
+                        cy="80"
+                        r="70"
+                        stroke="url(#todayGradient)"
+                        strokeWidth="10"
+                        fill="transparent"
+                        strokeDasharray={`${2 * Math.PI * 70}`}
+                        strokeDashoffset={`${
+                          2 * Math.PI * 70 * (1 - getTodayCompletionRate() / 100)
+                        }`}
+                        className="transition-all duration-1000 ease-out hidden lg:block"
+                        strokeLinecap="round"
+                      />
+                    <defs>
+                      <linearGradient
+                        id="todayGradient"
+                        x1="0%"
+                        y1="0%"
+                        x2="100%"
+                        y2="100%"
+                      >
+                        <stop offset="0%" stopColor="#10B981" />
+                        <stop offset="100%" stopColor="#059669" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-bold text-white">
+                      {Math.round(getTodayCompletionRate())}%
+                    </span>
+                    <span className="text-white/90 text-xs">Today</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
+                {[
+                  {
+                    label: "Best Streak",
+                    value: Math.max(
+                      ...habits.map((h) => h.longestStreak || 0),
+                      0
+                    ),
+                    color: "text-green-300"
+                  },
+                  {
+                    label: "Active Tasks",
+                    value: habits.filter((h) => calculateStreak(h) > 0).length,
+                    color: habits.filter((h) => calculateStreak(h) > 0).length > habits.length / 2 
+                      ? "text-green-300" : "text-orange-300"
+                  },
+                  { 
+                    label: "Today's Progress", 
+                    value: `${getCurrentDayCompletions() ? Object.values(getCurrentDayCompletions()).filter(Boolean).length : 0}/${habits.length}`,
+                    color: getTodayCompletionRate() > 50 ? "text-green-300" : "text-red-300"
+                  },
+                ].map((stat, index) => (
+                  <div
+                    key={`home-stat-${index}`}
+                    className="text-center bg-white/5 rounded-2xl p-3 border border-white/10"
+                  >
+                    <p className="text-white/90 text-xs uppercase tracking-wide mb-1">
+                      {stat.label}
+                    </p>
+                    <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-4 bg-white/5 rounded-2xl p-4 border border-white/10">
+                <h3 className="text-white/90 text-sm font-medium mb-3">Today's Status</h3>
+                <div className="space-y-2">
+                  {habits.map((habit) => {
+                    const isCompletedToday = getCurrentDayCompletions()[habit.id] || false;
+                    const IconComponent = getIconComponent(habit.icon);
+                    return (
+                      <div key={habit.id} className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <IconComponent className="w-4 h-4 text-white/90" />
+                          <span className="text-white/90 text-sm">{habit.name}</span>
+                        </div>
+                        <div className={`px-3 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${
+                          isCompletedToday 
+                            ? "bg-green-500/20 text-green-300 border border-green-400/30"
+                            : "bg-red-500/20 text-red-300 border border-red-400/30"
+                        }`}>
+                          {isCompletedToday ? (
+                            <>
+                              <FaCheckCircle className="w-3 h-3" />
+                              <span>Done</span>
+                            </>
+                          ) : (
+                            <>
+                              <FaTimesCircle className="w-3 h-3" />
+                              <span>Pending</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-2 mb-6 shadow-xl"
+              variants={fadeIn}
+            >
+              <div className="flex space-x-1">
+                {[
+                  { id: "overview", label: "Overview", icon: BarChart3 },
+                  { id: "timeline", label: "Timeline", icon: CircleDot },
+                  { id: "analytics", label: "Analytics", icon: TrendingUp },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setViewMode(tab.id as any)}
+                    className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl font-medium transition-all duration-200 cursor-pointer ${
+                      viewMode === tab.id
+                        ? "bg-white/20 text-white shadow-lg"
+                        : "text-white/90 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    <tab.icon className="w-4 h-4 text-white" />
+                    <span className="text-xs">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div 
+              className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-4 mb-6 shadow-xl"
+              variants={fadeIn}
+            >
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => navigateMonth("prev")}
+                  className="text-white/90 hover:text-white p-2 rounded-xl hover:bg-white/10 transition-all cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4 text-white" />
+                </button>
+                <div className="text-center overflow-hidden">
+                  <div
+                    className={`transition-transform duration-300 ${
+                      monthTransition === "left"
+                        ? "transform translate-x-full opacity-0"
+                        : monthTransition === "right"
+                        ? "transform -translate-x-full opacity-0"
+                        : "transform translate-x-0 opacity-100"
+                    }`}
+                  >
+                    <h2 className="text-white font-semibold text-lg">
+                      {getMonthName(selectedMonth)}
+                    </h2>
+                    <p className="text-white/90 text-xs">Swipe to navigate</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigateMonth("next")}
+                  className="text-white/90 hover:text-white p-2 rounded-xl hover:bg-white/10 transition-all cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4 text-white" />
+                </button>
+              </div>
+            </motion.div>
+
+            {viewMode === "overview" && (
+              <motion.div 
+                className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6 mb-6"
+                initial="hidden"
+                animate="visible"
+                variants={fadeInStagger}
+              >
+                {habits.map((habit, index) => {
+                  const progress = getMonthProgress(habit);
+                  const streak = calculateStreak(habit);
+                  const nextMilestone = getNextMilestone(habit);
+                  const isAnimating = animatingHabit === habit.id;
+                  const IconComponent = getIconComponent(habit.icon);
+
+                  return (
+                    <motion.div
+                      key={habit.id}
+                      onClick={() =>
+                        setSelectedHabit(
+                          selectedHabit === habit.id ? null : habit.id
+                        )
+                      }
+                      className={`backdrop-blur-lg bg-white/10 border border-white/20 rounded-3xl p-6 shadow-xl cursor-pointer transition-all duration-500 ${
+                        isAnimating
+                          ? "bg-white/20 ring-2 ring-green-400/50"
+                          : ""
+                      } ${
+                        selectedHabit === habit.id
+                          ? "ring-2 ring-green-400/50"
+                          : ""
+                      }`}
+                      variants={fadeIn}
+                      whileHover={{ opacity: 0.9 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div className="relative w-20 h-20 mx-auto mb-4">
+                        <svg className="transform -rotate-90 w-20 h-20">
+                          <circle
+                            cx="40"
+                            cy="40"
+                            r="32"
+                            stroke="rgba(255,255,255,0.1)"
+                            strokeWidth="4"
+                            fill="transparent"
+                          />
+                          <circle
+                            cx="40"
+                            cy="40"
+                            r="32"
+                            stroke={`url(#gradient-${habit.id})`}
+                            strokeWidth="4"
+                            fill="transparent"
+                            strokeDasharray={`${2 * Math.PI * 32}`}
+                            strokeDashoffset={`${
+                              2 * Math.PI * 32 * (1 - progress / 100)
+                            }`}
+                            className="transition-all duration-1000 ease-out"
+                            strokeLinecap="round"
+                          />
+                          <defs>
+                            <linearGradient
+                              id={`gradient-${habit.id}`}
+                              x1="0%"
+                              y1="0%"
+                              x2="100%"
+                              y2="100%"
+                            >
+                              <stop offset="0%" stopColor="#10B981" />
+                              <stop offset="100%" stopColor="#059669" />
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <IconComponent className="w-6 h-6 text-white" />
+                        </div>
+                      </div>
+
+                      <div className="text-center">
+                        <h3 className="text-white font-bold text-sm mb-2">
+                          {habit.name}
+                        </h3>
+                        <div className="space-y-2">
+                          <div className={`rounded-xl px-3 py-1 ${
+                            streak > 0 
+                              ? "bg-green-500/20 border border-green-400/30"
+                              : "bg-red-500/20 border border-red-400/30"
+                          }`}>
+                            <span className="text-white/90 text-xs flex items-center space-x-1 justify-center">
+                              <Flame className={`w-3 h-3 ${
+                                streak > 0 ? "text-green-300" : "text-red-300"
+                              }`} />
+                              <span>{streak > 0 ? `${streak} days` : "No streak"}</span>
+                            </span>
+                          </div>
+                          <div className="text-white/90 text-xs">
+                            {Math.round(progress)}% this month
+                          </div>
+                          
+                          <div className="flex justify-center space-x-1">
+                            {[...Array(7)].map((_, i) => {
+                              const checkDate = new Date();
+                              checkDate.setDate(checkDate.getDate() - (6 - i));
+                              const isCompleted = getHabitCompletion(habit.id, checkDate);
+                              return (
+                                <div
+                                  key={i}
+                                  className={`w-2 h-2 rounded-full ${
+                                    isCompleted 
+                                      ? "bg-green-500" 
+                                      : "bg-white/20"
+                                  }`}
+                                  title={`${checkDate.toLocaleDateString()}: ${
+                                    isCompleted ? "Completed" : "Missed"
+                                  }`}
+                                />
+                              );
+                            })}
+                          </div>
+                          <div className="text-white/90 text-xs">Last 7 days</div>
+                          
+                          {nextMilestone && (
+                            <div className="text-green-300 text-xs">
+                              Next: {nextMilestone.title}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            )}
+
+            {viewMode === "timeline" && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-6">
+                {habits.map((habit) => {
+                  const timelineData = getCircularTimelineData(habit);
+                  const streak = calculateStreak(habit);
+                  const progress = getMonthProgress(habit);
+                  const IconComponent = getIconComponent(habit.icon);
+
+                  return (
+                    <div
+                      key={habit.id}
+                      className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-3xl p-6 shadow-xl"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <IconComponent className="w-6 h-6 text-white" />
+                          <div>
+                            <h3 className="text-white font-bold">
+                              {habit.name}
+                            </h3>
+                            <p className="text-white/90 text-sm flex items-center space-x-1">
+                              <Flame className="w-3 h-3 text-white" />
+                              <span>{streak} day streak</span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="relative flex justify-center items-center">
+                        <svg width="240" height="240" className="mx-auto">
+                          <circle
+                            cx="120"
+                            cy="120"
+                            r="75"
+                            fill="none"
+                            stroke="rgba(255,255,255,0.1)"
+                            strokeWidth="1"
+                            strokeDasharray="2,2"
+                          />
+                          {timelineData.map((day) => (
+                            <g key={`${habit.id}-day-${day.day}`}>
+                              <circle
+                                cx={day.x}
+                                cy={day.y}
+                                r={day.isToday ? "8" : "6"}
+                                                                  fill={
+                                    day.achievedMilestoneOnThisDay
+                                      ? "transparent"
+                                      : day.isCompleted
+                                      ? "#10B981"
+                                      : day.isToday
+                                      ? getCurrentDayCompletions()[habit.id] === false
+                                        ? "rgba(239, 68, 68, 0.8)"
+                                        : "rgba(255, 255, 255, 0.3)"
+                                      : day.date > currentDate
+                                      ? "rgba(255, 255, 255, 0.15)"
+                                      : "rgba(239, 68, 68, 0.6)"
+                                  }
+                                                                  stroke={
+                                    day.achievedMilestoneOnThisDay
+                                      ? "rgb(253 224 71)"
+                                      : day.isToday
+                                      ? "#FFFFFF"
+                                      : day.isCompleted
+                                      ? "#059669"
+                                      : day.date > currentDate
+                                      ? "rgba(255, 255, 255, 0.3)"
+                                      : "#DC2626"
+                                  }
+                                strokeWidth={
+                                  day.achievedMilestoneOnThisDay
+                                    ? "2"
+                                    : day.isToday
+                                    ? "2"
+                                    : "1"
+                                }
+                                className={`transition-all duration-300 ${
+                                  day.achievedMilestoneOnThisDay
+                                    ? "cursor-pointer hover:scale-110"
+                                    : day.isCompleted
+                                    ? ""
+                                    : day.date > currentDate
+                                    ? "opacity-50"
+                                    : ""
+                                }`}
+                                onClick={
+                                  day.achievedMilestoneOnThisDay
+                                    ? () =>
+                                        setTimelineMilestoneDetail({
+                                          date: formatDate(day.date),
+                                          milestone:
+                                            day.achievedMilestoneOnThisDay!,
+                                        })
+                                    : undefined
+                                }
+                              />
+                              {day.achievedMilestoneOnThisDay &&
+                                React.createElement(
+                                  getIconComponent(
+                                    day.achievedMilestoneOnThisDay.icon
+                                  ),
+                                  {
+                                    x: day.x - (day.isToday ? 6 : 5),
+                                    y: day.y - (day.isToday ? 6 : 5),
+                                    width: day.isToday ? 12 : 10,
+                                    height: day.isToday ? 12 : 10,
+                                    className: `text-yellow-300 pointer-events-none`,
+                                  }
+                                )}
+                              
+
+                              <text
+                                x={day.numberX}
+                                y={day.numberY + 4}
+                                textAnchor="middle"
+                                className="fill-white text-xs font-medium"
+                                style={{ fontSize: "10px" }}
+                              >
+                                {day.day}
+                              </text>
+                            </g>
+                          ))}
+                          <text
+                            x="120"
+                            y="115"
+                            textAnchor="middle"
+                            className="fill-white text-sm font-bold"
+                          >
+                            {getMonthName(selectedMonth).split(" ")[0]}
+                          </text>
+                          <text
+                            x="120"
+                            y="130"
+                            textAnchor="middle"
+                            className="fill-white/60 text-xs"
+                          >
+                            {Math.round(progress)}% Complete
+                          </text>
+                        </svg>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {viewMode === "analytics" && (
+              <div className="space-y-6 lg:space-y-8 mb-6">
+                <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-3xl p-6 shadow-xl">
+                  <h3 className="text-white font-bold mb-4">
+                    {getMonthName(selectedMonth)} Statistics
+                  </h3>
+                  <div className="space-y-4">
+                    {habits.map((habit) => {
+                      const streak = calculateStreak(habit);
+                      const progress = getMonthProgress(habit);
+                      const completionRate = habit.completedDates.length;
+                      const IconComponent = getIconComponent(habit.icon);
+
+                      return (
+                        <div
+                          key={habit.id}
+                          className="bg-white/5 rounded-2xl p-4 border border-white/10"
+                        >
+                          <div className="flex items-center space-x-3 mb-3">
+                            <IconComponent className="w-6 h-6 text-white" />
+                            <div className="flex-1">
+                              <h4 className="text-white font-medium">
+                                {habit.name}
+                              </h4>
+                              <p className="text-white/90 text-sm">
+                                {habit.category}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-4 lg:grid-cols-4 gap-2 lg:gap-4 text-center">
+                            {[
+                              { 
+                                label: "Current", 
+                                value: `${streak}d`,
+                                color: streak > 0 ? "text-green-300" : "text-red-300"
+                              },
+                              {
+                                label: "Best",
+                                value: `${habit.longestStreak}d`,
+                                color: "text-blue-300"
+                              },
+                              { 
+                                label: "Total", 
+                                value: completionRate,
+                                color: "text-purple-300"
+                              },
+                              {
+                                label: "Success",
+                                value: `${Math.round((completionRate / (new Date().getDate())) * 100)}%`,
+                                color: completionRate > 15 ? "text-green-300" : "text-orange-300"
+                              }
+                            ].map((stat, index) => (
+                              <div key={`${habit.id}-stat-${index}`}>
+                                <p className="text-white/90 text-xs uppercase">
+                                  {stat.label}
+                                </p>
+                                <p className={`font-bold text-sm ${stat.color}`}>
+                                  {stat.value}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="mt-3">
+                            <div className="flex justify-between text-xs text-white/90 mb-1">
+                              <span>This Month</span>
+                              <span>{Math.round(progress)}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full bg-gradient-to-r ${habit.color} transition-all duration-1000`}
+                                style={{ width: `${progress}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        );
+    }
+  };
+
+  return (
+    <motion.div 
+      className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900 overflow-hidden"
+      initial="hidden"
+      animate="visible"
+      variants={fadeIn}
+    >
+      <div className="fixed top-4 left-0 right-0 z-[60] flex flex-col items-center space-y-2">
+        <AnimatePresence>
+        {toasts.map((toast) => (
+            <motion.div
+            key={toast.id}
+              className={`backdrop-blur-lg border rounded-2xl px-6 py-3 shadow-2xl ${
+              toast.type === "success"
+                ? "bg-green-500/20 border-green-400/30 text-green-100"
+                : toast.type === "warning"
+                ? "bg-yellow-500/20 border-yellow-400/30 text-yellow-100"
+                : "bg-blue-500/20 border-blue-400/30 text-blue-100"
+            }`}
+              initial={{ opacity: 0, y: -50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -50 }}
+              transition={{ duration: 0.3 }}
+          >
+            <p className="font-medium text-sm">{toast.message}</p>
+            </motion.div>
+        ))}
+        </AnimatePresence>
+      </div>
+
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <motion.div 
+          className="absolute top-20 left-10 w-40 h-40 bg-green-500/20 rounded-full blur-3xl"
+          animate={{
+            opacity: [0.7, 1, 0.7],
+            transition: {
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }
+          }}
+        />
+        <motion.div 
+          className="absolute top-40 right-8 w-32 h-32 bg-emerald-500/15 rounded-full blur-2xl"
+          animate={{
+            opacity: [0.7, 1, 0.7],
+            transition: {
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 1
+            }
+          }}
+        />
+        <motion.div 
+          className="absolute bottom-32 left-6 w-36 h-36 bg-teal-500/20 rounded-full blur-3xl"
+          animate={{
+            opacity: [0.7, 1, 0.7],
+            transition: {
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 2
+            }
+          }}
+        />
+        <motion.div 
+          className="absolute bottom-20 right-12 w-28 h-28 bg-lime-500/15 rounded-full blur-2xl"
+          animate={{
+            opacity: [0.7, 1, 0.7],
+            transition: {
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 0.5
+            }
+          }}
+        />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-full blur-3xl"></div>
+      </div>
+
+      <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-white/10 border-b border-white/20 px-4 lg:px-8 py-4 shadow-xl">
+        <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center">
+              <Target className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-white to-green-200 bg-clip-text text-transparent">
+                Habit Flow
+              </h1>
+              <p className="text-white/90 text-xs">
+                Welcome back, {userProfile.name.split(" ")[0]}!
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="hidden lg:flex items-center space-x-4 mr-6">
+              {navItems.map((item) => (
+                <motion.button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as any)}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-2xl transition-all duration-200 cursor-pointer ${
+                    activeTab === item.id
+                      ? "bg-white/20 shadow-lg text-white"
+                      : "hover:bg-white/10 text-white/90 hover:text-white"
+                  }`}
+                  variants={buttonHover}
+                  initial="rest"
+                  whileHover="hover"
+                  whileTap="tap"
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className="text-sm font-medium">{item.label}</span>
+                </motion.button>
+              ))}
+            </div>
+            
+            {activeTab === "home" && (
+              <>
+                <motion.button
+                  onClick={() => setShowAddHabit(true)}
+                  className="bg-white/20 border border-white/30 text-white p-2 rounded-2xl backdrop-blur-sm hover:bg-white/30 transition-all duration-200 shadow-lg cursor-pointer"
+                  variants={buttonHover}
+                  initial="rest"
+                  whileHover="hover"
+                  whileTap="tap"
+                >
+                  <Plus className="w-5 h-5 text-white" />
+                </motion.button>
+                <motion.button
+                  onClick={() => setShowCheckIn(true)}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-2xl font-semibold shadow-xl hover:opacity-90 transition-opacity duration-200 text-sm cursor-pointer"
+                  variants={buttonHover}
+                  initial="rest"
+                  whileHover="hover"
+                  whileTap="tap"
+                >
+                  Check In
+                </motion.button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div
+        ref={containerRef}
+        className="relative z-10 max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto p-4 lg:p-8 pb-24 lg:pb-8 mt-20"
+        onTouchStart={activeTab === "home" ? handleTouchStart : undefined}
+        onTouchEnd={activeTab === "home" ? handleTouchEnd : undefined}
+      >
+        <AnimatePresence mode="wait">
+        {renderContent()}
+        </AnimatePresence>
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 z-20 backdrop-blur-lg bg-white/10 border-t border-white/20 px-4 lg:px-8 py-2 shadow-2xl lg:hidden">
+        <div className="max-w-md lg:max-w-4xl xl:max-w-6xl mx-auto">
+          <div className="flex items-center justify-around">
+            {navItems.map((item) => (
+              <motion.button
+                key={item.id}
+                onClick={() => setActiveTab(item.id as any)}
+                className={`flex flex-col items-center space-y-1 py-2 px-4 rounded-2xl transition-all duration-200 cursor-pointer ${
+                  activeTab === item.id
+                    ? "bg-white/20 shadow-lg"
+                    : "hover:bg-white/10"
+                }`}
+                variants={buttonHover}
+                initial="rest"
+                whileHover="hover"
+                whileTap="tap"
+              >
+                <item.icon
+                  className={`w-6 h-6 text-white transition-all duration-200 ${
+                    activeTab === item.id ? "opacity-100" : "opacity-70"
+                  }`}
+                />
+                <span
+                  className={`text-xs font-medium transition-all duration-200 ${
+                    activeTab === item.id ? "text-white" : "text-white/90"
+                  }`}
+                >
+                  {item.label}
+                </span>
+              </motion.button>
             ))}
           </div>
         </div>
       </div>
-    )
-  }
-  return (
-    <div className="min-h-screen lg:h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white lg:overflow-hidden flex flex-col font-['Oxanium',sans-serif]">
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=&quot;100&quot; height=&quot;100&quot; viewBox=&quot;0 0 100 100&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cg fill=&quot;%23ffffff&quot; fillOpacity=&quot;0.03&quot;%3E%3Ccircle cx=&quot;50&quot; cy=&quot;50&quot; r=&quot;1&quot;/%3E%3Ccircle cx=&quot;25&quot; cy=&quot;25&quot; r=&quot;0.5&quot;/%3E%3Ccircle cx=&quot;75&quot; cy=&quot;75&quot; r=&quot;0.5&quot;/%3E%3Ccircle cx=&quot;25&quot; cy=&quot;75&quot; r=&quot;0.5&quot;/%3E%3Ccircle cx=&quot;75&quot; cy=&quot;25&quot; r=&quot;0.5&quot;/%3E%3C/g%3E%3C/svg%3E')] opacity-60"></div>
-              <div className="relative z-10 flex flex-col lg:h-full p-2 sm:p-3 md:p-4 lg:p-6 pb-6 sm:pb-8 lg:pb-6">
-        <header className="flex flex-col gap-3 md:gap-4 mb-3 sm:mb-4 md:mb-6 bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl p-3 sm:p-4 md:p-5 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),0_8px_32px_rgba(0,0,0,0.3)] border border-white/10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-              <div className="w-10 h-10 sm:w-12 md:w-14 sm:h-12 md:h-14 bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-[0_8px_32px_rgba(59,130,246,0.4)] animate-pulse flex-shrink-0">
-                <Rocket className="w-5 h-5 sm:w-6 md:w-7 sm:h-6 md:h-7 text-white" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-wider bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
-                  Cosmic Empire
-                </h1>
-                <div className="hidden sm:flex items-center gap-2 md:gap-4 text-sm sm:text-base text-blue-100/80 flex-wrap">
-                  <span className="whitespace-nowrap">Prestige Level {gameState.stats.prestigeLevel}</span>
-                  <span className="hidden md:inline">•</span>
-                  <span className="whitespace-nowrap">Playtime: {formatTime(gameState.stats.totalPlayTime)}</span>
-                  <span className="hidden md:inline">•</span>
-                  <span className="whitespace-nowrap hidden md:inline">
-                    Achievements: {unlockedAchievements}/{totalAchievements}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="sm:hidden p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-300 border border-white/10 cursor-pointer flex items-center justify-center"
+
+      <AnimatePresence>
+      {streakCelebration && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <motion.div 
+              className="text-center"
+              initial="hidden"
+              animate="visible"
+              variants={fadeInUp}
             >
-              <MoreVertical className="w-5 h-5" />
-            </button>
-            <div className="hidden sm:flex items-center gap-1 md:gap-2 lg:gap-3 flex-shrink-0">
-              <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="flex items-center gap-1 md:gap-2 px-2 md:px-3 lg:px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg md:rounded-xl lg:rounded-2xl transition-all duration-300 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] hover:shadow-[inset_0_2px_4px_rgba(255,255,255,0.2)] active:scale-95 border border-white/10 min-h-[40px] md:min-h-[44px] cursor-pointer"
-              >
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                <span className="hidden md:inline text-base">{isPlaying ? "Pause" : "Play"}</span>
-              </button>
-              <button
-                onClick={saveGame}
-                className="flex items-center gap-1 md:gap-2 px-2 md:px-3 lg:px-4 py-2 bg-green-500/20 hover:bg-green-500/30 rounded-lg md:rounded-xl lg:rounded-2xl transition-all duration-300 shadow-[inset_0_2px_4px_rgba(34,197,94,0.1)] hover:shadow-[inset_0_2px_4px_rgba(34,197,94,0.2)] active:scale-95 border border-green-400/20 min-h-[40px] md:min-h-[44px] cursor-pointer"
-              >
-                <Save className="w-4 h-4" />
-                <span className="hidden md:inline text-base">Save</span>
-              </button>
-              <button
-                onClick={exitToMenu}
-                className="flex items-center gap-1 md:gap-2 px-2 md:px-3 lg:px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg md:rounded-xl lg:rounded-2xl transition-all duration-300 shadow-[inset_0_2px_4px_rgba(239,68,68,0.1)] hover:shadow-[inset_0_2px_4px_rgba(239,68,68,0.2)] active:scale-95 border border-red-400/20 min-h-[40px] md:min-h-[44px] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-                <span className="hidden md:inline text-base">Exit</span>
-              </button>
-              {gameState.stats.totalEarnings >= 10000000 && (
-                <button
-                  onClick={prestige}
-                  className="flex items-center gap-1 md:gap-2 px-2 md:px-3 lg:px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 rounded-lg md:rounded-xl lg:rounded-2xl transition-all duration-300 shadow-[0_8px_32px_rgba(251,191,36,0.4)] hover:shadow-[0_8px_32px_rgba(251,191,36,0.6)] active:scale-95 border border-yellow-400/30 min-h-[40px] md:min-h-[44px] cursor-pointer"
-                >
-                  <Crown className="w-4 h-4" />
-                  <span className="hidden lg:inline text-base">Prestige</span>
-                </button>
-              )}
-              <button
-                onClick={() => setShowStats(!showStats)}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg md:rounded-xl lg:rounded-2xl transition-all duration-300 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] hover:shadow-[inset_0_2px_4px_rgba(255,255,255,0.2)] active:scale-95 border border-white/10 min-h-[40px] min-w-[40px] md:min-h-[44px] md:min-w-[44px] cursor-pointer flex items-center justify-center"
-              >
-                <BarChart3 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setShowAchievements(!showAchievements)}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg md:rounded-xl lg:rounded-2xl transition-all duration-300 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] hover:shadow-[inset_0_2px_4px_rgba(255,255,255,0.2)] active:scale-95 border border-white/10 min-h-[40px] min-w-[40px] md:min-h-[44px] md:min-w-[44px] cursor-pointer flex items-center justify-center"
-              >
-                <Trophy className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          <div className="sm:hidden text-sm text-blue-100/80 space-y-1 px-1">
-            <div className="flex flex-wrap gap-2">
-              <span className="whitespace-nowrap">Prestige Level {gameState.stats.prestigeLevel}</span>
-              <span>•</span>
-              <span className="whitespace-nowrap">Playtime: {formatTime(gameState.stats.totalPlayTime)}</span>
-            </div>
-            <div>
-              <span className="whitespace-nowrap">Achievements: {unlockedAchievements}/{totalAchievements}</span>
-            </div>
-          </div>
-          {showMobileMenu && (
-            <div className="sm:hidden grid grid-cols-2 gap-2 pt-3 border-t border-white/10">
-              <button
-                onClick={() => {
-                  setIsPlaying(!isPlaying)
-                  setShowMobileMenu(false)
+              <motion.div 
+                className="text-6xl mb-4 flex justify-center"
+                animate={{
+                  opacity: [0.7, 1, 0.7],
+                  transition: {
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }
                 }}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-300 border border-white/10 min-h-[40px] text-base cursor-pointer"
               >
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                {isPlaying ? "Pause" : "Play"}
-              </button>
-              <button
-                onClick={() => {
-                  saveGame()
-                  setShowMobileMenu(false)
-                }}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/30 rounded-lg transition-all duration-300 border border-green-400/20 min-h-[40px] text-base cursor-pointer"
-              >
-                <Save className="w-4 h-4" />
-                Save
-              </button>
-              <button
-                onClick={() => {
-                  exitToMenu()
-                  setShowMobileMenu(false)
-                }}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-all duration-300 border border-red-400/20 min-h-[40px] text-base cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-                Exit
-              </button>
-              {gameState.stats.totalEarnings >= 10000000 && (
-                <button
-                  onClick={() => {
-                    prestige()
-                    setShowMobileMenu(false)
-                  }}
-                  className="flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 rounded-lg transition-all duration-300 border border-yellow-400/30 min-h-[40px] text-base cursor-pointer col-span-2"
-                >
-                  <Crown className="w-4 h-4" />
-                  Prestige
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  setShowStats(!showStats)
-                  setShowMobileMenu(false)
-                }}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-300 border border-white/10 min-h-[40px] text-base cursor-pointer"
-              >
-                <BarChart3 className="w-4 h-4" />
-                Stats
-              </button>
-              <button
-                onClick={() => {
-                  setShowAchievements(!showAchievements)
-                  setShowMobileMenu(false)
-                }}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-300 border border-white/10 min-h-[40px] text-base cursor-pointer"
-              >
-                <Trophy className="w-4 h-4" />
-                Achievements
-              </button>
-              <button
-                onClick={() => setShowSidebar(!showSidebar)}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-300 border border-white/10 min-h-[40px] text-base cursor-pointer"
-              >
-                {showSidebar ? <X className="w-4 h-4" /> : <Settings className="w-4 h-4" />}
-                {showSidebar ? "Hide" : "Show"} Sidebar
-              </button>
-            </div>
-          )}
-        </header>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4 md:mb-6 flex-shrink-0">
-          {Object.entries(gameState.resources).map(([key, value]) => {
-            const resourceProduction = production[key as keyof typeof production] || 0
-            const icons = {
-              energy: Zap,
-              minerals: Gem,
-              darkMatter: Atom,
-              antimatter: Star,
-              quantumFlux: Cpu,
-              nanobots: Cog,
-              crystals: Diamond,
-              plasma: Flame,
-            }
-            const colors = {
-              energy: "from-yellow-400 to-orange-500",
-              minerals: "from-green-400 to-emerald-500",
-              darkMatter: "from-purple-400 to-violet-500",
-              antimatter: "from-pink-400 to-rose-500",
-              quantumFlux: "from-blue-400 to-cyan-500",
-              nanobots: "from-gray-400 to-slate-500",
-              crystals: "from-teal-400 to-green-500",
-              plasma: "from-red-400 to-orange-500",
-            }
-            const Icon = icons[key as keyof typeof icons] || Circle
-            const color = colors[key as keyof typeof colors] || "from-gray-400 to-gray-500"
-            return (
-              <div
-                key={key}
-                className="bg-white/5 backdrop-blur-sm rounded-xl sm:rounded-2xl p-2 sm:p-3 md:p-4 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[inset_0_2px_4px_rgba(255,255,255,0.15),0_12px_40px_rgba(0,0,0,0.4)] transition-all duration-300 border border-white/5 flex flex-col min-h-[80px] sm:min-h-[90px]"
-              >
-                <div className="flex items-center gap-1 sm:gap-2 mb-2 flex-1">
-                  <div
-                    className={`w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-br ${color} rounded-lg flex items-center justify-center shadow-lg flex-shrink-0`}
-                  >
-                    <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
-                  </div>
-                  <span className="text-xs font-medium tracking-wide capitalize text-white/90 flex-1 min-w-0 break-words leading-tight">
-                    {key.replace(/([A-Z])/g, " $1")}
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-base sm:text-lg md:text-xl font-bold tracking-wide text-white">{formatNumber(value)}</div>
-                  <div className={`text-sm font-medium ${resourceProduction > 0 ? "text-green-300" : "text-gray-500"}`}>
-                    +{resourceProduction > 0 ? formatNumber(resourceProduction) : "0.0"}/s
-                  </div>
-                </div>
+              <Flame className="w-16 h-16 text-orange-500" />
+              </motion.div>
+            <h2 className="text-3xl font-bold text-white mb-2">
+              {streakCelebration.streak} Day
+              {streakCelebration.streak > 1 ? "s" : ""}!
+            </h2>
+            <h3 className="text-xl font-semibold bg-gradient-to-r from-lime-400 to-green-500 bg-clip-text text-transparent mb-4">
+              Amazing streak!
+            </h3>
+            </motion.div>
+          </motion.div>
+      )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+      {showCheckIn && (
+          <motion.div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <motion.div 
+              className="backdrop-blur-2xl bg-white/15 border border-white/30 rounded-3xl p-8 max-w-sm lg:max-w-md w-full shadow-2xl max-h-[80vh] overflow-y-auto"
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={fadeInUp}
+            >
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Daily Check-in
+              </h2>
+              <p className="text-white/90">
+                Mark your completed habits for today
+              </p>
+              <div className="mt-4 bg-white/10 rounded-2xl p-3">
+                <p className="text-white/90 text-sm">
+                  {currentDate.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
               </div>
-            )
-          })}
-        </div>
-        <div className={`grid gap-3 sm:gap-4 md:gap-6 flex-1 lg:min-h-0 ${showSidebar ? "grid-cols-1 lg:grid-cols-4" : "grid-cols-1"}`}>
-          <div className={`${showSidebar ? "lg:col-span-3" : "col-span-1"} flex flex-col lg:min-h-0`}>
-                          <div className="bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl p-3 sm:p-4 md:p-5 lg:p-6 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),0_8px_32px_rgba(0,0,0,0.3)] border border-white/10 flex-1 flex flex-col lg:min-h-0">
-                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1 sm:gap-2 mb-3 sm:mb-4 md:mb-6 p-1 sm:p-2 bg-white/5 rounded-xl sm:rounded-2xl">
-                {[
-                  { id: "buildings", label: "Buildings", icon: Building },
-                  { id: "fleet", label: "Fleet", icon: Rocket },
-                  { id: "research", label: "Research", icon: BookOpen },
-                  { id: "territories", label: "Territories", icon: Map },
-                  { id: "market", label: "Market", icon: DollarSign },
-                ].map(({ id, label, icon: Icon }, index) => (
+            </div>
+
+            <div className="space-y-3 mb-8">
+              {habits.map((habit) => {
+                const currentCompletions = getCurrentDayCompletions();
+                const isCompleted = currentCompletions[habit.id] || false;
+                const streak = calculateStreak(habit);
+                const IconComponent = getIconComponent(habit.icon);
+
+                return (
                   <button
-                    key={id}
-                    onClick={() => setActiveTab(id)}
-                    className={`flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 md:px-4 py-2 rounded-lg sm:rounded-xl transition-all duration-300 min-h-[44px] cursor-pointer ${
-                      activeTab === id
-                        ? "bg-blue-500/30 text-blue-100 shadow-[inset_0_2px_4px_rgba(59,130,246,0.3)] border border-blue-400/30"
-                        : "bg-white/10 text-blue-200/80 hover:bg-white/20 hover:text-blue-100 border border-white/10"
-                    } ${index === 4 ? "col-span-2 sm:col-span-1" : ""}`}
+                    key={habit.id}
+                    onClick={() => toggleHabitCompletion(habit.id)}
+                    className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 cursor-pointer ${
+                      isCompleted
+                        ? "bg-white/20 border-green-400/50 shadow-lg shadow-green-400/20"
+                        : "bg-white/5 border-white/20 hover:bg-white/10 hover:border-white/30"
+                    }`}
                   >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span className="text-sm sm:text-base text-center leading-tight whitespace-nowrap">{label}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="flex-1 overflow-auto lg:min-h-0">
-                <div className="space-y-4">
-                {activeTab === "buildings" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
-                    {Object.entries(BUILDING_DATA).map(([buildingKey, buildingData]) => {
-                      const cost = getBuildingCost(buildingKey as keyof GameState["buildings"])
-                      const affordable = canAfford(cost)
-                      const unlocked = isUnlocked(buildingData, gameState)
-                      const count = gameState.buildings[buildingKey as keyof GameState["buildings"]]
-                      if (!unlocked) return null
-                      return (
-                        <div
-                          key={buildingKey}
-                          className="bg-white/5 rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:bg-white/10 transition-all duration-300 border border-white/10 flex flex-col min-h-[140px] sm:min-h-[150px]"
-                        >
-                          <div className="flex items-start gap-2 sm:gap-3 mb-3 flex-1">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
-                              <buildingData.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-white text-base sm:text-lg mb-1">
-                                {buildingData.name}
-                              </h3>
-                              <p className="text-sm text-blue-100/90 leading-relaxed">{buildingData.description}</p>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <div className="text-base font-bold text-blue-200">{count}</div>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => buyBuilding(buildingKey as keyof GameState["buildings"], cost)}
-                            disabled={!affordable}
-                            className={`w-full py-3 px-3 rounded-lg sm:rounded-xl transition-all duration-300 min-h-[44px] cursor-pointer ${
-                              affordable
-                                ? "bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 shadow-[0_4px_16px_rgba(59,130,246,0.3)] hover:shadow-[0_6px_20px_rgba(59,130,246,0.4)] active:scale-95"
-                                : "bg-gray-600/30 cursor-not-allowed"
-                            }`}
-                          >
-                            <div className="text-sm leading-relaxed text-center">
-                              {Object.entries(cost).map(([resource, amount], index) => (
-                                <span key={resource} className="block sm:inline">
-                                  {index > 0 && <span className="hidden sm:inline"> • </span>}
-                                  {formatNumber(amount)} {resource.charAt(0).toUpperCase() + resource.slice(1)}
-                                </span>
-                              ))}
-                            </div>
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-                {activeTab === "fleet" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
-                    {Object.entries(FLEET_DATA).map(([shipKey, shipData]) => {
-                      const cost = getShipCost(shipKey as keyof GameState["fleet"])
-                      const affordable = canAfford(cost)
-                      const unlocked = isUnlocked(shipData, gameState)
-                      const count = gameState.fleet[shipKey as keyof GameState["fleet"]]
-                      if (!unlocked) return null
-                      return (
-                        <div
-                          key={shipKey}
-                          className="bg-white/5 rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:bg-white/10 transition-all duration-300 border border-white/10 flex flex-col min-h-[140px] sm:min-h-[150px]"
-                        >
-                          <div className="flex items-start gap-2 sm:gap-3 mb-3 flex-1">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
-                              <shipData.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-white text-base sm:text-lg mb-1">
-                                {shipData.name}
-                              </h3>
-                              <p className="text-sm text-blue-100/90 leading-relaxed">{shipData.description}</p>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <div className="text-base font-bold text-blue-200">{count}</div>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => buyShip(shipKey as keyof GameState["fleet"], cost)}
-                            disabled={!affordable}
-                            className={`w-full py-3 px-3 rounded-lg sm:rounded-xl transition-all duration-300 min-h-[44px] cursor-pointer ${
-                              affordable
-                                ? "bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-400 hover:to-blue-400 shadow-[0_4px_16px_rgba(34,197,94,0.3)] hover:shadow-[0_6px_20px_rgba(34,197,94,0.4)] active:scale-95"
-                                : "bg-gray-600/30 cursor-not-allowed"
-                            }`}
-                          >
-                            <div className="text-sm leading-relaxed text-center">
-                              {Object.entries(cost).map(([resource, amount], index) => (
-                                <span key={resource} className="block sm:inline">
-                                  {index > 0 && <span className="hidden sm:inline"> • </span>}
-                                  {formatNumber(amount)} {resource.charAt(0).toUpperCase() + resource.slice(1)}
-                                </span>
-                              ))}
-                            </div>
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-                {activeTab === "research" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
-                    {Object.entries(RESEARCH_DATA).map(([techKey, techData]) => {
-                      const cost = getResearchCost(techKey as keyof GameState["research"])
-                      const affordable = canAfford(cost)
-                      const unlocked = isUnlocked(techData, gameState)
-                      const level = gameState.research[techKey as keyof GameState["research"]]
-                      const maxLevel = level >= techData.maxLevel
-                      if (!unlocked) return null
-                      return (
-                        <div
-                          key={techKey}
-                          className="bg-white/5 rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:bg-white/10 transition-all duration-300 border border-white/10 flex flex-col min-h-[140px] sm:min-h-[150px]"
-                        >
-                          <div className="flex items-start gap-2 sm:gap-3 mb-3 flex-1">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
-                              <techData.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-white text-base sm:text-lg mb-1">
-                                {techData.name}
-                              </h3>
-                              <p className="text-sm text-blue-100/90 leading-relaxed">{techData.description}</p>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <div className="text-base font-bold text-blue-200">
-                                {level}/{techData.maxLevel}
-                              </div>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => buyResearch(techKey as keyof GameState["research"], cost)}
-                            disabled={!affordable || maxLevel}
-                            className={`w-full py-3 px-3 rounded-lg sm:rounded-xl transition-all duration-300 min-h-[44px] cursor-pointer ${
-                              maxLevel
-                                ? "bg-green-600/30 cursor-not-allowed"
-                                : affordable
-                                  ? "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 shadow-[0_4px_16px_rgba(168,85,247,0.3)] hover:shadow-[0_6px_20px_rgba(168,85,247,0.4)] active:scale-95"
-                                  : "bg-gray-600/30 cursor-not-allowed"
-                            }`}
-                          >
-                            <div className="text-sm leading-relaxed text-center">
-                              {maxLevel
-                                ? "MAX LEVEL"
-                                : Object.entries(cost).map(([resource, amount], index) => (
-                                    <span key={resource} className="block sm:inline">
-                                      {index > 0 && <span className="hidden sm:inline"> • </span>}
-                                      {formatNumber(amount)} {resource.charAt(0).toUpperCase() + resource.slice(1)}
-                                    </span>
-                                  ))}
-                            </div>
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-                {activeTab === "territories" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
-                    {Object.entries(gameState.territories).map(([territoryKey, count]) => {
-                      const territoryData = {
-                        solarSystems: { name: "Solar Systems", icon: Sun, description: "Expand to new star systems" },
-                        planets: { name: "Planets", icon: Globe, description: "Colonize habitable worlds" },
-                        moons: { name: "Moons", icon: Circle, description: "Establish lunar outposts" },
-                        asteroids: { name: "Asteroids", icon: Gem, description: "Mine asteroid belts" },
-                        spaceStations: {
-                          name: "Space Stations",
-                          icon: Satellite,
-                          description: "Build orbital facilities",
-                        },
-                      }
-                      const data = territoryData[territoryKey as keyof typeof territoryData]
-                      const costs = {
-                        solarSystems: { energy: 1000000, minerals: 500000, darkMatter: 10000, antimatter: 1000 },
-                        planets: { energy: 100000, minerals: 50000, darkMatter: 1000 },
-                        moons: { energy: 50000, minerals: 25000 },
-                        asteroids: { energy: 25000, minerals: 10000 },
-                        spaceStations: { energy: 500000, minerals: 200000, antimatter: 500, crystals: 100 },
-                      }
-                      const cost = costs[territoryKey as keyof typeof costs]
-                      const adjustedCost: Partial<GameState["resources"]> = {}
-                      Object.entries(cost).forEach(([resource, baseCost]) => {
-                        adjustedCost[resource as keyof GameState["resources"]] = Math.floor(
-                          baseCost * Math.pow(1.5, count),
-                        )
-                      })
-                      const affordable = canAfford(adjustedCost)
-                      return (
-                        <div
-                          key={territoryKey}
-                          className="bg-white/5 rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:bg-white/10 transition-all duration-300 border border-white/10 flex flex-col min-h-[140px] sm:min-h-[150px]"
-                        >
-                          <div className="flex items-start gap-2 sm:gap-3 mb-3 flex-1">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
-                              <data.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-white text-sm sm:text-base mb-1">{data.name}</h3>
-                              <p className="text-xs text-blue-100/90 leading-relaxed">{data.description}</p>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <div className="text-sm font-bold text-blue-200">{count}</div>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => expandTerritory(territoryKey as keyof GameState["territories"])}
-                            disabled={!affordable}
-                            className={`w-full py-3 px-3 rounded-lg sm:rounded-xl transition-all duration-300 min-h-[44px] cursor-pointer ${
-                              affordable
-                                ? "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 shadow-[0_4px_16px_rgba(249,115,22,0.3)] hover:shadow-[0_6px_20px_rgba(249,115,22,0.4)] active:scale-95"
-                                : "bg-gray-600/30 cursor-not-allowed"
-                            }`}
-                          >
-                            <div className="text-xs leading-relaxed text-center">
-                              {Object.entries(adjustedCost).map(([resource, amount], index) => (
-                                <span key={resource} className="block sm:inline">
-                                  {index > 0 && <span className="hidden sm:inline"> • </span>}
-                                  {formatNumber(amount)} {resource.charAt(0).toUpperCase() + resource.slice(1)}
-                                </span>
-                              ))}
-                            </div>
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-                {activeTab === "market" && (
-                  <div className="space-y-6">
-                    <div className="bg-white/5 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-white/10">
-                      <h3 className="text-lg sm:text-xl font-semibold tracking-wide text-white mb-4 flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
-                        Resource Market
-                      </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                        {Object.entries(gameState.market.prices)
-                          .filter(([resource]) => resource !== 'minerals')
-                          .map(([resource, price]) => {
-                          const resourceValue = gameState.resources[resource as keyof GameState["resources"]]
-                          const canSell = resourceValue >= 100
-                          return (
-                            <div
-                              key={resource}
-                              className="bg-white/5 rounded-lg sm:rounded-xl p-3 border border-white/10 flex flex-col min-h-[120px] sm:min-h-[130px]"
-                            >
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-base font-medium text-blue-100/90 capitalize">
-                                  {resource.replace(/([A-Z])/g, " $1")}
-                                </span>
-                                <span className="text-sm text-green-300 font-medium flex-shrink-0">{price.toFixed(2)} minerals</span>
-                              </div>
-                              <div className="text-lg sm:text-xl font-bold text-white mb-2 flex-1">
-                                {formatNumber(resourceValue)}
-                              </div>
-                              <button
-                                onClick={() => {
-                                  if (canSell) {
-                                    const sellAmount = Math.min(100, resourceValue)
-                                    const earnings = sellAmount * price
-                                    setGameState((prev) => ({
-                                      ...prev,
-                                      resources: {
-                                        ...prev.resources,
-                                        [resource]:
-                                          prev.resources[resource as keyof GameState["resources"]] - sellAmount,
-                                        minerals: prev.resources.minerals + earnings,
-                                      },
-                                    }))
-                                    addNotification(
-                                      `Sold ${sellAmount} ${resource} for ${earnings.toFixed(0)} minerals`,
-                                      "success",
-                                    )
-                                  }
-                                }}
-                                disabled={!canSell}
-                                className={`w-full py-3 px-2 rounded-lg text-sm transition-all duration-300 min-h-[44px] cursor-pointer ${
-                                  canSell
-                                    ? "bg-green-500/20 hover:bg-green-500/30 text-green-200 border border-green-400/30"
-                                    : "bg-gray-600/20 text-gray-400 cursor-not-allowed border border-gray-600/30"
-                                }`}
-                              >
-                                Sell 100
-                              </button>
-                            </div>
-                          )
-                        })}
+                    <div className="flex items-center space-x-4">
+                      <IconComponent className="w-6 h-6 text-white" />
+                      <div className="text-left">
+                        <span className="text-white font-medium block">
+                          {habit.name}
+                        </span>
+                        <span className="text-white/90 text-sm flex items-center space-x-1">
+                          <Flame className="w-3 h-3 text-white" />
+                          <span>{streak} days</span>
+                        </span>
                       </div>
                     </div>
-                  </div>
-                )}
-                </div>
-              </div>
-            </div>
-          </div>
-          {showSidebar && (
-            <div className="flex flex-col lg:min-h-0 lg:overflow-auto px-2 pb-8">
-              <div className="bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] border border-white/10 lg:flex-shrink-0 mb-4 sm:mb-6">
-                <h3 className="text-lg sm:text-xl font-semibold tracking-wide text-white mb-4 flex items-center gap-2">
-                  <Users className="w-5 h-5 sm:w-6 sm:h-6" />
-                  Fleet Status
-                </h3>
-                <div className="space-y-3">
-                  {Object.entries(gameState.fleet).map(([ship, count]) => (
-                    <div key={ship} className="flex justify-between items-center">
-                      <span className="text-blue-100/90 capitalize text-base font-medium">{ship.replace(/([A-Z])/g, " $1")}</span>
-                      <span className="text-white font-semibold text-base">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] border border-white/10 lg:flex-shrink-0 mb-4 sm:mb-6">
-                <h3 className="text-lg sm:text-xl font-semibold tracking-wide text-white mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
-                  Production
-                </h3>
-                <div className="space-y-3">
-                  {Object.entries(production).map(
-                    ([resource, amount]) =>
-                      amount > 0 && (
-                        <div key={resource} className="flex justify-between items-center">
-                          <span className="text-blue-100/90 capitalize text-base font-medium">
-                            {resource.replace(/([A-Z])/g, " $1")}
-                          </span>
-                          <span className="text-green-300 font-semibold text-base">+{formatNumber(amount)}/s</span>
-                        </div>
-                      ),
-                  )}
-                </div>
-              </div>
-              <div className="bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] border border-white/10 lg:flex-shrink-0 mb-4 sm:mb-6">
-                <h3 className="text-lg sm:text-xl font-semibold tracking-wide text-white mb-4 flex items-center gap-2">
-                  <Globe className="w-5 h-5 sm:w-6 sm:h-6" />
-                  Territory Control
-                </h3>
-                <div className="space-y-3">
-                  {Object.entries(gameState.territories).map(([territory, count]) => (
-                    <div key={territory} className="flex justify-between items-center">
-                      <span className="text-blue-100/90 capitalize text-base font-medium">{territory.replace(/([A-Z])/g, " $1")}</span>
-                      <span className="text-white font-semibold text-base">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {notifications.length > 0 && (
-                <div className="bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] border border-white/10 lg:flex-shrink-0">
-                  <h3 className="text-base font-semibold tracking-wide text-white mb-2 flex items-center gap-2">
-                    <Bell className="w-4 h-4" />
-                    Notifications
-                  </h3>
-                  <div className="space-y-2">
-                    {notifications.map((notification, index) => (
-                      <div
-                        key={notification.id + index}
-                        className="flex items-center gap-2 text-sm bg-white/5 rounded-lg p-2 border border-white/10"
-                      >
-                        <NotificationIcon type={notification.type} />
-                        <span className="text-blue-100/90 flex-1">{notification.message}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-        {showStats && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-            <div className="relative bg-gradient-to-br from-slate-900/95 via-blue-900/90 to-indigo-900/95 backdrop-blur-xl rounded-3xl p-6 sm:p-8 max-w-4xl w-full border border-white/20 max-h-[90vh] overflow-y-auto shadow-[0_32px_64px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-8 duration-500">
-              <div className="flex items-center justify-between mb-8 relative">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-[0_8px_32px_rgba(59,130,246,0.4)] animate-pulse">
-                    <BarChart3 className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl sm:text-3xl font-bold tracking-wide bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
-                      Statistics
-                    </h2>
-                    <p className="text-blue-200/70 text-base">Empire Performance Overview</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowStats(false)}
-                  className="group p-3 bg-white/10 hover:bg-red-500/20 rounded-2xl transition-all duration-300 border border-white/10 hover:border-red-400/30 cursor-pointer flex items-center justify-center"
-                >
-                  <X className="w-5 h-5 text-white/80 group-hover:text-red-300 transition-colors" />
-                </button>
-              </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
-                      <Star className="w-4 h-4 text-white" />
-                    </div>
-                    <h3 className="text-xl font-semibold tracking-wide text-white">General Stats</h3>
-                  </div>
-                  <div className="space-y-4">
-                    {[
-                      { label: "Total Earnings", value: formatNumber(gameState.stats.totalEarnings), icon: DollarSign, color: "from-green-400 to-emerald-500" },
-                      { label: "Prestige Level", value: gameState.stats.prestigeLevel.toString(), icon: Crown, color: "from-yellow-400 to-orange-500" },
-                      { label: "Total Play Time", value: formatTime(gameState.stats.totalPlayTime), icon: Clock, color: "from-blue-400 to-cyan-500" },
-                      { label: "Total Clicks", value: formatNumber(gameState.stats.totalClicks), icon: Target, color: "from-purple-400 to-pink-500" }
-                    ].map((stat, index) => (
-                      <div key={stat.label} className="group bg-white/5 hover:bg-white/10 rounded-xl p-3 border border-white/10 hover:border-white/20 transition-all duration-300 hover:shadow-[0_8px_32px_rgba(255,255,255,0.1)]">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 bg-gradient-to-br ${stat.color} rounded-lg flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 flex-shrink-0`}>
-                              <stat.icon className="w-4 h-4 text-white" />
-                            </div>
-                            <span className="text-blue-100/90 font-medium text-base">{stat.label}</span>
-                          </div>
-                          <span className="text-white font-bold text-lg">
-                            {stat.value}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl flex items-center justify-center">
-                      <TrendingUp className="w-4 h-4 text-white" />
-                    </div>
-                    <h3 className="text-xl font-semibold tracking-wide text-white">Progress Stats</h3>
-                  </div>
-                  <div className="space-y-4">
-                    {[
-                      { label: "Buildings Built", value: formatNumber(gameState.stats.buildingsBuilt), icon: Building, color: "from-blue-400 to-indigo-500" },
-                      { label: "Ships Launched", value: formatNumber(gameState.stats.shipsLaunched), icon: Rocket, color: "from-red-400 to-orange-500" },
-                      { label: "Research Completed", value: formatNumber(gameState.stats.researchCompleted), icon: BookOpen, color: "from-teal-400 to-green-500" },
-                      { label: "Achievements", value: `${unlockedAchievements}/${totalAchievements}`, icon: Trophy, color: "from-yellow-400 to-amber-500" }
-                    ].map((stat, index) => (
-                      <div key={stat.label} className="group bg-white/5 hover:bg-white/10 rounded-xl p-3 border border-white/10 hover:border-white/20 transition-all duration-300 hover:shadow-[0_8px_32px_rgba(255,255,255,0.1)]">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 bg-gradient-to-br ${stat.color} rounded-lg flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 flex-shrink-0`}>
-                              <stat.icon className="w-4 h-4 text-white" />
-                            </div>
-                            <span className="text-blue-100/90 font-medium text-base">{stat.label}</span>
-                          </div>
-                          <span className="text-white font-bold text-lg">
-                            {stat.value}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden rounded-3xl">
-                <div className="absolute top-4 right-4 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-4 left-4 w-24 h-24 bg-gradient-to-br from-pink-400/20 to-red-600/20 rounded-full blur-2xl animate-pulse delay-1000"></div>
-              </div>
-            </div>
-          </div>
-        )}
-        {showAchievements && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-            <div className="relative bg-gradient-to-br from-slate-900/95 via-blue-900/90 to-indigo-900/95 backdrop-blur-xl rounded-3xl p-6 sm:p-8 max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-white/20 shadow-[0_32px_64px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-8 duration-500">
-              <div className="flex items-center justify-between mb-8 relative">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-[0_8px_32px_rgba(251,191,36,0.4)] animate-pulse">
-                    <Trophy className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl sm:text-3xl font-bold tracking-wide bg-gradient-to-r from-yellow-300 via-orange-300 to-red-300 bg-clip-text text-transparent">
-                      Achievements
-                    </h2>
-                    <p className="text-blue-200/70 text-base">
-                      Progress: {unlockedAchievements}/{totalAchievements} Unlocked
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowAchievements(false)}
-                  className="group p-3 bg-white/10 hover:bg-red-500/20 rounded-2xl transition-all duration-300 border border-white/10 hover:border-red-400/30 cursor-pointer flex items-center justify-center"
-                >
-                  <X className="w-5 h-5 text-white/80 group-hover:text-red-300 transition-colors" />
-                </button>
-              </div>
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-base font-medium text-blue-200">Overall Progress</span>
-                  <span className="text-base font-bold text-white">{Math.round((unlockedAchievements / totalAchievements) * 100)}%</span>
-                </div>
-                <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 rounded-full transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(251,191,36,0.5)]"
-                    style={{ width: `${(unlockedAchievements / totalAchievements) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {Object.entries(ACHIEVEMENTS).map(([key, achievement], index) => {
-                  const unlocked = gameState.achievements[key]
-                  return (
                     <div
-                      key={key}
-                      className={`group relative p-4 rounded-2xl border transition-all duration-500 hover:scale-[1.02] ${
-                        unlocked 
-                          ? "bg-gradient-to-br from-green-500/20 via-emerald-500/15 to-teal-500/20 border-green-400/40 shadow-[0_8px_32px_rgba(34,197,94,0.2)]" 
-                          : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
+                      className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                        isCompleted
+                          ? "bg-green-500 border-green-500 shadow-lg shadow-green-500/30"
+                          : "border-white/40 hover:border-white/60"
                       }`}
-                      style={{
-                        animationDelay: `${index * 50}ms`
-                      }}
                     >
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="relative flex-shrink-0">
-                          <div
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 ${
-                              unlocked 
-                                ? "bg-gradient-to-br from-green-400 to-emerald-500 group-hover:scale-110" 
-                                : "bg-gradient-to-br from-gray-500 to-gray-600 group-hover:scale-105"
-                            }`}
-                          >
-                            <achievement.icon className="w-5 h-5 text-white" />
-                          </div>
-                          {unlocked && (
-                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-lg">
-                              <Check className="w-2.5 h-2.5 text-white" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3
-                            className={`font-bold text-lg leading-tight mb-1 ${
-                              unlocked 
-                                ? "text-green-100" 
-                                : "text-gray-300"
-                            }`}
-                          >
-                            {achievement.name}
-                          </h3>
-                          <p className={`text-base leading-snug ${
-                            unlocked 
-                              ? "text-green-100/80" 
-                              : "text-gray-400"
-                          }`}>
-                            {achievement.description}
-                          </p>
-                        </div>
-                      </div>
-                      {!unlocked && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-gray-900/20 to-slate-900/20 rounded-2xl pointer-events-none"></div>
-                      )}
-                      {unlocked && (
-                        <div className="absolute inset-0 pointer-events-none rounded-2xl">
-                          <div className="absolute top-2 right-2 w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
-                        </div>
-                      )}
+                      {isCompleted && <Check className="w-4 h-4 text-white" />}
                     </div>
-                  )
-                })}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setPendingCompletions({});
+                  setShowCheckIn(false);
+                  setShouldAutoOpenCheckIn(false);
+                  const today = formatDate(new Date());
+                  saveToStorage(STORAGE_KEYS.AUTO_CHECKIN_DISMISSED, today);
+                }}
+                className="flex-1 bg-white/10 border border-white/30 text-white py-4 rounded-2xl font-semibold hover:bg-white/20 transition-all duration-200 cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                onClick={submitCheckIn}
+                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-2xl font-semibold shadow-xl hover:opacity-90 transition-opacity duration-200 cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+      </AnimatePresence>
+
+      {showAddHabit && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="backdrop-blur-2xl bg-white/15 border border-white/30 rounded-3xl p-8 max-w-sm lg:max-w-lg w-full shadow-2xl max-h-[80vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-white mb-6 text-center">
+              Add New Habit
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="text-white/90 text-sm font-medium block mb-2">
+                  Habit Name
+                </label>
+                <input
+                  type="text"
+                  value={newHabitForm.name}
+                  onChange={(e) =>
+                    setNewHabitForm((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g., Morning Jog"
+                  className="w-full bg-white/10 border border-white/30 rounded-2xl px-4 py-3 text-white placeholder-white/80 focus:outline-none focus:ring-2 focus:ring-green-400/50 focus:border-transparent"
+                />
               </div>
-              <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden rounded-3xl">
-                <div className="absolute top-8 right-8 w-40 h-40 bg-gradient-to-br from-yellow-400/20 to-orange-600/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-8 left-8 w-32 h-32 bg-gradient-to-br from-emerald-400/20 to-green-600/20 rounded-full blur-2xl animate-pulse delay-1000"></div>
-                <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-gradient-to-br from-purple-400/10 to-pink-600/10 rounded-full blur-xl animate-pulse delay-500"></div>
+              <div>
+                <label className="text-white/90 text-sm font-medium block mb-2">
+                  Icon
+                </label>
+                <div className="grid grid-cols-4 lg:grid-cols-6 gap-3">
+                  {habitIcons.map((iconName) => {
+                    const IconComponent = getIconComponent(iconName);
+                    return (
+                      <button
+                        key={iconName}
+                        onClick={() =>
+                          setNewHabitForm((prev) => ({
+                            ...prev,
+                            icon: iconName,
+                          }))
+                        }
+                        className={`bg-white/10 hover:bg-white/20 border rounded-xl p-3 transition-all duration-200 cursor-pointer flex items-center justify-center ${
+                          newHabitForm.icon === iconName
+                            ? "border-green-400 bg-white/20"
+                            : "border-white/20"
+                        }`}
+                      >
+                        <IconComponent className="w-6 h-6 text-white" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="text-white/90 text-sm font-medium block mb-2">
+                  Category
+                </label>
+                <select
+                  value={newHabitForm.category}
+                  onChange={(e) =>
+                    setNewHabitForm((prev) => ({
+                      ...prev,
+                      category: e.target.value,
+                    }))
+                  }
+                  className="w-full bg-white/10 border border-white/30 rounded-2xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-green-400/50 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_12px] bg-[right_1rem_center] bg-no-repeat pr-10"
+                >
+                  {categories.map((category) => (
+                    <option
+                      key={category}
+                      value={category}
+                      className="bg-slate-800 text-white"
+                    >
+                      {category}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
+            <div className="flex space-x-3 mt-8">
+              <button
+                onClick={() => {
+                  setShowAddHabit(false);
+                  setNewHabitForm({
+                    name: "",
+                    icon: "Target",
+                    category: "Health",
+                  });
+                }}
+                className="flex-1 bg-white/10 border border-white/30 text-white py-4 rounded-2xl font-semibold hover:bg-white/20 transition-all duration-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addNewHabit}
+                disabled={!newHabitForm.name.trim()}
+                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-2xl font-semibold shadow-xl hover:opacity-90 transition-opacity duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                Add Habit
+              </button>
+            </div>
           </div>
-        )}
-      </div>
-    </div>
-  )
-}
+        </div>
+      )}
+
+      <AnimatePresence>
+      {celebratingMilestone && (
+          <motion.div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <motion.div 
+              className="backdrop-blur-2xl bg-white/15 border border-white/30 rounded-3xl p-8 max-w-sm lg:max-w-md w-full shadow-2xl text-center relative overflow-hidden"
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={fadeInUp}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-transparent to-green-500/10"></div>
+              <div className="absolute top-4 right-4 w-20 h-20 bg-yellow-400/20 rounded-full blur-xl"></div>
+              <div className="absolute bottom-4 left-4 w-16 h-16 bg-green-400/20 rounded-full blur-xl"></div>
+              
+              <div className="relative z-10">
+                <motion.div 
+                  className="text-6xl mb-6 flex justify-center"
+                  animate={{
+                    scale: [1, 1.1, 1],
+                    rotate: [0, 5, -5, 0],
+                    transition: {
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }
+                  }}
+                >
+              {React.createElement(
+                getIconComponent(celebratingMilestone.milestone.icon),
+                {
+                      className: "w-16 h-16 text-yellow-300 drop-shadow-lg",
+                }
+              )}
+                </motion.div>
+                
+                <motion.h2 
+                  className="text-3xl font-bold text-white mb-3 flex items-center justify-center space-x-2"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <FaGift className="w-8 h-8 text-yellow-300" />
+                  <span>Milestone Achieved!</span>
+                </motion.h2>
+                
+                <motion.div 
+                  className="bg-gradient-to-r from-yellow-400/20 to-green-400/20 border border-yellow-400/30 rounded-2xl p-4 mb-6"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-green-400 bg-clip-text text-transparent mb-2">
+              {celebratingMilestone.milestone.title}
+            </h3>
+                  <p className="text-white/90 font-medium">
+                    {celebratingMilestone.milestone.days} Days Strong!
+                  </p>
+                </motion.div>
+                
+                <motion.div 
+                  className="bg-white/10 rounded-2xl p-4 mb-6 border border-white/20"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <p className="text-white/90 leading-relaxed">
+                    Amazing work on <span className="text-green-300 font-semibold">
+                      {habits.find((h) => h.id === celebratingMilestone.habitId)?.name}
+                    </span>! You've successfully completed {celebratingMilestone.milestone.days} consecutive days.
+            </p>
+                </motion.div>
+                
+                <motion.div 
+                  className="flex justify-center space-x-4 mb-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      rotate: [0, 10, -10, 0],
+                      transition: {
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }
+                    }}
+                  >
+                    <Sparkles className="w-8 h-8 text-yellow-300" />
+                  </motion.div>
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.1, 1],
+                      transition: {
+                        duration: 1.8,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: 0.3
+                      }
+                    }}
+                  >
+                    <Trophy className="w-8 h-8 text-green-300" />
+                  </motion.div>
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      rotate: [0, -10, 10, 0],
+                      transition: {
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: 0.6
+                      }
+                    }}
+                  >
+                    <Crown className="w-8 h-8 text-yellow-300" />
+                  </motion.div>
+                </motion.div>
+                
+                <motion.p 
+                  className="text-white/90 text-sm italic flex items-center justify-center space-x-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  <span>Keep up the incredible momentum!</span>
+                  <FaRocket className="w-4 h-4 text-blue-300" />
+                </motion.p>
+            </div>
+            </motion.div>
+          </motion.div>
+      )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+      {timelineMilestoneDetail && (
+          <motion.div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[70]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <motion.div 
+              className="backdrop-blur-2xl bg-white/15 border border-white/30 rounded-3xl p-6 max-w-xs w-full shadow-2xl text-center relative overflow-hidden"
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={fadeInUp}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-transparent to-green-500/10"></div>
+              <div className="absolute top-2 right-2 w-16 h-16 bg-yellow-400/20 rounded-full blur-xl"></div>
+              <div className="absolute bottom-2 left-2 w-12 h-12 bg-green-400/20 rounded-full blur-xl"></div>
+              
+              <div className="relative z-10">
+                <motion.div 
+                  className="flex justify-center mb-4"
+                  animate={{
+                    scale: [1, 1.1, 1],
+                    rotate: [0, 5, -5, 0],
+                    transition: {
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }
+                  }}
+                >
+              {React.createElement(
+                getIconComponent(timelineMilestoneDetail.milestone.icon),
+                {
+                      className: "w-12 h-12 text-yellow-300 drop-shadow-lg",
+                }
+              )}
+                </motion.div>
+                
+                <motion.div 
+                  className="bg-gradient-to-r from-yellow-400/20 to-green-400/20 border border-yellow-400/30 rounded-2xl p-4 mb-4"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <h3 className="text-xl font-bold bg-gradient-to-r from-yellow-400 to-green-400 bg-clip-text text-transparent mb-2">
+              {timelineMilestoneDetail.milestone.title}
+            </h3>
+                  <p className="text-white/90 font-medium text-sm">
+                    {timelineMilestoneDetail.milestone.days} Days Achievement
+                  </p>
+                </motion.div>
+                
+                <motion.div 
+                  className="bg-white/10 rounded-2xl p-4 mb-4 border border-white/20"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+            <p className="text-white/90 text-sm mb-2">
+                    <span className="text-green-300 font-medium">Achieved on:</span>
+                  </p>
+                  <p className="text-white/90 font-medium text-sm">
+              {new Date(
+                timelineMilestoneDetail.date + "T00:00:00"
+              ).toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
+                </motion.div>
+                
+                <motion.p 
+                  className="text-white/90 text-sm mb-6 leading-relaxed flex items-center justify-center space-x-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <span>
+                    Congratulations on reaching the <span className="text-green-300 font-semibold">
+                      {timelineMilestoneDetail.milestone.days}-day
+                    </span> milestone!
+                  </span>
+                  <FaGift className="w-4 h-4 text-yellow-300" />
+                </motion.p>
+                
+                <motion.button
+              onClick={() => setTimelineMilestoneDetail(null)}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-2xl font-semibold shadow-xl hover:opacity-90 transition-opacity duration-200 cursor-pointer flex items-center space-x-2"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.5 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+            >
+                  <span>Awesome!</span>
+                  <FaRocket className="w-4 h-4" />
+                </motion.button>
+          </div>
+            </motion.div>
+          </motion.div>
+      )}
+      </AnimatePresence>
+
+      <style jsx global>{`
+     @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap');
+
+        html,
+        body {
+          font-family: 'Manrope', sans-serif;
+        }
+
+        * {
+          scrollbar-width: none; 
+          -ms-overflow-style: none; 
+        }
+
+        *::-webkit-scrollbar {
+          display: none; 
+        }
+      `}</style>
+    </motion.div>
+  );
+};
+
+export default HabitTracker; 
