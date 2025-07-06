@@ -1,1670 +1,1556 @@
-"use client";
-import React, { useRef, useEffect, useState } from "react";
-import type { JSX } from "react";
-type Symmetry = "none" | "x" | "y" | "xy";
-const PATTERN_TYPES = [
-  { label: "Dots", value: "dots", description: "Regular circular dots in a grid pattern" },
-  { label: "Chevron", value: "chevron", description: "Sharp zigzag pattern with adjustable angles" },
-  { label: "Grid", value: "grid", description: "Clean, geometric grid lines" },
-  { label: "Diamonds", value: "diamonds", description: "Repeating diamond shapes with variable size" },
-  { label: "Circles", value: "circles", description: "Hollow circular rings in a grid" },
-  { label: "Squares", value: "squares", description: "Square grid pattern with rounded corners" },
-  { label: "Triangles", value: "triangles", description: "Triangular tessellation pattern" },
-  { label: "Checkerboard", value: "checkerboard", description: "Classic alternating squares pattern" },
-  { label: "Cross", value: "cross", description: "Plus sign pattern in a grid" }
-] as const;
-type PatternType = typeof PATTERN_TYPES[number]["value"];
-const DEFAULTS = {
-  scale: 1,
-  rotation: 0,
-  opacity: 1,
-  symmetry: "none" as Symmetry,
-  aspectLocked: true,
-  variation: 0,
-  dpi: 2,
-  resolution: 512,
-};
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace('#', '');
-  const bigint = parseInt(h.length === 3 ? h.split('').map(x => x + x).join('') : h, 16);
-  return [
-    ((bigint >> 16) & 255) / 255,
-    ((bigint >> 8) & 255) / 255,
-    (bigint & 255) / 255,
-  ];
-}
-function createShader(gl: WebGLRenderingContext, type: number, source: string) {
-  const shader = gl.createShader(type)!;
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    const info = gl.getShaderInfoLog(shader);
-    gl.deleteShader(shader);
-    throw new Error('Could not compile shader:' + info);
+"use client"
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import {
+  FiHome,
+  FiShoppingCart,
+  FiFilter,
+  FiDownload,
+  FiPackage,
+  FiTruck,
+  FiDollarSign,
+  FiPlus,
+  FiMinus,
+  FiSearch,
+  FiChevronDown,
+  FiChevronRight,
+  FiChevronLeft,
+  FiMail,
+  FiPhone,
+  FiMapPin,
+  FiMenu,
+  FiX,
+} from 'react-icons/fi';
+import { FaStoreAlt, FaTrash } from "react-icons/fa";
+const loadFonts = () => {
+  if (typeof document !== 'undefined') {
+    if (!document.getElementById('poppins-font') && !document.getElementById('opensans-font')) {
+      const poppinsLink = document.createElement('link');
+      poppinsLink.id = 'poppins-font';
+      poppinsLink.rel = 'stylesheet';
+      poppinsLink.href =
+        'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap';
+      poppinsLink.crossOrigin = 'anonymous';
+      document.head.appendChild(poppinsLink);
+      const openSansLink = document.createElement('link');
+      openSansLink.id = 'opensans-font';
+      openSansLink.rel = 'stylesheet';
+      openSansLink.href =
+        'https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&display=swap';
+      openSansLink.crossOrigin = 'anonymous';
+      document.head.appendChild(openSansLink);
+    }
   }
-  return shader;
-}
-function createProgram(gl: WebGLRenderingContext, vsSource: string, fsSource: string) {
-  const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
-  const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
-  const program = gl.createProgram()!;
-  gl.attachShader(program, vs);
-  gl.attachShader(program, fs);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    const info = gl.getProgramInfoLog(program);
-    gl.deleteProgram(program);
-    throw new Error('Could not link program:' + info);
-  }
-  return program;
-}
-function drawPattern(
-  gl: WebGLRenderingContext,
-  opts: {
-    scale: number;
-    rotation: number;
-    opacity: number;
-    symmetry: Symmetry;
-    variation: number;
-    aspectLocked: boolean;
-    size: number;
-    patternType: PatternType;
-    colorA: string;
-    colorB: string;
-  }
-) {
-  gl.viewport(0, 0, opts.size, opts.size);
-  gl.clearColor(1, 1, 1, 1);
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  const vsSource = `
-    attribute vec2 a_position;
-    varying vec2 v_uv;
-    void main() {
-      v_uv = (a_position + 1.0) * 0.5;
-      gl_Position = vec4(a_position, 0, 1);
-    }
-  `;
-  const fsSource = `
-    precision highp float;
-    varying vec2 v_uv;
-    uniform float u_scale;
-    uniform float u_rotation;
-    uniform float u_opacity;
-    uniform int u_symmetry;
-    uniform float u_variation;
-    uniform bool u_aspectLocked;
-    uniform int u_patternType;
-    uniform vec3 u_colorA;
-    uniform vec3 u_colorB;
-    const float PI = 3.14159265359;
-    const float EPSILON = 0.0001;
-    mat2 rot(float a) {
-      float s = sin(a), c = cos(a);
-      return mat2(c, -s, s, c);
-    }
-    vec2 applySymmetry(vec2 uv, int mode) {
-      vec2 center = vec2(0.5);
-      vec2 result = uv;
-      if (mode == 1) {
-        result.x = abs(2.0 * (uv.x - center.x)) + center.x;
-      }
-      else if (mode == 2) {
-        result.y = abs(2.0 * (uv.y - center.y)) + center.y;
-      }
-      else if (mode == 3) {
-        result = abs(2.0 * (uv - center)) + center;
-      }
-      return result;
-    }
-    float hash(vec2 p) {
-      vec3 p3 = fract(vec3(p.xyx) * vec3(443.897, 441.423, 437.195));
-      p3 += dot(p3, p3.yzx + 19.19);
-      return fract((p3.x + p3.y) * p3.z);
-    }
-    float smoothPattern(float x) {
-      return smoothstep(0.0, 1.0, x);
-    }
-    float dots(vec2 uv, float var) {
-      vec2 grid = fract(uv * 12.0); 
-      vec2 gridCenter = grid - 0.5;
-      float dist = length(gridCenter);
-      float dotSize = 0.15; 
-      float smoothness = 0.02; 
-      float sizeVar = dotSize + sin(uv.x * 2.0 + uv.y * 2.0 + var) * 0.01;
-      return 1.0 - smoothstep(sizeVar - smoothness, sizeVar + smoothness, dist);
-    }
-    float chevron(vec2 uv, float var) {
-      vec2 vUv = fract(uv * 5.0); 
-      float v = abs(vUv.x - 0.5) * 2.0;
-      float w = abs(vUv.y - 0.5) * 2.0;
-      float chevPattern = abs(v - w + sin(var * PI) * 0.3);
-      return smoothstep(0.1, 0.15, chevPattern);
-    }
-    float grid(vec2 uv, float var) {
-      vec2 gv = fract(uv * 10.0) - 0.5; 
-      float xLine = smoothstep(0.02 + var * 0.02, 0.04 + var * 0.02, abs(gv.x));
-      float yLine = smoothstep(0.02 + var * 0.02, 0.04 + var * 0.02, abs(gv.y));
-      return min(xLine, yLine);
-    }
-    float diamonds(vec2 uv, float var) {
-      vec2 dv = fract(uv * 8.0) - 0.5; 
-      float d = abs(dv.x) + abs(dv.y);
-      return smoothstep(0.3 + var * 0.2, 0.4 + var * 0.2, d); 
-    }
-    float circles(vec2 uv, float var) {
-      vec2 grid = fract(uv * 8.0);
-      vec2 gridCenter = grid - 0.5;
-      float dist = length(gridCenter);
-      float outerRadius = 0.4;
-      float innerRadius = 0.25;
-      float smoothness = 0.02;
-      float outer = 1.0 - smoothstep(outerRadius - smoothness, outerRadius + smoothness, dist);
-      float inner = smoothstep(innerRadius - smoothness, innerRadius + smoothness, dist);
-      return outer * inner;
-    }
-    float squares(vec2 uv, float var) {
-      vec2 grid = fract(uv * 6.0);
-      vec2 gridCenter = abs(grid - 0.5);
-      float dist = max(gridCenter.x, gridCenter.y);
-      float size = 0.35;
-      float smoothness = 0.02;
-      return 1.0 - smoothstep(size - smoothness, size + smoothness, dist);
-    }
-    float triangles(vec2 uv, float var) {
-      vec2 grid = fract(uv * 6.0);
-      vec2 p = grid - 0.5;
-      float tri = abs(p.x) + abs(p.y) - 0.3;
-      float smoothness = 0.02;
-      return 1.0 - smoothstep(-smoothness, smoothness, tri);
-    }
-    float checkerboard(vec2 uv, float var) {
-      vec2 grid = floor(uv * 8.0);
-      float checker = mod(grid.x + grid.y, 2.0);
-      return checker;
-    }
-    float cross(vec2 uv, float var) {
-      vec2 grid = fract(uv * 6.0);
-      vec2 p = abs(grid - 0.5);
-      float horizontal = step(p.y, 0.1) * step(p.x, 0.4);
-      float vertical = step(p.x, 0.1) * step(p.y, 0.4);
-      return max(horizontal, vertical);
-    }
-    void main() {
-      vec2 uv = v_uv;
-      vec2 center = vec2(0.5);
-      uv -= center;
-      float aspect = u_aspectLocked ? 1.0 : 0.7 + 0.3 * sin(u_variation * PI);
-      float invScale = 1.0 / u_scale;
-      uv *= mat2(invScale * 1.2, 0.0, 0.0, invScale * aspect * 1.2);
-      uv = rot(u_rotation) * uv;
-      uv += center;
-      uv = applySymmetry(uv, u_symmetry);
-      uv = fract(uv);
-      float pattern = 0.0;
-      if (u_patternType == 0) {
-        pattern = dots(uv, u_variation);
-      } else if (u_patternType == 1) {
-        pattern = chevron(uv, u_variation);
-      } else if (u_patternType == 2) {
-        pattern = grid(uv, u_variation);
-      } else if (u_patternType == 3) {
-        pattern = diamonds(uv, u_variation);
-      } else if (u_patternType == 4) {
-        pattern = circles(uv, u_variation);
-      } else if (u_patternType == 5) {
-        pattern = squares(uv, u_variation);
-      } else if (u_patternType == 6) {
-        pattern = triangles(uv, u_variation);
-      } else if (u_patternType == 7) {
-        pattern = checkerboard(uv, u_variation);
-      } else if (u_patternType == 8) {
-        pattern = cross(uv, u_variation);
-      }
-      vec3 base = mix(u_colorA, u_colorB, pattern);
-      float thread = 0.5 + 0.5 * sin((uv.x + uv.y + u_variation) * 50.0);
-      base *= 0.98 + 0.02 * thread;
-      vec3 finalColor = mix(vec3(1.0), base, u_opacity);
-      gl_FragColor = vec4(finalColor, 1.0);
-    }
-  `;
-  const program = createProgram(gl, vsSource, fsSource);
-  gl.useProgram(program);
-  const posLoc = gl.getAttribLocation(program, "a_position");
-  const posBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array([
-      -1, -1,
-      1, -1,
-      -1, 1,
-      -1, 1,
-      1, -1,
-      1, 1,
-    ]),
-    gl.STATIC_DRAW
-  );
-  gl.enableVertexAttribArray(posLoc);
-  gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-  const scaleLoc = gl.getUniformLocation(program, "u_scale");
-  const rotLoc = gl.getUniformLocation(program, "u_rotation");
-  const opLoc = gl.getUniformLocation(program, "u_opacity");
-  const symLoc = gl.getUniformLocation(program, "u_symmetry");
-  const varLoc = gl.getUniformLocation(program, "u_variation");
-  const aspectLoc = gl.getUniformLocation(program, "u_aspectLocked");
-  const patternTypeLoc = gl.getUniformLocation(program, "u_patternType");
-  const colorALoc = gl.getUniformLocation(program, "u_colorA");
-  const colorBLoc = gl.getUniformLocation(program, "u_colorB");
-  gl.uniform1f(scaleLoc, opts.scale);
-  gl.uniform1f(rotLoc, (opts.rotation * Math.PI) / 180);
-  gl.uniform1f(opLoc, opts.opacity);
-  gl.uniform1i(symLoc, opts.symmetry === "none" ? 0 : opts.symmetry === "x" ? 1 : opts.symmetry === "y" ? 2 : 3);
-  gl.uniform1f(varLoc, opts.variation);
-  gl.uniform1i(aspectLoc, opts.aspectLocked ? 1 : 0);
-  gl.uniform1i(patternTypeLoc, PATTERN_TYPES.findIndex(p => p.value === opts.patternType));
-  gl.uniform3fv(colorALoc, hexToRgb(opts.colorA));
-  gl.uniform3fv(colorBLoc, hexToRgb(opts.colorB));
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
-  gl.deleteBuffer(posBuffer);
-  gl.deleteProgram(program);
-}
-type PatternCanvasProps = {
-  scale: number;
-  rotation: number;
-  opacity: number;
-  symmetry: Symmetry;
-  variation: number;
-  aspectLocked: boolean;
-  size: number;
-  dpi: number;
-  patternType: PatternType;
-  colorA: string;
-  colorB: string;
-  className?: string;
 };
-const PatternCanvas: React.FC<PatternCanvasProps> = ({
-  scale,
-  rotation,
-  opacity,
-  symmetry,
-  variation,
-  aspectLocked,
-  size,
-  dpi,
-  patternType,
-  colorA,
-  colorB,
-  className,
-}) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const gl = canvas.getContext("webgl") as WebGLRenderingContext;
-    if (!gl) return;
-    drawPattern(gl, {
-      scale: scale,
-      rotation,
-      opacity,
-      symmetry,
-      variation,
-      aspectLocked,
-      size: size * dpi,
-      patternType,
-      colorA,
-      colorB,
-    });
-  }, [scale, rotation, opacity, symmetry, variation, aspectLocked, size, dpi, patternType, colorA, colorB]);
-  return (
-    <canvas
-      ref={canvasRef}
-      width={size * dpi}
-      height={size * dpi}
-      className={
-        `aspect-square w-full h-auto block bg-white border border-gray-200 ${className || ""}`
-      }
-      style={{ imageRendering: "pixelated" }}
-    />
-  );
-};
-const ExportButton: React.FC<{
-  onExport: () => void;
-  label: string;
-  icon: React.ReactNode;
-  darkMode: boolean;
-}> = ({ onExport, label, icon, darkMode }) => (
-  <button
-    type="button"
-    onClick={onExport}
-    className={cx(
-      'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all duration-200',
-      'focus:outline-none focus:ring-2 focus:ring-purple-300 focus:ring-offset-1',
-      'hover:scale-[1.02] hover:shadow-md',
-      'active:scale-[0.98]',
-      'whitespace-nowrap',
-      'cursor-pointer',
-      darkMode
-        ? 'bg-gradient-to-br from-neutral-800/90 to-neutral-700/80 border-neutral-600 text-gray-200 hover:border-purple-400/60 hover:bg-gradient-to-br hover:from-neutral-700/90 hover:to-neutral-600/80 shadow-[0_2px_8px_0_rgba(0,0,0,0.15)]'
-        : 'bg-purple-200 border-purple-300 text-purple-800 hover:bg-purple-300 hover:border-purple-400 shadow-[0_2px_8px_0_rgba(0,0,0,0.08)]'
-    )}
-  >
-    {icon}
-    {label}
-  </button>
-);
-function cx(...classes: (string | false | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
-}
-const DpiLabel: React.FC<{ retina: boolean }> = ({ retina }) => (
-  <div
-    className="absolute top-2 right-2 px-2 py-0.5 rounded bg-black/60 text-xs text-white opacity-80 pointer-events-none select-none z-10"
-    style={{ fontSize: '0.75rem', letterSpacing: '0.01em' }}
-    aria-label={retina ? 'Retina Mode' : 'Standard Mode'}
-  >
-    {retina ? 'Retina Mode' : 'Standard Mode'}
-  </div>
-);
-const TooltipIcon: React.FC<{
-  tooltip: string;
-  darkMode: boolean;
-}> = ({ tooltip, darkMode }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [position, setPosition] = useState({ left: 0, width: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const handleToggle = () => {
-    setIsVisible(!isVisible);
-  };
-  const handleClickOutside = (e: MouseEvent) => {
-    if (!(e.target as Element).closest('.tooltip-container')) {
-      setIsVisible(false);
-    }
-  };
-  const calculatePosition = () => {
-    if (!containerRef.current || !tooltipRef.current) return;
-    const container = containerRef.current;
-    const tooltip = tooltipRef.current;
-    const sidebar = container.closest('aside');
-    if (!sidebar) return;
-    const sidebarRect = sidebar.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    const sidebarPadding = 24;
-    const availableWidth = sidebarRect.width - (sidebarPadding * 2);
-    const maxTooltipWidth = Math.min(280, availableWidth);
-    const containerCenterX = containerRect.left + containerRect.width / 2 - sidebarRect.left;
-    let tooltipLeft = containerCenterX - maxTooltipWidth / 2;
-    if (tooltipLeft < sidebarPadding) {
-      tooltipLeft = sidebarPadding;
-    } else if (tooltipLeft + maxTooltipWidth > sidebarRect.width - sidebarPadding) {
-      tooltipLeft = sidebarRect.width - sidebarPadding - maxTooltipWidth;
-    }
-    setPosition({
-      left: tooltipLeft - (containerRect.left - sidebarRect.left),
-      width: maxTooltipWidth
-    });
-  };
-  useEffect(() => {
-    if (isVisible) {
-      document.addEventListener('click', handleClickOutside);
-      calculatePosition();
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [isVisible]);
-  useEffect(() => {
-    const handleResize = () => {
-      if (isVisible) {
-        calculatePosition();
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isVisible]);
-  return (
-    <div className="relative tooltip-container" ref={containerRef}>
-      <button
-        type="button"
-        onClick={handleToggle}
-        onMouseEnter={() => setIsVisible(true)}
-        onMouseLeave={() => setIsVisible(false)}
-        className={cx(
-          'w-4 h-4 cursor-help transition-colors duration-200',
-          'focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-teal-400/40 rounded-full',
-          darkMode ? 'text-white/60 hover:text-white/80' : 'text-white/70 hover:text-white/90'
-        )}
-        aria-label="Show tooltip"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-          <path d="M12 17h.01" />
-        </svg>
-      </button>
-      <div
-        ref={tooltipRef}
-        className={cx(
-          'absolute bottom-6 px-3 py-2 text-xs rounded-lg shadow-lg z-50',
-          'transition-all duration-200',
-          'break-words whitespace-normal text-center font-medium',
-          isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none',
-          darkMode
-            ? 'bg-neutral-800 text-white border border-neutral-600'
-            : 'bg-white text-gray-800 border border-gray-200'
-        )}
-        style={{
-          left: `${position.left}px`,
-          width: `${position.width}px`
-        }}
-      >
-        {tooltip}
-      </div>
-    </div>
-  );
-};
-const ModernCheckbox: React.FC<{
+loadFonts();
+interface Product {
   id: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-  darkMode: boolean;
+  name: string;
+  category: string;
+  subcategory: string;
+  unit: string;
+  basePrice: number;
+  minOrderQty: number;
+  maxOrderQty: number;
+  palletSize: number;
+  weight: number;
+  tiers: PricingTier[];
+}
+interface PricingTier {
+  minQty: number;
+  maxQty: number;
+  price: number;
+  discount: number;
+}
+interface OrderItem {
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+interface CategoryNode {
+  name: string;
+  subcategories: string[];
+  expanded: boolean;
+}
+const useInventoryManagement = (products: Product[]) => {
+  const [orderItems, setOrderItems] = useState<Map<string, OrderItem>>(new Map());
+  const updateOrderItem = useCallback(
+    (productId: string, quantity: number) => {
+      const product = products.find((p) => p.id === productId);
+      if (!product) return;
+      const validatedQuantity = Math.max(0, Math.min(product.maxOrderQty, quantity));
+      setOrderItems((prevItems) => {
+        const newOrderItems = new Map(prevItems);
+        if (validatedQuantity <= 0) {
+          newOrderItems.delete(productId);
+        } else {
+          const tier = product.tiers.find(
+            (t) => validatedQuantity >= t.minQty && validatedQuantity <= t.maxQty,
+          );
+          const unitPrice = tier ? tier.price : product.basePrice;
+          newOrderItems.set(productId, {
+            productId,
+            quantity: validatedQuantity,
+            unitPrice,
+            totalPrice: unitPrice * validatedQuantity,
+          });
+        }
+        return newOrderItems;
+      });
+    },
+    [products],
+  );
+  const getProductPrice = useCallback((product: Product, quantity: number): number => {
+    if (quantity < product.minOrderQty) return product.basePrice;
+    const tier = product.tiers.find((t) => quantity >= t.minQty && quantity <= t.maxQty);
+    return tier ? tier.price : product.basePrice;
+  }, []);
+  const orderSummary = useMemo(() => {
+    const items = Array.from(orderItems.values());
+    const totalValue = items.reduce((sum, item) => sum + item.totalPrice, 0);
+    const totalWeight = items.reduce((sum, item) => {
+      const product = products.find((p) => p.id === item.productId);
+      return sum + (product ? product.weight * item.quantity : 0);
+    }, 0);
+    let totalPallets = 0;
+    items.forEach((item) => {
+      const product = products.find((p) => p.id === item.productId);
+      if (product) {
+        totalPallets += Math.ceil(item.quantity / product.palletSize);
+      }
+    });
+    return { totalValue, totalWeight, totalPallets, itemCount: items.length };
+  }, [orderItems, products]);
+  return {
+    orderItems,
+    updateOrderItem,
+    getProductPrice,
+    orderSummary,
+  };
+};
+const useDataTransition = <T,>(data: T, isTransitioning: boolean, timeout: number = 300): T => {
+  const [timeExpired, setTimeExpired] = useState(false);
+  const cache = useRef(data);
+  useEffect(() => {
+    if (!isTransitioning) cache.current = data;
+  }, [isTransitioning, data]);
+  useEffect(() => {
+    let id: NodeJS.Timeout;
+    if (isTransitioning) {
+      id = setTimeout(() => setTimeExpired(true), timeout);
+    } else {
+      setTimeExpired(false);
+    }
+    return () => clearTimeout(id);
+  }, [isTransitioning, timeout]);
+  if (isTransitioning && !timeExpired) return cache.current;
+  else return data;
+};
+const useProductFilters = (products: Product[]) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const filteredProducts = useMemo(() => {
+    let filtered = products;
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(searchLower) ||
+          p.category.toLowerCase().includes(searchLower) ||
+          p.subcategory.toLowerCase().includes(searchLower),
+      );
+    }
+    if (selectedCategory) {
+      const [category, subcategory] = selectedCategory.split('|');
+      filtered = filtered.filter((p) => {
+        if (subcategory) {
+          return p.category === category && p.subcategory === subcategory;
+        }
+        return p.category === category;
+      });
+    }
+    return filtered;
+  }, [products, searchTerm, selectedCategory]);
+  return {
+    searchTerm,
+    setSearchTerm,
+    selectedCategory,
+    setSelectedCategory,
+    filteredProducts,
+  };
+};
+interface QuantityInputProps {
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
   className?: string;
-}> = ({ id, checked, onChange, label, darkMode, className }) => (
-  <label htmlFor={id} className={cx('relative flex items-center cursor-pointer group select-none', className)}>
-    <input
-      id={id}
-      type="checkbox"
-      checked={checked}
-      onChange={e => onChange(e.target.checked)}
-      className="sr-only peer"
-      aria-checked={checked}
-    />
-    <div
-      className={cx(
-        'relative w-5 h-5 flex items-center justify-center rounded-md transition-all duration-300',
-        'border-2',
-        'before:content-[""] before:absolute before:inset-0 before:rounded-[4px] before:transition-all before:duration-300',
-        'after:content-[""] after:absolute after:inset-0 after:scale-50 after:opacity-0 after:transition-all after:duration-300',
-        'peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2',
-        checked
-          ? [
-            'before:opacity-100 before:scale-100',
-            'after:opacity-100 after:scale-100',
-            darkMode
-              ? [
-                'border-teal-400',
-                'before:bg-gradient-to-br before:from-teal-400 before:to-teal-600',
-                'after:bg-gradient-to-br after:from-teal-500 after:to-teal-700',
-                'peer-focus-visible:ring-teal-500/40'
-              ].join(' ')
-              : [
-                'border-teal-500',
-                'before:bg-gradient-to-br before:from-teal-300 before:to-teal-500',
-                'after:bg-gradient-to-br after:from-teal-400 after:to-teal-600',
-                'peer-focus-visible:ring-teal-400/40'
-              ].join(' ')
-          ].join(' ')
-          : [
-            'before:opacity-100 before:scale-100',
-            darkMode
-              ? [
-                'border-gray-600',
-                'before:bg-neutral-800',
-                'peer-focus-visible:ring-neutral-500/40',
-                'group-hover:before:bg-neutral-700',
-                'group-hover:border-gray-500'
-              ].join(' ')
-              : [
-                'border-gray-300',
-                'before:bg-white',
-                'peer-focus-visible:ring-gray-400/40',
-                'group-hover:before:bg-gray-50',
-                'group-hover:border-gray-400'
-              ].join(' ')
-          ].join(' ')
-      )}
-    >
-      <svg
-        className={cx(
-          'w-3 h-3 text-white transition-all duration-300 relative z-10',
-          checked
-            ? 'opacity-100 scale-100'
-            : 'opacity-0 scale-75'
-        )}
-        viewBox="0 0 12 12"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M2.5 6L5 8.5L9.5 4"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          stroke="currentColor"
-        />
-      </svg>
-    </div>
-    <span className={cx('ml-3 text-sm font-semibold', darkMode ? 'text-white' : 'text-white')}>{label}</span>
-  </label>
+}
+const QuantityInput = React.memo<QuantityInputProps>(
+  ({ value, onChange, min = 0, max = Infinity, className = '' }) => {
+    const [displayValue, setDisplayValue] = useState<string>(value.toString());
+    useEffect(() => {
+      setDisplayValue(value.toString());
+    }, [value]);
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const inputValue = e.target.value;
+      if (inputValue === '') {
+        setDisplayValue('');
+        return;
+      }
+      if (!/^\d+$/.test(inputValue)) {
+        return;
+      }
+      setDisplayValue(inputValue);
+    }, []);
+    const handleBlur = useCallback(() => {
+      const numValue = displayValue === '' ? 0 : parseInt(displayValue, 10);
+      const clampedValue = Math.max(min, Math.min(max, numValue));
+      setDisplayValue(clampedValue.toString());
+      onChange(clampedValue);
+    }, [displayValue, min, max, onChange]);
+    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.currentTarget.blur();
+      }
+    }, []);
+    return (
+      <input
+        type="text"
+        inputMode="numeric"
+        value={displayValue}
+        onChange={handleInputChange}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className={`text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${className}`}
+        min={min}
+        max={max}
+      />
+    );
+  },
 );
-const ModernDropdown: React.FC<{
-  id: string;
+interface SearchInputProps {
   value: string;
   onChange: (value: string) => void;
-  options: readonly { readonly label: string; readonly value: string; readonly description: string }[];
-  label: string;
-  darkMode: boolean;
-}> = ({ id, value, onChange, options, label, darkMode }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-  const selectedOption = options.find(opt => opt.value === value);
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <label className={cx('block text-md font-bold mb-3', darkMode ? 'text-white' : 'text-white')} htmlFor={id}>
-        {label}
-      </label>
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className={cx(
-            'w-full flex items-center justify-between px-3 py-2.5 text-sm rounded-lg border transition-all duration-200',
-            'focus:outline-none focus:ring-2 focus:ring-[#c5c6e5] focus:ring-offset-2',
-            'hover:border-[#c5c6e5]',
-            'cursor-pointer',
-            darkMode
-              ? 'bg-[#c5c6e5]/10 border-[#c5c6e5]/30 text-gray-100'
-              : 'bg-[#c5c6e5]/10 border-[#c5c6e5]/30 text-white'
-          )}
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-          aria-labelledby={`${id}-label`}
-        >
-          <span className="truncate">{selectedOption?.label}</span>
-          <svg
-            className={cx(
-              'w-4 h-4 transition-transform duration-200',
-              isOpen ? 'rotate-180' : '',
-              darkMode ? 'text-[#c5c6e5]' : 'text-[#c5c6e5]'
-            )}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        {isOpen && (
-          <div
-            className={cx(
-              'absolute z-50 w-full mt-1 rounded-lg border shadow-lg transition-all duration-200',
-              'animate-in fade-in-0 zoom-in-95',
-              darkMode
-                ? 'bg-[#c5c6e5]/5 border-[#c5c6e5]/30 shadow-neutral-900/50'
-                : 'bg-white border-[#c5c6e5]/30 shadow-gray-900/10'
-            )}
-          >
-            <ul
-              role="listbox"
-              aria-labelledby={`${id}-label`}
-              className={cx(
-                'py-1 max-h-40 overflow-y-auto',
-                'custom-scrollbar'
-              )}
-            >
-              {options.map((option) => (
-                <li key={option.value} role="option" aria-selected={option.value === value}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange(option.value);
-                      setIsOpen(false);
-                    }}
-                    className={cx(
-                      'w-full px-3 py-2 text-left transition-colors duration-150',
-                      'focus:outline-none',
-                      'cursor-pointer',
-                      option.value === value
-                        ? darkMode
-                          ? 'bg-[#c5c6e5]/20 text-[#c5c6e5]'
-                          : 'bg-[#c5c6e5]/20 text-gray-700'
-                        : darkMode
-                          ? 'text-gray-100 hover:bg-teal-500/20 focus:bg-teal-500/20'
-                          : 'text-gray-700 hover:bg-teal-400/20 focus:bg-teal-400/20'
-                    )}
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-medium">{option.label}</span>
-                      <span className={cx(
-                        'text-xs mt-0.5',
-                        darkMode
-                          ? 'text-gray-300'
-                          : 'text-gray-600'
-                      )}>
-                        {option.description}
-                      </span>
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-function useWebGLSupport() {
-  const [isSupported, setIsSupported] = useState(true);
-  useEffect(() => {
-    try {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      setIsSupported(!!gl);
-    } catch (e) {
-      setIsSupported(false);
-    }
-  }, []);
-  return isSupported;
+  placeholder?: string;
+  className?: string;
 }
-const App: React.FC = () => {
-  const webGLSupported = useWebGLSupport();
-  const [scale, setScale] = useState(DEFAULTS.scale);
-  const [rotation, setRotation] = useState(DEFAULTS.rotation);
-  const [opacity, setOpacity] = useState(DEFAULTS.opacity);
-  const [symmetry, setSymmetry] = useState<Symmetry>(DEFAULTS.symmetry);
-  const [aspectLocked, setAspectLocked] = useState(DEFAULTS.aspectLocked);
-  const [variation, setVariation] = useState(DEFAULTS.variation);
-  const [abMode, setAbMode] = useState(false);
-  const [selectedFabric, setSelectedFabric] = useState<'A' | 'B'>('A');
-  const [dpi, setDpi] = useState(DEFAULTS.dpi);
-  const [resolution, setResolution] = useState(DEFAULTS.resolution);
-  const [patternType, setPatternType] = useState<PatternType>(PATTERN_TYPES[0].value);
-  const [colorA, setColorA] = useState<string>("#FFFFFF");
-  const [colorB, setColorB] = useState<string>("#C5C6E5");
-  const [darkMode, setDarkMode] = useState(false);
-  const [retina, setRetina] = useState(true);
-  const [effectiveDpi, setEffectiveDpi] = useState(2);
-  const [scaleB, setScaleB] = useState(DEFAULTS.scale);
-  const [rotationB, setRotationB] = useState(DEFAULTS.rotation);
-  const [opacityB, setOpacityB] = useState(DEFAULTS.opacity);
-  const [symmetryB, setSymmetryB] = useState<Symmetry>(DEFAULTS.symmetry);
-  const [aspectLockedB, setAspectLockedB] = useState(DEFAULTS.aspectLocked);
-  const [variationB, setVariationB] = useState(DEFAULTS.variation);
-  const [patternTypeB, setPatternTypeB] = useState<PatternType>(PATTERN_TYPES[1].value);
-  const [colorAB, setColorAB] = useState<string>("#F0F0F0");
-  const [colorBB, setColorBB] = useState<string>("#A5A6D5");
-  const [showTiling, setShowTiling] = useState(false);
-  useEffect(() => {
-    setEffectiveDpi(retina ? (window.devicePixelRatio || 2) : 1);
-  }, [retina]);
-  const getCurrentFabricParams = () => {
-    if (!abMode || selectedFabric === 'A') {
-      return {
-        scale, rotation, opacity, symmetry, aspectLocked, variation, patternType, colorA, colorB,
-        setScale, setRotation, setOpacity, setSymmetry, setAspectLocked, setVariation, setPatternType, setColorA, setColorB
-      };
-    } else {
-      return {
-        scale: scaleB, rotation: rotationB, opacity: opacityB, symmetry: symmetryB, aspectLocked: aspectLockedB, variation: variationB, patternType: patternTypeB, colorA: colorAB, colorB: colorBB,
-        setScale: setScaleB, setRotation: setRotationB, setOpacity: setOpacityB, setSymmetry: setSymmetryB, setAspectLocked: setAspectLockedB, setVariation: setVariationB, setPatternType: setPatternTypeB, setColorA: setColorAB, setColorB: setColorBB
-      };
-    }
-  };
-  const fabricParams = getCurrentFabricParams();
-  const [canvasSize, setCanvasSize] = useState(320);
-  const containerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    function handleResize() {
-      if (containerRef.current) {
-        const w = containerRef.current.offsetWidth;
-        setCanvasSize(Math.max(160, Math.floor(w)));
-      }
-    }
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-  const handleExportPNG = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = resolution * effectiveDpi;
-    canvas.height = resolution * effectiveDpi;
-    const gl = canvas.getContext("webgl") as WebGLRenderingContext;
-    if (!gl) return;
-    const debugBorder = true;
-    if (debugBorder) {
-      gl.clearColor(0.9, 0.9, 0.9, 1);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-    }
-    drawPattern(gl, {
-      scale: fabricParams.scale,
-      rotation: fabricParams.rotation,
-      opacity: fabricParams.opacity,
-      symmetry: fabricParams.symmetry,
-      variation: fabricParams.variation,
-      aspectLocked: fabricParams.aspectLocked,
-      size: resolution * effectiveDpi,
-      patternType: fabricParams.patternType,
-      colorA: fabricParams.colorA,
-      colorB: fabricParams.colorB,
-    });
-    const url = canvas.toDataURL("image/png");
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `fabric-pattern${abMode ? `-${selectedFabric}` : ''}.png`;
-    a.click();
-  };
-  const handleExportSVG = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = resolution * effectiveDpi;
-    canvas.height = resolution * effectiveDpi;
-    const gl = canvas.getContext("webgl") as WebGLRenderingContext;
-    if (!gl) return;
-    drawPattern(gl, {
-      scale: fabricParams.scale,
-      rotation: fabricParams.rotation,
-      opacity: fabricParams.opacity,
-      symmetry: fabricParams.symmetry,
-      variation: fabricParams.variation,
-      aspectLocked: fabricParams.aspectLocked,
-      size: resolution * effectiveDpi,
-      patternType: fabricParams.patternType,
-      colorA: fabricParams.colorA,
-      colorB: fabricParams.colorB,
-    });
-    const svgNS = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("width", `${resolution * effectiveDpi}`);
-    svg.setAttribute("height", `${resolution * effectiveDpi}`);
-    svg.setAttribute("viewBox", `0 0 ${resolution * effectiveDpi} ${resolution * effectiveDpi}`);
-    const img = document.createElementNS(svgNS, "image");
-    img.setAttributeNS(
-      "http://www.w3.org/1999/xlink",
-      "href",
-      canvas.toDataURL("image/png")
+const SearchInput = React.memo<SearchInputProps>(
+  ({ value, onChange, placeholder = 'Search...', className = '' }) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const handleChange = useCallback(
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        onChange(e.target.value);
+      },
+      [onChange],
     );
-    img.setAttribute("x", "0");
-    img.setAttribute("y", "0");
-    img.setAttribute("width", `${resolution * effectiveDpi}`);
-    img.setAttribute("height", `${resolution * effectiveDpi}`);
-    svg.appendChild(img);
-    const serializer = new XMLSerializer();
-    const svgStr = serializer.serializeToString(svg);
-    const blob = new Blob([svgStr], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `fabric-pattern${abMode ? `-${selectedFabric}` : ''}.svg`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
-  useEffect(() => {
-    if (!document.getElementById('poppins-font-link')) {
-      const link = document.createElement('link');
-      link.id = 'poppins-font-link';
-      link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap';
-      document.head.appendChild(link);
-    }
-    if (!document.getElementById('poppins-font-style')) {
-      const style = document.createElement('style');
-      style.id = 'poppins-font-style';
-      style.innerHTML = `
-        html, body, #root, * {
-          font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif !important;
-        }
-      `;
-      document.head.appendChild(style);
-    }
-  }, []);
+    return (
+      <div className={`relative ${className}`}>
+        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5 z-10 pointer-events-none" />
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder={placeholder}
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 focus:shadow-lg text-sm sm:text-base"
+          value={value}
+          onChange={handleChange}
+          maxLength={100}
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </div>
+    );
+  },
+);
+const formatNumber = (num: number): string => {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M';
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K';
+  }
+  return num.toLocaleString();
+};
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+const sampleProducts: Product[] = [
+  {
+    id: 'p001',
+    name: 'Premium Steel Bolts M8x40',
+    category: 'Hardware',
+    subcategory: 'Fasteners',
+    unit: 'pcs',
+    basePrice: 0.45,
+    minOrderQty: 100,
+    maxOrderQty: 50000,
+    palletSize: 5000,
+    weight: 0.025,
+    tiers: [
+      { minQty: 100, maxQty: 999, price: 0.45, discount: 0 },
+      { minQty: 1000, maxQty: 4999, price: 0.38, discount: 15 },
+      { minQty: 5000, maxQty: 9999, price: 0.32, discount: 29 },
+      { minQty: 10000, maxQty: 50000, price: 0.28, discount: 38 },
+    ],
+  },
+  {
+    id: 'p002',
+    name: 'Industrial Grade Washers',
+    category: 'Hardware',
+    subcategory: 'Fasteners',
+    unit: 'pcs',
+    basePrice: 0.15,
+    minOrderQty: 500,
+    maxOrderQty: 100000,
+    palletSize: 10000,
+    weight: 0.008,
+    tiers: [
+      { minQty: 500, maxQty: 1999, price: 0.15, discount: 0 },
+      { minQty: 2000, maxQty: 9999, price: 0.12, discount: 20 },
+      { minQty: 10000, maxQty: 19999, price: 0.09, discount: 40 },
+      { minQty: 20000, maxQty: 100000, price: 0.07, discount: 53 },
+    ],
+  },
+  {
+    id: 'p003',
+    name: 'Heavy Duty Steel Cables 6mm',
+    category: 'Hardware',
+    subcategory: 'Cables',
+    unit: 'meters',
+    basePrice: 2.8,
+    minOrderQty: 50,
+    maxOrderQty: 10000,
+    palletSize: 1000,
+    weight: 0.18,
+    tiers: [
+      { minQty: 50, maxQty: 199, price: 2.8, discount: 0 },
+      { minQty: 200, maxQty: 999, price: 2.45, discount: 12 },
+      { minQty: 1000, maxQty: 2999, price: 2.1, discount: 25 },
+      { minQty: 3000, maxQty: 10000, price: 1.85, discount: 34 },
+    ],
+  },
+  {
+    id: 'p004',
+    name: 'Electrical Copper Wire 12AWG',
+    category: 'Electrical',
+    subcategory: 'Wiring',
+    unit: 'feet',
+    basePrice: 0.85,
+    minOrderQty: 100,
+    maxOrderQty: 25000,
+    palletSize: 2500,
+    weight: 0.032,
+    tiers: [
+      { minQty: 100, maxQty: 499, price: 0.85, discount: 0 },
+      { minQty: 500, maxQty: 1999, price: 0.72, discount: 15 },
+      { minQty: 2000, maxQty: 4999, price: 0.63, discount: 26 },
+      { minQty: 5000, maxQty: 25000, price: 0.55, discount: 35 },
+    ],
+  },
+  {
+    id: 'p005',
+    name: 'LED Strip Lights 5050 SMD',
+    category: 'Electrical',
+    subcategory: 'Lighting',
+    unit: 'meters',
+    basePrice: 12.5,
+    minOrderQty: 10,
+    maxOrderQty: 5000,
+    palletSize: 500,
+    weight: 0.15,
+    tiers: [
+      { minQty: 10, maxQty: 49, price: 12.5, discount: 0 },
+      { minQty: 50, maxQty: 199, price: 10.25, discount: 18 },
+      { minQty: 200, maxQty: 499, price: 8.75, discount: 30 },
+      { minQty: 500, maxQty: 5000, price: 7.5, discount: 40 },
+    ],
+  },
+  {
+    id: 'p006',
+    name: 'PVC Pipe Schedule 40 2"',
+    category: 'Plumbing',
+    subcategory: 'Pipes',
+    unit: 'feet',
+    basePrice: 3.25,
+    minOrderQty: 20,
+    maxOrderQty: 5000,
+    palletSize: 200,
+    weight: 0.95,
+    tiers: [
+      { minQty: 20, maxQty: 99, price: 3.25, discount: 0 },
+      { minQty: 100, maxQty: 299, price: 2.85, discount: 12 },
+      { minQty: 300, maxQty: 999, price: 2.45, discount: 25 },
+      { minQty: 1000, maxQty: 5000, price: 2.15, discount: 34 },
+    ],
+  },
+];
+const ProductRow = React.memo<{
+  product: Product;
+  quantity: number;
+  index: number;
+  updateOrderItem: (productId: string, quantity: number) => void;
+  getProductPrice: (product: Product, quantity: number) => number;
+  shouldAnimate: boolean;
+}>(({ product, quantity, index, updateOrderItem: updateFn, getProductPrice, shouldAnimate }) => {
+  const currentPrice = getProductPrice(product, quantity);
+  return (
+    <tr
+      className={`hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-300 ${
+        shouldAnimate ? 'animate-fade-in-up' : ''
+      }`}
+      style={shouldAnimate ? { animationDelay: `${index * 50}ms` } : {}}
+    >
+      <td className="p-4 align-middle">
+        <div className="flex flex-col justify-center h-full">
+          <span className="font-medium text-gray-900 text-base break-words">{product.name}</span>
+          <span className="text-sm text-gray-800 mt-1">{product.category} • {product.subcategory} • Min: {formatNumber(product.minOrderQty)} {product.unit}</span>
+        </div>
+      </td>
+      <td className="p-4 align-middle">
+        <div className="flex flex-col items-start justify-center h-full">
+          <span className="font-medium text-gray-900 font-ui">{formatCurrency(currentPrice)}</span>
+          <span className="text-sm text-gray-800 mt-1">per {product.unit}</span>
+        </div>
+      </td>
+      <td className="p-4 align-middle">
+        <div className="flex flex-col items-center justify-center h-full gap-y-1">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => updateFn(product.id, quantity === 0 ? product.minOrderQty : Math.max(0, quantity - 1))}
+              className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-red-100 hover:text-red-600 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transform hover:scale-110 cursor-pointer"
+            >
+              <FiMinus />
+            </button>
+            <QuantityInput
+              value={quantity}
+              onChange={(value) => updateFn(product.id, value)}
+              min={0}
+              max={product.maxOrderQty}
+              className="w-20 px-2 py-1.5 text-sm"
+            />
+            <button
+              onClick={() => updateFn(product.id, quantity === 0 ? product.minOrderQty : Math.min(product.maxOrderQty, quantity + 1))}
+              className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-green-100 hover:text-green-600 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transform hover:scale-110 cursor-pointer"
+            >
+              <FiPlus />
+            </button>
+          </div>
+                      <span className="text-xs text-gray-800">Max: {formatNumber(product.maxOrderQty)}</span>
+        </div>
+      </td>
+      <td className="p-4 align-middle">
+        <div className="flex flex-col justify-center h-full gap-y-1">
+          {product.tiers.map((tier, idx) => (
+            <span
+              key={idx}
+              className={`text-xs px-2 py-1 rounded-md transition-all duration-200 font-ui ${
+                quantity >= tier.minQty && quantity <= tier.maxQty
+                  ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 font-medium transform scale-105'
+                  : 'text-gray-800 bg-gray-50'
+              }`}
+            >
+              {formatNumber(tier.minQty)}+ units: {formatCurrency(tier.price)} ({tier.discount}% off)
+            </span>
+          ))}
+        </div>
+      </td>
+      <td className="p-4 text-right align-middle">
+        <div className="flex flex-col items-end justify-center h-full gap-y-1">
+          <span className="font-semibold text-gray-900 font-ui">{formatCurrency(currentPrice * quantity)}</span>
+          {quantity > 0 && (
+            <span className="text-sm text-gray-800 font-ui">{Math.ceil(quantity / product.palletSize)} pallets</span>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+});
+const ProductCard = React.memo<{
+  product: Product;
+  quantity: number;
+  index: number;
+  updateOrderItem: (productId: string, quantity: number) => void;
+  getProductPrice: (product: Product, quantity: number) => number;
+  shouldAnimate: boolean;
+}>(({ product, quantity, index, updateOrderItem: updateFn, getProductPrice, shouldAnimate }) => {
+  const currentPrice = getProductPrice(product, quantity);
   return (
     <div
-      className={cx(
-        'min-h-screen w-full transition-colors duration-300 flex flex-col md:flex-row relative',
-        darkMode
-          ? 'bg-[radial-gradient(ellipse_at_60%_40%,#23272B_0%,#181C20_60%,#101216_100%)]'
-          : 'bg-white'
-      )}
-      style={darkMode ? { color: '#f3f4f6' } : {}}
+      className={`bg-white rounded-xl shadow-sm border-2 border-gray-100 hover:border-blue-300 p-4 hover:shadow-md transition-all duration-300 ${
+        shouldAnimate ? 'animate-fade-in-up' : ''
+      }`}
+      style={shouldAnimate ? { animationDelay: `${index * 100}ms` } : {}}
     >
-      <style jsx global>{`
-        ::-webkit-scrollbar {
-          width: 0px;
-          height: 0px;
-          background: transparent;
-        }
-        ::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: transparent;
-          border: none;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 0px;
-          height: 0px;
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: transparent;
-          border: none;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: transparent;
-        }
-        * {
-          scrollbar-width: none;
-          -ms-overflow-style: none;
-        }
-        *::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
-      <aside
-        className={cx(
-          'w-full md:max-w-sm flex-shrink-0 flex flex-col transition-colors duration-300',
-          'md:h-screen md:sticky md:top-0 left-0',
-          darkMode
-            ? [
-              'bg-gradient-to-br from-[#181C20]/95 via-[#23272B]/90 to-[#23272B]/80',
-              'border-r-2 border-neutral-800',
-              'shadow-[inset_0_1.5px_8px_0_rgba(20,25,30,0.18)]',
-              'before:content-[""] before:absolute before:inset-0 before:rounded-none before:pointer-events-none',
-              'before:border-r-[3px] before:border-blue-900/20 before:z-10',
-              'relative overflow-hidden',
-            ].join(' ')
-            : [
-              'bg-teal-600',
-              'border-r-2 border-teal-700',
-              'shadow-[inset_0_1.5px_8px_0_rgba(180,190,210,0.13)]',
-              'before:content-[""] before:absolute before:inset-0 before:rounded-none before:pointer-events-none',
-              'before:border-r-[3px] before:border-teal-700/20 before:z-10',
-              'relative overflow-hidden text-white',
-            ].join(' ')
-        )}
-      >
-        <div
-          className={cx(
-            'flex flex-col gap-4 py-6 px-4 md:px-6 sticky top-0 z-20',
-            darkMode
-              ? 'bg-gradient-to-br from-[#181C20]/95 via-[#23272B]/90 to-[#23272B]/80'
-              : 'bg-teal-600'
-          )}
-        >
-          <div className="w-full flex flex-col">
-            <div className="flex flex-row items-start md:items-center w-full">
-              <h1 className={cx(
-                'flex-1 text-4xl md:text-4xl xl:text-5xl font-black tracking-tighter',
-                'leading-tight mb-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.10)]',
-                'bg-gradient-to-r from-teal-300 via-teal-400 to-purple-300 bg-clip-text text-transparent',
-                'select-none',
-                darkMode ? 'text-white' : 'text-white'
-              )}>
-                Fabric Pattern Generator
-              </h1>
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={cx(
-                  'p-3 sm:p-4 rounded-lg transition-all duration-300 flex-shrink-0 ml-3 sm:ml-4',
-                  'mt-0 md:mt-0',
-                  'hover:scale-110 active:scale-95',
-                  'focus:outline-none focus:ring-2 focus:ring-offset-2',
-                  'cursor-pointer',
-                  darkMode
-                    ? 'bg-neutral-700 text-yellow-400'
-                    : 'bg-teal-700/30 text-white hover:bg-teal-700/40'
-                )}
-                aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {darkMode ? (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                    />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                    />
-                  </svg>
-                )}
-              </button>
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-medium text-gray-900 text-sm sm:text-base break-words">
+            {product.name}
+          </h3>
+          <p className="text-xs sm:text-sm text-gray-800 mt-1">
+            {product.category} • {product.subcategory}
+          </p>
+          <p className="text-xs text-gray-800">
+            Min: {formatNumber(product.minOrderQty)} • Max: {formatNumber(product.maxOrderQty)}{' '}
+            {product.unit}
+          </p>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-medium text-gray-900 text-sm sm:text-base font-ui">
+              {formatCurrency(currentPrice)}
             </div>
-            <div className="h-2 w-24 rounded-full mb-6 mt-1 bg-gradient-to-r from-teal-400 to-purple-300 opacity-80" />
+            <div className="text-xs text-gray-800">per {product.unit}</div>
           </div>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <form className="flex flex-col gap-6 px-4 md:px-6 pb-6" onSubmit={e => e.preventDefault()}>
-            <div className="flex items-center gap-3">
-              <ModernCheckbox
-                id="retina-toggle"
-                checked={retina}
-                onChange={setRetina}
-                label="Enable High-Resolution Mode (Retina)"
-                darkMode={darkMode}
-              />
-            </div>
-            <div className="flex items-center gap-4 mt-2">
-              <ModernCheckbox
-                id="ab-mode"
-                checked={abMode}
-                onChange={setAbMode}
-                label="Dual View (A/B)"
-                darkMode={darkMode}
-              />
-            </div>
-            {abMode && (
-              <div className="flex gap-2 mb-4">
-                <button
-                  type="button"
-                  onClick={() => setSelectedFabric('A')}
-                  className={cx(
-                    'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
-                    'focus:outline-none focus:ring-2 focus:ring-offset-1',
-                    'cursor-pointer',
-                    selectedFabric === 'A'
-                      ? darkMode
-                        ? 'bg-teal-600 text-white focus:ring-teal-500/40'
-                        : 'bg-teal-700 text-white focus:ring-teal-400/40'
-                      : darkMode
-                        ? 'bg-neutral-800 text-gray-300 hover:bg-neutral-700 focus:ring-neutral-500/40'
-                        : 'bg-white/30 text-white hover:bg-white/40 focus:ring-white/20'
-                  )}
-                >
-                  Fabric A
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedFabric('B')}
-                  className={cx(
-                    'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
-                    'focus:outline-none focus:ring-2 focus:ring-offset-1',
-                    'cursor-pointer',
-                    selectedFabric === 'B'
-                      ? darkMode
-                        ? 'bg-teal-600 text-white focus:ring-teal-500/40'
-                        : 'bg-teal-700 text-white focus:ring-teal-400/40'
-                      : darkMode
-                        ? 'bg-neutral-800 text-gray-300 hover:bg-neutral-700 focus:ring-neutral-500/40'
-                        : 'bg-white/30 text-white hover:bg-white/40 focus:ring-white/20'
-                  )}
-                >
-                  Fabric B
-                </button>
-              </div>
-            )}
-            <ModernDropdown
-              id="pattern-type"
-              value={fabricParams.patternType}
-              onChange={(value) => fabricParams.setPatternType(value as PatternType)}
-              options={PATTERN_TYPES}
-              label={`Pattern Type ${abMode ? `(${selectedFabric})` : ''}`}
-              darkMode={darkMode}
-            />
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label className={cx('block text-md font-bold mb-3', darkMode ? 'text-white' : 'text-white')} htmlFor="color-a">Color A {abMode ? `(${selectedFabric})` : ''}</label>
-                <div className="relative">
-                  <div className={cx(
-                    'w-full h-10 rounded-lg border-2 transition-all duration-200',
-                    darkMode ? 'border-neutral-700 bg-transparent' : 'border-[#c5c6e5]/30 bg-transparent',
-                    'flex items-center justify-center'
-                  )}>
-                    <input
-                      id="color-a"
-                      type="color"
-                      value={fabricParams.colorA}
-                      onChange={e => fabricParams.setColorA(e.target.value)}
-                      className={cx(
-                        'w-full h-10 rounded-lg transition-all duration-200 cursor-pointer border-none outline-none',
-                        'focus:ring-2 focus:ring-teal-300 focus:ring-offset-2'
-                      )}
-                      style={{ backgroundColor: 'transparent' }}
-                      aria-label="Primary pattern color"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="flex-1">
-                <label className={cx('block text-md font-bold mb-3', darkMode ? 'text-white' : 'text-white')} htmlFor="color-b">Color B {abMode ? `(${selectedFabric})` : ''}</label>
-                <div className="relative">
-                  <div className={cx(
-                    'w-full h-10 rounded-lg border-2 transition-all duration-200',
-                    darkMode ? 'border-neutral-700 bg-transparent' : 'border-[#c5c6e5]/30 bg-transparent',
-                    'flex items-center justify-center'
-                  )}>
-                    <input
-                      id="color-b"
-                      type="color"
-                      value={fabricParams.colorB}
-                      onChange={e => fabricParams.setColorB(e.target.value)}
-                      className={cx(
-                        'w-full h-10 rounded-lg transition-all duration-200 cursor-pointer border-none outline-none',
-                        'focus:ring-2 focus:ring-teal-300 focus:ring-offset-2'
-                      )}
-                      style={{ backgroundColor: 'transparent' }}
-                      aria-label="Secondary pattern color"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className={cx('block text-md font-bold mb-3', darkMode ? 'text-white' : 'text-white')} htmlFor="scale-slider">Scale {abMode ? `(${selectedFabric})` : ''}</label>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-bold text-white/90 dark:text-white/90">{fabricParams.scale.toFixed(2)}x</span>
-              </div>
-              <input
-                id="scale-slider"
-                type="range"
-                min={0.5}
-                max={2}
-                step={0.01}
-                value={fabricParams.scale}
-                onChange={e => fabricParams.setScale(Number(e.target.value))}
-                className={cx(
-                  'w-full h-3 rounded-full appearance-none transition-all duration-200 outline-none',
-                  darkMode ? 'bg-neutral-800' : 'bg-gray-200'
-                )}
-                style={{
-                  background: darkMode
-                    ? 'linear-gradient(90deg, #9333ea 0%, #c084fc 100%)'
-                    : 'linear-gradient(90deg, #c5c6e5 0%, #ddd6fe 100%)',
-                  boxShadow: darkMode
-                    ? '0 1px 4px 0 rgba(30,41,59,0.18) inset'
-                    : '0 1px 4px 0 rgba(147,51,234,0.15) inset',
-                }}
-                aria-valuenow={fabricParams.scale}
-                aria-valuemin={0.5}
-                aria-valuemax={2}
-                aria-label="Pattern scale"
-              />
-              <style>{`
-              #scale-slider::-webkit-slider-thumb,
-              #rotation-slider::-webkit-slider-thumb,
-              #opacity-slider::-webkit-slider-thumb,
-              #variation-slider::-webkit-slider-thumb {
-                appearance: none;
-                width: 1.5rem;
-                height: 1.5rem;
-                border-radius: 9999px;
-                background: white;
-                border: none;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                cursor: pointer;
-                transition: all 0.2s;
-              }
-              #scale-slider::-moz-range-thumb,
-              #rotation-slider::-moz-range-thumb,
-              #opacity-slider::-moz-range-thumb,
-              #variation-slider::-moz-range-thumb {
-                width: 1.5rem;
-                height: 1.5rem;
-                border-radius: 9999px;
-                background: white;
-                border: none;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                cursor: pointer;
-                transition: all 0.2s;
-              }
-            `}</style>
-              <div className={cx('text-sm flex justify-between mt-1', darkMode ? 'text-white/70' : 'text-white/80')}>
-                <span className={cx('font-semibold', darkMode ? 'text-white/70' : 'text-white/80')}>0.5x</span>
-                <span className={cx('font-semibold', darkMode ? 'text-white/70' : 'text-white/80')}>2x</span>
-              </div>
-            </div>
-            <div>
-              <label className={cx('block text-md font-bold mb-3', darkMode ? 'text-white' : 'text-white')} htmlFor="rotation-slider">Rotation {abMode ? `(${selectedFabric})` : ''}</label>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-bold text-white/90 dark:text-white/90">{fabricParams.rotation.toFixed(0)}°</span>
-              </div>
-              <input
-                id="rotation-slider"
-                type="range"
-                min={0}
-                max={360}
-                step={1}
-                value={fabricParams.rotation}
-                onChange={e => fabricParams.setRotation(Number(e.target.value))}
-                className={cx(
-                  'w-full h-3 rounded-full appearance-none transition-all duration-200 outline-none',
-                  darkMode ? 'bg-neutral-800' : 'bg-gray-200'
-                )}
-                style={{
-                  background: darkMode
-                    ? 'linear-gradient(90deg, #9333ea 0%, #c084fc 100%)'
-                    : 'linear-gradient(90deg, #c5c6e5 0%, #ddd6fe 100%)',
-                  boxShadow: darkMode
-                    ? '0 1px 4px 0 rgba(30,41,59,0.18) inset'
-                    : '0 1px 4px 0 rgba(147,51,234,0.15) inset',
-                }}
-                aria-valuenow={fabricParams.rotation}
-                aria-valuemin={0}
-                aria-valuemax={360}
-                aria-label="Pattern rotation"
-              />
-              <div className={cx('text-sm flex justify-between mt-1', darkMode ? 'text-white/70' : 'text-white/80')}>
-                <span className={cx('font-semibold', darkMode ? 'text-white/70' : 'text-white/80')}>0°</span>
-                <span className={cx('font-semibold', darkMode ? 'text-white/70' : 'text-white/80')}>360°</span>
-              </div>
-            </div>
-            <div>
-              <label className={cx('block text-md font-bold mb-3', darkMode ? 'text-white' : 'text-white')} htmlFor="opacity-slider">Opacity {abMode ? `(${selectedFabric})` : ''}</label>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-bold text-white/90 dark:text-white/90">{(fabricParams.opacity * 100).toFixed(0)}%</span>
-              </div>
-              <input
-                id="opacity-slider"
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={fabricParams.opacity}
-                onChange={e => fabricParams.setOpacity(Number(e.target.value))}
-                className={cx(
-                  'w-full h-3 rounded-full appearance-none transition-all duration-200 outline-none',
-                  darkMode ? 'bg-neutral-800' : 'bg-gray-200'
-                )}
-                style={{
-                  background: darkMode
-                    ? 'linear-gradient(90deg, #9333ea 0%, #c084fc 100%)'
-                    : 'linear-gradient(90deg, #c5c6e5 0%, #ddd6fe 100%)',
-                  boxShadow: darkMode
-                    ? '0 1px 4px 0 rgba(30,41,59,0.18) inset'
-                    : '0 1px 4px 0 rgba(147,51,234,0.15) inset',
-                }}
-                aria-valuenow={fabricParams.opacity}
-                aria-valuemin={0}
-                aria-valuemax={1}
-                aria-label="Pattern opacity"
-              />
-              <div className={cx('text-sm flex justify-between mt-1', darkMode ? 'text-white/70' : 'text-white/80')}>
-                <span className={cx('font-semibold', darkMode ? 'text-white/70' : 'text-white/80')}>0%</span>
-                <span className={cx('font-semibold', darkMode ? 'text-white/70' : 'text-white/80')}>100%</span>
-              </div>
-            </div>
-            <div>
-              <label className={cx('block text-md font-bold mb-3', darkMode ? 'text-white' : 'text-white')}>Symmetry {abMode ? `(${selectedFabric})` : ''}</label>
-              <div className="grid grid-cols-4 gap-1.5">
-                {[
-                  { label: "None", value: "none" },
-                  { label: "X", value: "x" },
-                  { label: "Y", value: "y" },
-                  { label: "XY", value: "xy" },
-                ].map(btn => (
-                  <button
-                    key={btn.value}
-                    type="button"
-                    onClick={() => fabricParams.setSymmetry(btn.value as Symmetry)}
-                    className={cx(
-                      'px-3 py-2 rounded-lg text-sm font-medium w-full transition-all duration-200',
-                      'focus:outline-none focus:ring-2 focus:ring-[#c5c6e5]/40 focus:ring-offset-1',
-                      'hover:shadow-sm',
-                      'cursor-pointer',
-                      fabricParams.symmetry === btn.value
-                        ? 'bg-white text-teal-800 shadow-inner border border-white/50'
-                        : 'bg-white/70 text-teal-800 hover:bg-white/90 border border-white/30'
-                    )}
-                    aria-pressed={fabricParams.symmetry === btn.value}
-                    aria-label={`Set symmetry: ${btn.label}`}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-4 mt-2">
-              <ModernCheckbox
-                id="aspect-lock"
-                checked={fabricParams.aspectLocked}
-                onChange={fabricParams.setAspectLocked}
-                label={`Lock Aspect Ratio ${abMode ? `(${selectedFabric})` : ''}`}
-                darkMode={darkMode}
-                className="mr-2"
-              />
-            </div>
-            <div>
-              <label className={cx('block text-md font-bold mb-3', darkMode ? 'text-white' : 'text-white')} htmlFor="variation-slider">Variation {abMode ? `(${selectedFabric})` : ''}</label>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-bold text-white/90 dark:text-white/90">{fabricParams.variation.toFixed(2)}</span>
-              </div>
-              <input
-                id="variation-slider"
-                type="range"
-                min={-1}
-                max={1}
-                step={0.01}
-                value={fabricParams.variation}
-                onChange={e => fabricParams.setVariation(Number(e.target.value))}
-                className={cx(
-                  'w-full h-3 rounded-full appearance-none transition-all duration-200 outline-none',
-                  darkMode ? 'bg-neutral-800' : 'bg-gray-200'
-                )}
-                style={{
-                  background: darkMode
-                    ? 'linear-gradient(90deg, #9333ea 0%, #c084fc 100%)'
-                    : 'linear-gradient(90deg, #c5c6e5 0%, #ddd6fe 100%)',
-                  boxShadow: darkMode
-                    ? '0 1px 4px 0 rgba(30,41,59,0.18) inset'
-                    : '0 1px 4px 0 rgba(147,51,234,0.15) inset',
-                }}
-                aria-valuenow={fabricParams.variation}
-                aria-valuemin={-1}
-                aria-valuemax={1}
-                aria-label="Pattern variation"
-              />
-              <style>{`
-              #variation-slider::-webkit-slider-thumb,
-              #rotation-slider::-webkit-slider-thumb,
-              #opacity-slider::-webkit-slider-thumb,
-              #variation-slider::-webkit-slider-thumb {
-                appearance: none;
-                width: 1.5rem;
-                height: 1.5rem;
-                border-radius: 9999px;
-                background: white;
-                border: none;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                cursor: pointer;
-                transition: all 0.2s;
-              }
-              #variation-slider::-moz-range-thumb,
-              #rotation-slider::-moz-range-thumb,
-              #opacity-slider::-moz-range-thumb,
-              #variation-slider::-moz-range-thumb {
-                width: 1.5rem;
-                height: 1.5rem;
-                border-radius: 9999px;
-                background: white;
-                border: none;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                cursor: pointer;
-                transition: all 0.2s;
-              }
-            `}</style>
-              <div className={cx('text-sm flex justify-between mt-1', darkMode ? 'text-white/70' : 'text-white/80')}>
-                <span className={cx('font-semibold', darkMode ? 'text-white/70' : 'text-white/80')}>-1</span>
-                <span className={cx('font-semibold', darkMode ? 'text-white/70' : 'text-white/80')}>+1</span>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2 mt-2">
-              <label className={cx('block text-md font-bold mb-3', darkMode ? 'text-white' : 'text-white')}>Export</label>
-              <div className="flex flex-col sm:flex-row gap-4 mb-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <label className={cx('text-sm font-semibold', darkMode ? 'text-white/90' : 'text-white/90')}>Quality Multiplier</label>
-                    <TooltipIcon
-                      tooltip="Multiplies resolution for higher quality exports. 2x = double the pixels for crisp prints."
-                      darkMode={darkMode}
-                    />
-                  </div>
-                  <input
-                    type="number"
-                    min={1}
-                    max={8}
-                    value={dpi}
-                    onChange={e => setDpi(Number(e.target.value))}
-                    className={cx(
-                      'w-full border-2 rounded-xl px-4 py-3 text-base text-center transition-all duration-200',
-                      'focus:outline-none focus:ring-2 focus:ring-[#c5c6e5] focus:ring-offset-1',
-                      'hover:border-[#c5c6e5] hover:shadow-sm',
-                      'font-mono font-semibold',
-                      '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
-                      darkMode
-                        ? 'bg-[#c5c6e5]/10 border-[#c5c6e5]/30 text-[#c5c6e5] shadow-inner'
-                        : 'bg-[#c5c6e5]/10 border-[#c5c6e5]/30 text-white shadow-inner'
-                    )}
-                    title="Quality multiplier for export resolution"
-                    aria-label="Quality multiplier for export resolution"
-                  />
-                  <div className={cx('text-xs mt-1 text-center font-medium', darkMode ? 'text-white/70' : 'text-white/80')}>
-                    Export Size: {(resolution * dpi).toLocaleString()}×{(resolution * dpi).toLocaleString()}px
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <label className={cx('text-sm font-semibold', darkMode ? 'text-white/90' : 'text-white/90')}>Pattern Resolution</label>
-                    <TooltipIcon
-                      tooltip="Base pattern size. Higher values = more detail but larger file sizes."
-                      darkMode={darkMode}
-                    />
-                  </div>
-                  <input
-                    type="number"
-                    min={64}
-                    max={2048}
-                    step={32}
-                    value={resolution}
-                    onChange={e => setResolution(Number(e.target.value))}
-                    className={cx(
-                      'w-full border-2 rounded-xl px-4 py-3 text-base text-center transition-all duration-200',
-                      'focus:outline-none focus:ring-2 focus:ring-[#c5c6e5] focus:ring-offset-1',
-                      'hover:border-[#c5c6e5] hover:shadow-sm',
-                      'font-mono font-semibold',
-                      '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
-                      darkMode
-                        ? 'bg-[#c5c6e5]/10 border-[#c5c6e5]/30 text-[#c5c6e5] shadow-inner'
-                        : 'bg-[#c5c6e5]/10 border-[#c5c6e5]/30 text-white shadow-inner'
-                    )}
-                    title="Base pattern resolution in pixels"
-                    aria-label="Base pattern resolution in pixels"
-                  />
-                  <div className={cx('text-xs mt-1 text-center font-medium', darkMode ? 'text-white/70' : 'text-white/80')}>
-                    Preview Size: {resolution}×{resolution}px
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2.5">
-                <ExportButton
-                  onExport={handleExportPNG}
-                  label="Export PNG"
-                  darkMode={darkMode}
-                  icon={
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 20 20" aria-hidden="true">
-                      <rect x="3.5" y="4.5" width="13" height="11" rx="2" />
-                      <path d="M3.5 13.5l3.5-4 3 3.5 2-2.5 3 3" />
-                      <circle cx="7.5" cy="8" r="1" />
-                    </svg>
-                  }
-                />
-                <ExportButton
-                  onExport={handleExportSVG}
-                  label="Export SVG"
-                  darkMode={darkMode}
-                  icon={
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 20 20" aria-hidden="true">
-                      <rect x="4.5" y="3.5" width="11" height="13" rx="2" />
-                      <polyline points="8,7.5 10,9.5 12,7.5" />
-                      <line x1="10" y1="9.5" x2="10" y2="13" />
-                    </svg>
-                  }
-                />
-              </div>
-            </div>
-          </form>
-        </div>
-      </aside>
-      <main ref={containerRef} className={cx(
-        'flex-1 p-4 md:p-8 overflow-y-auto flex flex-col justify-center items-center min-h-screen',
-        darkMode ? 'bg-[#181C20]' : 'bg-gray-50'
-      )}>
-        <div className="flex justify-center mb-6 w-full">
-          <button
-            type="button"
-            onClick={() => setShowTiling((v) => !v)}
-            className={cx(
-              'px-5 py-2 rounded-full font-medium text-sm shadow transition-all cursor-pointer duration-200',
-              'focus:outline-none focus:ring-2 focus:ring-offset-2',
-              showTiling
-                ? darkMode
-                  ? 'bg-teal-700 text-white focus:ring-teal-500/40'
-                  : 'bg-teal-600 text-white focus:ring-teal-400/40'
-                : darkMode
-                  ? 'bg-neutral-800 text-gray-200 focus:ring-neutral-500/40'
-                  : 'bg-white text-teal-700 border border-teal-200 focus:ring-teal-200/40'
-            )}
-            aria-pressed={showTiling}
-          >
-            {showTiling ? 'Show Fabrics Preview' : 'Show Seamless Tiling Preview'}
-          </button>
-        </div>
-        <div className="flex flex-col lg:flex-row gap-8 items-center justify-center w-full">
-          {showTiling ? (
-            <section className={cx(
-              'flex-1 flex flex-col items-center rounded-3xl px-6 md:px-8 pt-6 md:pt-8 pb-4 md:pb-5 transition w-full min-w-0 max-w-xl',
-              'relative overflow-visible',
-              darkMode
-                ? [
-                  'bg-gradient-to-br from-[#181C20]/95 via-[#23272B]/90 to-[#23272B]/80',
-                  'border border-transparent',
-                  'before:content-[""] before:absolute before:inset-0 before:rounded-3xl before:pointer-events-none',
-                  'before:border-[2.5px] before:border-neutral-800/80 before:z-10',
-                  'after:content-[""] after:absolute after:inset-0 after:rounded-3xl after:pointer-events-none',
-                  'after:ring-2 after:ring-blue-900/30 after:z-0',
-                  'shadow-[0_2px_16px_0_rgba(20,25,30,0.18)] shadow-inner',
-                ].join(' ')
-                : [
-                  'bg-[#f0f7f5]',
-                  'border border-gray-200',
-                  'before:content-[""] before:absolute before:inset-0 before:rounded-3xl before:pointer-events-none',
-                  'before:border-[2.5px] before:border-gray-200 before:z-10',
-                  'after:content-[""] after:absolute after:inset-0 after:rounded-3xl after:pointer-events-none',
-                  'after:ring-2 after:ring-teal-200/30 after:z-0',
-                  'shadow-[0_2px_16px_0_rgba(180,190,210,0.13)]',
-                ].join(' ')
-            )}>
-              <div className="w-full flex items-center justify-center">
-                <div className="grid grid-cols-2 gap-1 w-full">
-                  {[0, 1, 2, 3].map((index) => (
-                    <div key={index} className={cx(
-                      'overflow-hidden drop-shadow-sm flex items-center justify-center border relative',
-                      'before:content-[""] before:absolute before:inset-0 before:z-0 before:opacity-5',
-                      'before:bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8)_0%,rgba(255,255,255,0)_60%)]',
-                      'before:bg-[length:24px_24px] before:bg-center',
-                      'before:bg-[url("data:image/svg+xml,%3Csvg width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath fill=\'%23ffffff\' d=\'M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4z\'/%3E%3C/svg%3E")]',
-                      index === 0 ? 'rounded-tl-lg border-t border-l' :
-                        index === 1 ? 'rounded-tr-lg border-t border-l border-r' :
-                          index === 2 ? 'rounded-bl-lg border-t border-l border-b' :
-                            'rounded-br-lg border',
-                      darkMode
-                        ? 'bg-gradient-to-br from-neutral-900 to-neutral-800 border-neutral-800'
-                        : 'bg-gradient-to-br from-[#e6f0ed] to-[#f0f7f5] border-gray-200'
-                    )}>
-                      <PatternCanvas
-                        scale={fabricParams.scale}
-                        rotation={fabricParams.rotation}
-                        opacity={fabricParams.opacity}
-                        symmetry={fabricParams.symmetry}
-                        variation={fabricParams.variation}
-                        aspectLocked={fabricParams.aspectLocked}
-                        size={canvasSize / 2}
-                        dpi={effectiveDpi}
-                        patternType={fabricParams.patternType}
-                        colorA={fabricParams.colorA}
-                        colorB={fabricParams.colorB}
-                        className="border-0"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className={cx('text-xs text-center mt-2 font-medium tracking-wide', darkMode ? 'text-gray-400' : 'text-gray-500')}>Seamless Tiling Preview {abMode ? `(${selectedFabric})` : ''}</div>
-            </section>
-          ) : (
-            <>
-              <section className={cx(
-                'flex-1 flex flex-col items-center rounded-3xl px-6 md:px-8 pt-6 md:pt-8 pb-4 md:pb-5 transition w-full min-w-0 max-w-xl backdrop-blur-[2px]',
-                'relative overflow-visible',
-                darkMode
-                  ? [
-                    'bg-gradient-to-br from-[#181C20]/95 via-[#23272B]/90 to-[#23272B]/80',
-                    'border border-transparent',
-                    'before:content-[""] before:absolute before:inset-0 before:rounded-3xl before:pointer-events-none',
-                    'before:border-[2.5px] before:border-neutral-800/80 before:z-10',
-                    'after:content-[""] after:absolute after:inset-0 after:rounded-3xl after:pointer-events-none',
-                    'after:ring-2 after:ring-blue-900/30 after:z-0',
-                    'shadow-[0_2px_16px_0_rgba(20,25,30,0.18)] shadow-inner',
-                  ].join(' ')
-                  : [
-                    'bg-[#f0f7f5]/90',
-                    'border border-gray-200',
-                    'before:content-[""] before:absolute before:inset-0 before:rounded-3xl before:pointer-events-none',
-                    'before:border-[2.5px] before:border-gray-200 before:z-10',
-                    'after:content-[""] after:absolute after:inset-0 after:rounded-3xl after:pointer-events-none',
-                    'after:ring-2 after:ring-teal-200/30 after:z-0',
-                    'shadow-[0_2px_16px_0_rgba(180,190,210,0.13)]',
-                  ].join(' ')
-              )}>
-                <div className={cx(
-                  'w-full rounded-xl overflow-hidden drop-shadow-md flex items-center justify-center border relative',
-                  'before:content-[""] before:absolute before:inset-0 before:z-0 before:opacity-5',
-                  'before:bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8)_0%,rgba(255,255,255,0)_60%)]',
-                  'before:bg-[length:24px_24px] before:bg-center',
-                  'before:bg-[url("data:image/svg+xml,%3Csvg width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath fill=\'%23ffffff\' d=\'M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4z\'/%3E%3C/svg%3E")]',
-                  darkMode
-                    ? 'bg-gradient-to-br from-neutral-900 to-neutral-800 border-neutral-800'
-                    : 'bg-gradient-to-br from-[#e6f0ed] to-[#f0f7f5] border-gray-200'
-                )}>
-                  <DpiLabel retina={retina} />
-                  <PatternCanvas
-                    scale={scale}
-                    rotation={rotation}
-                    opacity={opacity}
-                    symmetry={symmetry}
-                    variation={variation}
-                    aspectLocked={aspectLocked}
-                    size={canvasSize}
-                    dpi={effectiveDpi}
-                    patternType={patternType}
-                    colorA={colorA}
-                    colorB={colorB}
-                  />
-                </div>
-                <div className={cx('text-xs text-center mt-2 font-medium tracking-wide', darkMode ? 'text-gray-400' : 'text-gray-500')}>Pattern A</div>
-              </section>
-              {abMode && (
-                <section className={cx(
-                  'flex-1 flex flex-col items-center rounded-3xl px-6 md:px-8 pt-6 md:pt-8 pb-4 md:pb-5 transition w-full min-w-0 max-w-xl',
-                  'relative overflow-visible',
-                  darkMode
-                    ? [
-                      'bg-gradient-to-br from-[#181C20]/95 via-[#23272B]/90 to-[#23272B]/80',
-                      'border border-transparent',
-                      'before:content-[""] before:absolute before:inset-0 before:rounded-3xl before:pointer-events-none',
-                      'before:border-[2.5px] before:border-neutral-800/80 before:z-10',
-                      'after:content-[""] after:absolute after:inset-0 after:rounded-3xl after:pointer-events-none',
-                      'after:ring-2 after:ring-blue-900/30 after:z-0',
-                      'shadow-[0_2px_16px_0_rgba(20,25,30,0.18)] shadow-inner',
-                    ].join(' ')
-                    : [
-                      'bg-[#f0f7f5]',
-                      'border border-gray-200',
-                      'before:content-[""] before:absolute before:inset-0 before:rounded-3xl before:pointer-events-none',
-                      'before:border-[2.5px] before:border-gray-200 before:z-10',
-                      'after:content-[""] after:absolute after:inset-0 after:rounded-3xl after:pointer-events-none',
-                      'after:ring-2 after:ring-teal-200/30 after:z-0',
-                      'shadow-[0_2px_16px_0_rgba(180,190,210,0.13)]',
-                    ].join(' ')
-                )}>
-                  <div className={cx(
-                    'w-full rounded-xl overflow-hidden drop-shadow-md flex items-center justify-center border relative',
-                    'before:content-[""] before:absolute before:inset-0 before:z-0 before:opacity-5',
-                    'before:bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8)_0%,rgba(255,255,255,0)_60%)]',
-                    'before:bg-[length:24px_24px] before:bg-center',
-                    'before:bg-[url("data:image/svg+xml,%3Csvg width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath fill=\'%23ffffff\' d=\'M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4z\'/%3E%3C/svg%3E")]',
-                    darkMode
-                      ? 'bg-gradient-to-br from-neutral-900 to-neutral-800 border-neutral-800'
-                      : 'bg-gradient-to-br from-[#e6f0ed] to-[#f0f7f5] border-gray-200'
-                  )}>
-                    <DpiLabel retina={retina} />
-                    <PatternCanvas
-                      scale={scaleB}
-                      rotation={rotationB}
-                      opacity={opacityB}
-                      symmetry={symmetryB}
-                      variation={variationB}
-                      aspectLocked={aspectLockedB}
-                      size={canvasSize}
-                      dpi={effectiveDpi}
-                      patternType={patternTypeB}
-                      colorA={colorAB}
-                      colorB={colorBB}
-                    />
-                  </div>
-                  <div className={cx('text-xs text-center mt-2 font-medium tracking-wide', darkMode ? 'text-gray-400' : 'text-gray-500')}>Pattern B</div>
-                </section>
-              )}
-            </>
-          )}
-        </div>
-      </main>
-    </div>
-  );
-};
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-          <div className="max-w-md w-full p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-            <h2 className="text-xl font-semibold text-red-600 dark:text-red-400 mb-3">
-              Something went wrong
-            </h2>
-            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
-              {this.state.error?.message || "WebGL context initialization failed. Please try using a different browser or device."}
-            </p>
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              onClick={() => updateFn(product.id, quantity === 0 ? product.minOrderQty : Math.max(0, quantity - 1))}
+              className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-red-100 hover:text-red-600 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transform hover:scale-110 cursor-pointer"
             >
-              Reload Page
+              <FiMinus className="text-sm" />
+            </button>
+            <QuantityInput
+              value={quantity}
+              onChange={(value) => updateFn(product.id, value)}
+              min={0}
+              max={product.maxOrderQty}
+              className="w-16 px-2 py-1 text-sm"
+            />
+            <button
+              onClick={() => updateFn(product.id, quantity === 0 ? product.minOrderQty : Math.min(product.maxOrderQty, quantity + 1))}
+              className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-green-100 hover:text-green-600 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transform hover:scale-110 cursor-pointer"
+            >
+              <FiPlus className="text-sm" />
             </button>
           </div>
         </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-export default function PatternGenerator(): JSX.Element {
-  return (
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+        <div className="space-y-1">
+          <h4 className="text-xs font-medium text-gray-800">Pricing Tiers:</h4>
+          <div className="flex flex-wrap gap-1">
+            {product.tiers.map((tier, idx) => (
+              <div
+                key={idx}
+                className={`text-xs px-2 py-1 rounded-md transition-all duration-200 ${
+                  quantity >= tier.minQty && quantity <= tier.maxQty
+                    ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 font-medium'
+                    : 'text-gray-800 bg-gray-50'
+                }`}
+              >
+                {formatNumber(tier.minQty)}+: {formatCurrency(tier.price)}
+              </div>
+            ))}
+          </div>
+        </div>
+        {quantity > 0 && (
+          <div className="border-t pt-3 flex justify-between items-center">
+            <span className="text-sm text-gray-600">Total:</span>
+                          <div className="text-right">
+                <div className="font-semibold text-gray-900 font-ui">
+                  {formatCurrency(currentPrice * quantity)}
+                </div>
+                <div className="text-xs text-gray-800 font-ui">
+                  {Math.ceil(quantity / product.palletSize)} pallets
+                </div>
+              </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
-}
-const styles = `
-  @keyframes grain {
-    0%, 100% { transform: translate(0, 0) }
-    10% { transform: translate(-5%, -5%) }
-    20% { transform: translate(-10%, 5%) }
-    30% { transform: translate(5%, -10%) }
-    40% { transform: translate(-5%, 15%) }
-    50% { transform: translate(-10%, 5%) }
-    60% { transform: translate(15%, 0) }
-    70% { transform: translate(0, 10%) }
-    80% { transform: translate(-15%, 0) }
-    90% { transform: translate(10%, 5%) }
-  }
-  @keyframes grid {
-    0% { transform: translateX(0) }
-    100% { transform: translateX(64px) }
-  }
-`;
-const Head = () => (
-  <head>
-    <style>{styles}</style>
-  </head>
+});
+const HomePage = ({ onStartOrdering }: { onStartOrdering: () => void }) => (
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 overflow-hidden">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-24 sm:pb-32">
+      <div className="max-w-4xl mx-auto text-center">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-black mb-4 sm:mb-6 leading-tight font-display animate-fade-in-up">
+          Streamline Your
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 animate-gradient">
+            {' '}
+            B2B Orders
+          </span>
+        </h1>
+        <p className="text-base sm:text-lg lg:text-xl text-gray-700 mb-6 sm:mb-8 leading-relaxed max-w-2xl mx-auto animate-fade-in-up animation-delay-200">
+          Professional bulk ordering platform designed for B2B suppliers. Manage inventory,
+          calculate pricing tiers, and optimize your supply chain with ease.
+        </p>
+        <button
+          onClick={onStartOrdering}
+          className="bg-gradient-to-r from-blue-600 cursor-pointer to-purple-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold text-base sm:text-lg hover:shadow-2xl hover:shadow-blue-500/25 transform hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-3 mx-auto animate-fade-in-up animation-delay-400 group"
+        >
+          <FaStoreAlt className="group-hover:rotate-12 transition-transform duration-300" />
+          Start Bulk Ordering
+        </button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mt-12 sm:mt-16 lg:mt-20 max-w-6xl mx-auto">
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-500 border border-gray-100 group animate-fade-in-up animation-delay-600 transform hover:-translate-y-2">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-blue-200 transition-colors duration-300">
+            <FiPackage className="text-blue-600 text-xl sm:text-2xl group-hover:scale-110 transition-transform duration-300" />
+          </div>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-3 sm:mb-4">
+            Smart Inventory
+          </h3>
+          <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
+            Organized product catalog with category filtering and intelligent search capabilities.
+          </p>
+        </div>
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-green-500/10 transition-all duration-500 border border-gray-100 group animate-fade-in-up animation-delay-800 transform hover:-translate-y-2">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-green-100 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-green-200 transition-colors duration-300">
+            <FiDollarSign className="text-green-600 text-xl sm:text-2xl group-hover:scale-110 transition-transform duration-300" />
+          </div>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-3 sm:mb-4">
+            Bulk Pricing
+          </h3>
+          <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
+            Dynamic pricing tiers with real-time calculations and discount optimization.
+          </p>
+        </div>
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-500 border border-gray-100 group animate-fade-in-up animation-delay-1000 transform hover:-translate-y-2 sm:col-span-2 lg:col-span-1">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-100 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-purple-200 transition-colors duration-300">
+            <FiTruck className="text-purple-600 text-xl sm:text-2xl group-hover:scale-110 transition-transform duration-300" />
+          </div>
+          <h3 className="text-lg sm:text-xl font-semibold text-black mb-3 sm:mb-4">
+            Pallet Calculator
+          </h3>
+          <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
+            Automatic pallet calculations and shipping optimization for efficient logistics.
+          </p>
+        </div>
+      </div>
+    </div>
+    <footer className="bg-gray-900 text-white py-12 sm:py-16 lg:py-20 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-900/20 to-purple-900/20"></div>
+      <div className="container px-4 sm:px-6 lg:px-8 relative">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-start">
+          <div className="animate-fade-in-up animation-delay-1200">
+            <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+              About B2B Trade Hub
+            </h3>
+            <p className="text-gray-400 leading-relaxed text-sm sm:text-base">
+              We provide comprehensive B2B trading solutions designed to streamline your supply
+              chain operations and maximize efficiency across all your business processes.
+            </p>
+          </div>
+          <div className="space-y-4 sm:space-y-6 animate-fade-in-up animation-delay-1400 lg:justify-self-end">
+            <h4 className="text-lg sm:text-xl font-semibold mb-4">Contact Information</h4>
+            <div className="flex items-center gap-3 sm:gap-4 text-gray-400 hover:text-white transition-colors duration-300 group">
+              <FiMail className="text-blue-400 flex-shrink-0 text-lg sm:text-xl group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-sm sm:text-base">contact@b2btradehub.com</span>
+            </div>
+            <div className="flex items-center gap-3 sm:gap-4 text-gray-400 hover:text-white transition-colors duration-300 group">
+              <FiPhone className="text-blue-400 flex-shrink-0 text-lg sm:text-xl group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-sm sm:text-base">+1 (555) 123-4567</span>
+            </div>
+            <div className="flex items-center gap-3 sm:gap-4 text-gray-400 hover:text-white transition-colors duration-300 group">
+              <FiMapPin className="text-blue-400 flex-shrink-0 text-lg sm:text-xl group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-sm sm:text-base">
+                123 Business District, Commerce City, NY 10001
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
 );
+const Sidebar = ({
+  sidebarOpen,
+  setSidebarOpen,
+  sidebarCollapsed,
+  setSidebarCollapsed,
+  searchTerm,
+  setSearchTerm,
+  categories,
+  initialAnimationComplete,
+  toggleCategory,
+  selectedCategory,
+  setSelectedCategory,
+}: {
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  categories: Map<string, CategoryNode>;
+  initialAnimationComplete: boolean;
+  toggleCategory: (name: string) => void;
+  selectedCategory: string;
+  setSelectedCategory: (category: string) => void;
+}) => (
+  <>
+    {sidebarOpen && (
+      <div
+        className="fixed inset-0 bg-black/20 backdrop-blur-md z-40 lg:hidden animate-fade-in"
+        onClick={() => setSidebarOpen(false)}
+      />
+    )}
+    <div
+      className={`
+      fixed lg:static inset-y-0 left-0 z-50 lg:z-0
+      ${sidebarCollapsed ? 'w-16' : 'w-72 sm:w-80'} bg-white border-r border-gray-100 flex flex-col shadow-xl lg:shadow-none
+      transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
+      transition-all duration-300 ease-in-out
+    `}
+    >
+      <div className="px-4 py-1">
+        <div className="flex items-center justify-between h-12">
+          {!sidebarCollapsed && (
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Search products..."
+              className="flex-1 mr-3"
+            />
+          )}
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                            className="hidden lg:flex p-2 text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition-all duration-200 transform hover:scale-105 cursor-pointer flex-shrink-0"
+            title={sidebarCollapsed ? 'Expand filters' : 'Collapse filters'}
+          >
+            {sidebarCollapsed ? <FiChevronRight/> : <FiChevronLeft/>}
+          </button>
+        </div>
+      </div>
+      <div className={`flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar ${sidebarCollapsed ? 'p-0' : ''}`}>
+        {!sidebarCollapsed && (
+          <>
+            <h3 className={`text-xs sm:text-sm font-semibold text-gray-800 uppercase tracking-wide mb-4 flex items-center gap-2 ${sidebarCollapsed ? 'hidden' : ''}`}>
+              <FiFilter className="animate-pulse" />
+              Categories
+            </h3>
+            {Array.from(categories.entries()).map(([categoryName, category], index) => (
+              <div
+                key={categoryName}
+                className={`mb-2 ${!initialAnimationComplete ? 'animate-fade-in-up' : ''}`}
+                style={!initialAnimationComplete ? { animationDelay: `${index * 100}ms` } : {}}
+              >
+                <button
+                  onClick={() => toggleCategory(categoryName)}
+                  className={`w-full flex items-center justify-between p-3 text-left hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 rounded-xl transition-all duration-300 group ${
+                    category.expanded ? 'bg-blue-50/50' : ''
+                  } cursor-pointer`}
+                >
+                  <span
+                    className={`font-medium text-sm sm:text-base ${
+                      category.expanded ? 'text-blue-700' : 'text-gray-900'
+                    } group-hover:text-blue-700`}
+                  >
+                    {categoryName}
+                  </span>
+                  <div
+                    className={`${
+                      category.expanded ? 'text-blue-500' : 'text-gray-400'
+                    } group-hover:text-blue-500 transition-colors duration-300`}
+                  >
+                    <FiChevronDown
+                      className={`transition-transform duration-300 ${
+                        category.expanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </div>
+                </button>
+                {category.expanded && (
+                  <div className="ml-4 mt-2 space-y-1">
+                    {category.subcategories.map((subcategory, subIndex) => (
+                      <button
+                        key={subcategory}
+                        onClick={() => {
+                          setSelectedCategory(
+                            selectedCategory === `${categoryName}|${subcategory}`
+                              ? ''
+                              : `${categoryName}|${subcategory}`,
+                          );
+                          setSidebarOpen(false);
+                        }}
+                                                  className={`w-full text-left p-2.5 text-xs sm:text-sm rounded-lg transition-all duration-300 transform hover:scale-105 ${
+                            selectedCategory === `${categoryName}|${subcategory}`
+                              ? 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 shadow-sm'
+                              : 'text-gray-800 hover:bg-gray-50 hover:text-gray-900'
+                          } cursor-pointer`}
+                      >
+                        {subcategory}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            {(selectedCategory || searchTerm) && (
+              <button
+                onClick={() => {
+                  setSelectedCategory('');
+                  setSearchTerm('');
+                  setSidebarOpen(false);
+                }}
+                className="w-full mt-4 p-2 text-sm text-gray-700 hover:text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                Clear Filter
+              </button>
+            )}
+          </>
+        )}
+        {sidebarCollapsed && (
+          <div className="flex flex-col items-center space-y-1">
+            <button
+              onClick={() => setSidebarCollapsed(false)}
+                              className="p-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all duration-200 cursor-pointer"
+              title="Expand to search"
+            >
+              <FiSearch />
+            </button>
+            <div className="w-6 h-px bg-gray-100"></div>
+            {Array.from(categories.entries()).map(([categoryName, category], index) => (
+              <button
+                key={categoryName}
+                onClick={() => setSidebarCollapsed(false)}
+                className="p-2.5 rounded-lg transition-all duration-200 transform hover:scale-110 text-gray-600 hover:text-gray-800 hover:bg-gray-100 cursor-pointer"
+                title={`Expand to filter by ${categoryName}`}
+              >
+                <FiFilter />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  </>
+);
+const BulkOrderInterface = ({
+  sidebarOpen,
+  setSidebarOpen,
+  sidebarCollapsed,
+  setSidebarCollapsed,
+  searchTerm,
+  setSearchTerm,
+  categories,
+  initialAnimationComplete,
+  toggleCategory,
+  selectedCategory,
+  setSelectedCategory,
+  tableContainerRef,
+  mobileContainerRef,
+  filteredProducts,
+  orderItems,
+  updateOrderItemWithScrollPreservation,
+  getProductPrice,
+  orderSummary,
+  exportToCSV,
+  showMobileSummary,
+  setShowMobileSummary,
+  products,
+}: {
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  categories: Map<string, CategoryNode>;
+  initialAnimationComplete: boolean;
+  toggleCategory: (name: string) => void;
+  selectedCategory: string;
+  setSelectedCategory: (category: string) => void;
+  tableContainerRef: React.ForwardedRef<HTMLDivElement>;
+  mobileContainerRef: React.ForwardedRef<HTMLDivElement>;
+  filteredProducts: Product[];
+  orderItems: Map<string, OrderItem>;
+  updateOrderItemWithScrollPreservation: (productId: string, quantity: number) => void;
+  getProductPrice: (product: Product, quantity: number) => number;
+  orderSummary: { totalValue: number; totalWeight: number; totalPallets: number; itemCount: number; };
+  exportToCSV: () => void;
+  showMobileSummary: boolean;
+  setShowMobileSummary: (show: boolean) => void;
+  products: Product[];
+}) => (
+  <div className="h-[calc(100vh_-_73px)] flex flex-col bg-gray-50">
+    <div className="flex-1 flex overflow-hidden border-l border-t border-gray-100">
+      <Sidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        sidebarCollapsed={sidebarCollapsed}
+        setSidebarCollapsed={setSidebarCollapsed}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        categories={categories}
+        initialAnimationComplete={initialAnimationComplete}
+        toggleCategory={toggleCategory}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+      />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div ref={tableContainerRef} className="flex-1 overflow-y-auto custom-scrollbar">
+          <div className="hidden lg:block min-w-full">
+            <table className="w-full">
+              <thead className="bg-gradient-to-r from-gray-50 to-blue-50 sticky top-0 shadow-sm z-10">
+                <tr>
+                  <th className="text-left p-4 font-semibold text-black min-w-[250px]">
+                    Product
+                  </th>
+                  <th className="text-left p-4 font-semibold text-black min-w-[120px]">
+                    Unit Price
+                  </th>
+                  <th className="text-center p-4 font-semibold text-black min-w-[160px]">
+                    Quantity
+                  </th>
+                  <th className="text-center p-4 font-semibold text-black min-w-[220px]">
+                    Pricing Tiers
+                  </th>
+                  <th className="text-right p-4 font-semibold text-black min-w-[120px]">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredProducts.map((product, index) => {
+                  const orderItem = orderItems.get(product.id);
+                  const quantity = orderItem?.quantity || 0;
+                  return (
+                    <ProductRow
+                      key={product.id}
+                      product={product}
+                      quantity={quantity}
+                      index={index}
+                      updateOrderItem={updateOrderItemWithScrollPreservation}
+                      getProductPrice={getProductPrice}
+                      shouldAnimate={!initialAnimationComplete}
+                    />
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div ref={mobileContainerRef} className="lg:hidden p-4 space-y-4">
+            {filteredProducts.map((product, index) => {
+              const orderItem = orderItems.get(product.id);
+              const quantity = orderItem?.quantity || 0;
+              return (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  quantity={quantity}
+                  index={index}
+                  updateOrderItem={updateOrderItemWithScrollPreservation}
+                  getProductPrice={getProductPrice}
+                  shouldAnimate={!initialAnimationComplete}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      <div className="hidden lg:flex w-80 bg-gradient-to-b from-white to-blue-50/30 border-l border-gray-100 flex-col shadow-lg">
+        <div className="p-4 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <FiShoppingCart className="text-blue-500 text-xl" />
+            <h3 className="text-lg font-semibold text-black">Order Summary</h3>
+          </div>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center p-2 bg-blue-50/50 rounded-lg transition-all duration-300 hover:bg-blue-100/50">
+              <div className="flex items-center gap-2">
+                <FiPackage className="text-blue-500" />
+                <span className="text-gray-700 font-medium">Items</span>
+              </div>
+              <span className="font-semibold text-black text-lg animate-pulse font-ui">
+                {orderSummary.itemCount}
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-green-50/50 rounded-lg transition-all duration-300 hover:bg-green-100/50">
+              <div className="flex items-center gap-2">
+                <span className="w-4 h-4 bg-green-500 rounded-full"></span>
+                <span className="text-gray-700 font-medium">Total Weight</span>
+              </div>
+              <span className="font-semibold text-black font-ui">
+                {orderSummary.totalWeight.toFixed(2)} kg
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-purple-50/50 rounded-lg transition-all duration-300 hover:bg-purple-100/50">
+              <div className="flex items-center gap-2">
+                <FiTruck className="text-purple-500" />
+                <span className="text-gray-700 font-medium">Pallets Required</span>
+              </div>
+              <span className="font-semibold text-black font-ui">
+                {orderSummary.totalPallets}
+              </span>
+            </div>
+            <div className="border-t pt-2 border-gray-200">
+              <div className="flex justify-between items-center p-2 bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl shadow-sm">
+                <div className="flex items-center gap-2">
+                  <FiDollarSign className="text-green-600 text-xl" />
+                  <span className="font-semibold text-black">Total Value</span>
+                </div>
+                <span className="font-bold text-black text-xl animate-pulse font-ui">
+                  {formatCurrency(orderSummary.totalValue)}
+                </span>
+              </div>
+            </div>
+            <div className="pt-2">
+              <button
+                onClick={exportToCSV}
+                disabled={orderSummary.itemCount === 0}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-xl hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 disabled:hover:scale-100 cursor-pointer"
+              >
+                <FiDownload />
+                Export CSV
+              </button>
+            </div>
+          </div>
+        </div>
+        {orderSummary.itemCount > 0 && (
+          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            <div className="flex items-center gap-2 mb-4">
+              <FiPackage className="text-blue-500 text-xl" />
+              <h4 className="font-semibold text-lg text-black">Order Details</h4>
+            </div>
+            <div className="space-y-3">
+              {Array.from(orderItems.values()).map((item, index) => {
+                const product = products.find((p) => p.id === item.productId);
+                return (
+                  <div
+                    key={item.productId}
+                    className={`p-4 bg-gradient-to-r from-white to-blue-50/50 rounded-xl border-2 border-gray-100 hover:border-blue-300 hover:shadow-md transition-all duration-300 transform hover:scale-105 ${
+                      !initialAnimationComplete ? 'animate-fade-in-up' : ''
+                    }`}
+                    style={
+                      !initialAnimationComplete ? { animationDelay: `${index * 100}ms` } : {}
+                    }
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-medium text-base text-black break-words flex-1 mr-2">
+                        {product?.name}
+                      </div>
+                      <button
+                        onClick={() => updateOrderItemWithScrollPreservation(item.productId, 0)}
+                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 transform hover:scale-110 cursor-pointer flex-shrink-0"
+                        title="Remove item"
+                      >
+                        <FaTrash className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="text-sm text-gray-700 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span>
+                          {formatNumber(item.quantity)} {product?.unit}
+                        </span>
+                        <span className="text-gray-600">×</span>
+                        <div>
+                        <span>{formatCurrency(item.unitPrice)}</span>
+                        </div>
+                      </div>
+                      <div className="border-t pt-2 border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-700">Total:</span>
+                          <span className="font-semibold text-black">
+                            {formatCurrency(item.totalPrice)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+    {showMobileSummary && (
+      <>
+        <div
+          className="fixed inset-0 bg-black/20 backdrop-blur-md z-50 lg:hidden animate-fade-in"
+          onClick={() => setShowMobileSummary(false)}
+        />
+        <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl rounded-t-2xl z-50 lg:hidden animate-slide-up border-t-2 border-gray-100 shadow-2xl">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <FiShoppingCart className="text-blue-500 text-xl" />
+                <h3 className="text-lg font-semibold text-black">Order Summary</h3>
+              </div>
+              <button
+                onClick={() => setShowMobileSummary(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200 cursor-pointer"
+              >
+                <FiX />
+              </button>
+            </div>
+            <div className="space-y-4 mb-6">
+              <div className="flex justify-between items-center p-3 bg-blue-50/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <FiPackage className="text-blue-500" />
+                  <span className="text-gray-700 font-medium">Items</span>
+                </div>
+                <span className="font-semibold text-black font-ui">
+                  {orderSummary.itemCount}
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-green-50/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-4 bg-green-500 rounded-full"></span>
+                  <span className="text-gray-700 font-medium">Total Weight</span>
+                </div>
+                <span className="font-semibold text-black font-ui">
+                  {orderSummary.totalWeight.toFixed(2)} kg
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-purple-50/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <FiTruck className="text-purple-500" />
+                  <span className="text-gray-700 font-medium">Pallets Required</span>
+                </div>
+                <span className="font-semibold text-black font-ui">
+                  {orderSummary.totalPallets}
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-4 bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl shadow-sm">
+                <div className="flex items-center gap-2">
+                  <FiDollarSign className="text-green-600 text-xl" />
+                  <span className="font-semibold text-black">Total Value</span>
+                </div>
+                <span className="font-bold text-black text-xl font-ui">
+                  {formatCurrency(orderSummary.totalValue)}
+                </span>
+              </div>
+            </div>
+            {orderSummary.itemCount > 0 && (
+              <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                <div className="flex items-center gap-2 mb-3">
+                  <FiPackage className="text-gray-700" />
+                  <h4 className="font-semibold text-gray-900 text-sm">Order Items</h4>
+                </div>
+                <div className="space-y-2">
+                  {Array.from(orderItems.values()).map((item) => {
+                    const product = products.find((p) => p.id === item.productId);
+                    return (
+                      <div
+                        key={item.productId}
+                        className="p-3 bg-gray-50 rounded-lg border-2 border-gray-100"
+                      >
+                        <div className="flex items-start justify-between mb-1">
+                          <div className="font-medium text-sm text-gray-900 break-words flex-1 mr-2">
+                            {product?.name}
+                          </div>
+                          <button
+                            onClick={() => updateOrderItemWithScrollPreservation(item.productId, 0)}
+                            className="p-0.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200 cursor-pointer flex-shrink-0"
+                            title="Remove item"
+                          >
+                            <FiX className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <div className="text-xs text-gray-600 flex justify-between">
+                          <span>
+                            {formatNumber(item.quantity)} {product?.unit} ×{' '}
+                            {formatCurrency(item.unitPrice)}
+                          </span>
+                          <span className="font-semibold text-gray-900">
+                            {formatCurrency(item.totalPrice)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </>
+    )}
+  </div>
+);
+const App: React.FC = () => {
+  const [currentPage, setCurrentPage] = useState<'home' | 'orders'>('home');
+  const [products] = useState<Product[]>(sampleProducts);
+  const [categories, setCategories] = useState<Map<string, CategoryNode>>(new Map());
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pageTransition, setPageTransition] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
+  const [initialAnimationComplete, setInitialAnimationComplete] = useState(false);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const mobileContainerRef = useRef<HTMLDivElement>(null);
+  const scrollPositionRef = useRef({ top: 0, left: 0 });
+  const { orderItems, updateOrderItem, getProductPrice, orderSummary } =
+    useInventoryManagement(products);
+  const {
+    searchTerm,
+    setSearchTerm,
+    selectedCategory,
+    setSelectedCategory,
+    filteredProducts,
+  } = useProductFilters(products);
+  useEffect(() => {
+    const categoryMap = new Map<string, CategoryNode>();
+    products.forEach((product) => {
+      if (!categoryMap.has(product.category)) {
+        categoryMap.set(product.category, {
+          name: product.category,
+          subcategories: [],
+          expanded: false,
+        });
+      }
+      const category = categoryMap.get(product.category)!;
+      if (!category.subcategories.includes(product.subcategory)) {
+        category.subcategories.push(product.subcategory);
+      }
+    });
+    setCategories(categoryMap);
+  }, [products]);
+  useEffect(() => {
+    if (currentPage === 'orders' && !initialAnimationComplete) {
+      const timer = setTimeout(() => {
+        setInitialAnimationComplete(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (currentPage === 'home') {
+      setInitialAnimationComplete(false);
+    }
+  }, [currentPage, initialAnimationComplete]);
+  useEffect(() => {
+    const container = tableContainerRef.current || mobileContainerRef.current;
+    if (!container) return;
+    const handleScroll = () => {
+      scrollPositionRef.current = {
+        top: container.scrollTop,
+        left: container.scrollLeft,
+      };
+    };
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [currentPage]);
+  const saveScrollPosition = useCallback(() => {
+    const container = tableContainerRef.current || mobileContainerRef.current;
+    if (container) {
+      scrollPositionRef.current = {
+        top: container.scrollTop,
+        left: container.scrollLeft,
+      };
+    }
+  }, []);
+  const restoreScrollPosition = useCallback(() => {
+    const container = tableContainerRef.current || mobileContainerRef.current;
+    if (container && scrollPositionRef.current) {
+      container.scrollTo({
+        top: scrollPositionRef.current.top,
+        left: scrollPositionRef.current.left,
+        behavior: 'auto',
+      });
+      if (container.scrollTop !== scrollPositionRef.current.top) {
+        container.scrollTop = scrollPositionRef.current.top;
+        container.scrollLeft = scrollPositionRef.current.left;
+      }
+    }
+  }, []);
+  const updateOrderItemWithScrollPreservation = useCallback(
+    (productId: string, quantity: number) => {
+      saveScrollPosition();
+      updateOrderItem(productId, quantity);
+      requestAnimationFrame(() => {
+        restoreScrollPosition();
+        setTimeout(() => {
+          restoreScrollPosition();
+        }, 10);
+      });
+    },
+    [updateOrderItem, saveScrollPosition, restoreScrollPosition],
+  );
+  const exportToCSV = useCallback(() => {
+    const items = Array.from(orderItems.values());
+    if (items.length === 0) return;
+    const csvContent = [
+      ['Product Name', 'Category', 'Quantity', 'Unit Price', 'Total Price', 'Unit'].join(','),
+      ...items.map((item) => {
+        const product = products.find((p) => p.id === item.productId);
+        return [
+          product?.name || '',
+          product?.category || '',
+          item.quantity,
+          item.unitPrice.toFixed(2),
+          item.totalPrice.toFixed(2),
+          product?.unit || '',
+        ].join(',');
+      }),
+    ].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bulk-order-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }, [orderItems, products]);
+  const toggleCategory = useCallback((categoryName: string) => {
+    setCategories((prevCategories) => {
+      const newCategories = new Map();
+      prevCategories.forEach((category, key) => {
+        if (key === categoryName) {
+          newCategories.set(key, {
+            ...category,
+            expanded: !category.expanded,
+          });
+        } else {
+          newCategories.set(key, { ...category });
+        }
+      });
+      return newCategories;
+    });
+  }, []);
+  const handlePageTransition = useCallback(
+    (newPage: 'home' | 'orders') => {
+      if (newPage === currentPage) return;
+      setPageTransition(true);
+      setTimeout(() => {
+        setCurrentPage(newPage);
+        setPageTransition(false);
+      }, 150);
+    },
+    [currentPage],
+  );
+  return (
+    <div className="min-h-screen bg-gray-50 relative">
+      <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 sm:px-4 lg:px-6 py-4 sticky top-0 z-30 shadow-sm">
+        <div className="flex items-center justify-between max-w-9xl mx-auto">
+          <div className="flex items-center justify-between w-full gap-4 sm:gap-6 lg:gap-8">
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-display">
+              B2B Trade Hub
+            </h1>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <button
+                onClick={() => handlePageTransition('home')}
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl transition-all duration-300 text-sm sm:text-base transform hover:scale-105 ${
+                  currentPage === 'home'
+                    ? 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 shadow-md'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                } cursor-pointer`}
+              >
+                <FiHome
+                  className={`transition-transform duration-300 ${currentPage === 'home' ? 'scale-110' : ''}`}
+                />
+                <span className="hidden sm:inline">Home</span>
+              </button>
+              <button
+                onClick={() => handlePageTransition('orders')}
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl transition-all duration-300 text-sm sm:text-base transform hover:scale-105 ${
+                  currentPage === 'orders'
+                    ? 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 shadow-md'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                } cursor-pointer`}
+              >
+                <FaStoreAlt
+                  className={`transition-transform duration-300 ${currentPage === 'orders' ? 'scale-110' : ''}`}
+                />
+                <span className="hidden sm:inline">Bulk Orders</span>
+              </button>
+            </div>
+          </div>
+          {currentPage === 'orders' && (
+            <div className="flex items-center gap-2 lg:hidden">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all duration-200 transform hover:scale-105 cursor-pointer"
+              >
+                <div className="relative h-4 pl-4 w-4">
+                  <FiMenu className={`absolute inset-0 transition-all text-sm duration-300 ${sidebarOpen ? 'opacity-0 rotate-90' : 'opacity-100 rotate-0'}`} />
+                  <FiX className={`absolute inset-0 text-sm transition-all duration-300 ${sidebarOpen ? 'opacity-100 rotate-0' : 'opacity-0 -rotate-90'}`} />
+                </div>
+              </button>
+              {orderSummary.itemCount > 0 && (
+                <button
+                  onClick={() => setShowMobileSummary(!showMobileSummary)}
+                  className="relative flex items-center gap-2 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 px-3 py-2 rounded-xl hover:from-blue-200 hover:to-purple-200 transition-all duration-300 cursor-pointer"
+                >
+                  <FiShoppingCart className="text-sm" />
+                  <span className="text-sm font-medium">{orderSummary.itemCount}</span>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </nav>
+      <div
+        className={`transition-all duration-300 ${pageTransition ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
+      >
+        {currentPage === 'home' ? <HomePage onStartOrdering={() => handlePageTransition('orders')} /> : <BulkOrderInterface
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+            sidebarCollapsed={sidebarCollapsed}
+            setSidebarCollapsed={setSidebarCollapsed}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            categories={categories}
+            initialAnimationComplete={initialAnimationComplete}
+            toggleCategory={toggleCategory}
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+            tableContainerRef={tableContainerRef}
+            mobileContainerRef={mobileContainerRef}
+            filteredProducts={filteredProducts}
+            orderItems={orderItems}
+            updateOrderItemWithScrollPreservation={updateOrderItemWithScrollPreservation}
+            getProductPrice={getProductPrice}
+            orderSummary={orderSummary}
+            exportToCSV={exportToCSV}
+            showMobileSummary={showMobileSummary}
+            setShowMobileSummary={setShowMobileSummary}
+            products={products}
+          />}
+      </div>
+      <style jsx>{`
+        * {
+          font-family: 'Open Sans', sans-serif !important;
+        }
+        body {
+          font-family: 'Open Sans', sans-serif !important;
+          font-feature-settings:
+            'kern' 1,
+            'liga' 1,
+            'calt' 1;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+        }
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+          font-family: 'Poppins', sans-serif !important;
+          font-feature-settings:
+            'kern' 1,
+            'liga' 1,
+            'calt' 1;
+          letter-spacing: -0.02em;
+        }
+        .font-display {
+          font-family: 'Poppins', sans-serif !important;
+          font-feature-settings:
+            'kern' 1,
+            'liga' 1,
+            'calt' 1;
+        }
+        .font-ui {
+          font-family: 'Open Sans', sans-serif !important;
+          font-feature-settings:
+            'kern' 1,
+            'liga' 1,
+            'calt' 1,
+            'tnum' 1;
+        }
+        .font-mono {
+          font-family: 'Open Sans', sans-serif !important;
+          font-feature-settings:
+            'kern' 1,
+            'liga' 1,
+            'calt' 1;
+        }
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @keyframes slide-down {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes slide-up {
+          from {
+            opacity: 0;
+            transform: translateY(100%);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes gradient {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 0.6s ease-out forwards;
+          animation-fill-mode: both;
+        }
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out forwards;
+        }
+        .animate-slide-down {
+          animation: slide-down 0.3s ease-out forwards;
+        }
+        .animate-slide-up {
+          animation: slide-up 0.3s ease-out forwards;
+        }
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 3s ease infinite;
+        }
+        .animation-delay-200 {
+          animation-delay: 200ms;
+        }
+        .animation-delay-400 {
+          animation-delay: 400ms;
+        }
+        .animation-delay-600 {
+          animation-delay: 600ms;
+        }
+        .animation-delay-800 {
+          animation-delay: 800ms;
+        }
+        .animation-delay-1000 {
+          animation-delay: 1000ms;
+        }
+        .animation-delay-1200 {
+          animation-delay: 1200ms;
+        }
+        .animation-delay-1400 {
+          animation-delay: 1400ms;
+        }
+        .custom-scrollbar {
+          scrollbar-width: none;
+          scrollbar-color: transparent transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 0px;
+          background: transparent;
+        }
+        ::-webkit-scrollbar {
+          width: 0px;
+          background: transparent;
+        }
+        html {
+          scrollbar-width: none;
+        }
+      `}</style>
+    </div>
+  );
+};
+export default App;
