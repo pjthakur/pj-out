@@ -1,0 +1,2536 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Room Layout Editor</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'poppins': ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        'slate-850': '#1e293b',
+                        'slate-750': '#334155',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .no-select {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+        }
+
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 0px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: transparent;
+        }
+
+        /* Hide scrollbars for Firefox */
+        * {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        /* Hide scrollbars for all browsers */
+        *::-webkit-scrollbar {
+            display: none;
+        }
+
+        * {
+            transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 200ms;
+        }
+
+        
+        .modal-overlay {
+            transition: opacity 300ms ease-out, backdrop-filter 300ms ease-out;
+        }
+
+        .modal-overlay.show {
+            opacity: 1 !important;
+        }
+
+        .modal-overlay.hide {
+            opacity: 0 !important;
+        }
+
+        .modal-content {
+            transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 300ms ease-out;
+        }
+
+        .modal-content.show {
+            transform: scale(1) !important;
+            opacity: 1 !important;
+        }
+
+        .modal-content.hide {
+            transform: scale(0.95) !important;
+            opacity: 0 !important;
+        }
+
+        
+        .logo-container {
+            transition: transform 300ms ease-out;
+            cursor: pointer;
+        }
+
+        .logo-container:hover {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .logo-container svg {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        
+        .logo-container:hover svg {
+            filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.3)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        
+        .logo-loader-container svg {
+            animation: logoFloat 3s ease-in-out infinite alternate, logoGlow 2s ease-in-out infinite alternate;
+            filter: drop-shadow(0 0 20px rgba(96, 165, 250, 0.4));
+        }
+
+        @keyframes logoFloat {
+            0% { transform: translateY(0px) rotate(0deg); }
+            100% { transform: translateY(-10px) rotate(5deg); }
+        }
+
+        @keyframes logoGlow {
+            0% { filter: drop-shadow(0 0 20px rgba(96, 165, 250, 0.4)); }
+            100% { filter: drop-shadow(0 0 30px rgba(124, 58, 237, 0.6)); }
+        }
+
+        
+        .loading-dot {
+            animation: dotWave 1.4s ease-in-out infinite;
+        }
+
+        .loading-dot:nth-child(1) { animation-delay: 0s; }
+        .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes dotWave {
+            0%, 60%, 100% { transform: translateY(0px) scale(1); opacity: 0.7; }
+            30% { transform: translateY(-15px) scale(1.2); opacity: 1; }
+        }
+
+
+        .loading-progress {
+            width: 0%;
+            animation: progressFill 3s ease-out forwards;
+        }
+
+        @keyframes progressFill {
+            0% { width: 0%; }
+            30% { width: 25%; }
+            60% { width: 70%; }
+            90% { width: 95%; }
+            100% { width: 100%; }
+        }
+
+        
+        .floating-elements {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .floating-cube {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(45deg, rgba(96, 165, 250, 0.1), rgba(124, 58, 237, 0.1));
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            animation: floatCube 6s ease-in-out infinite;
+        }
+
+        .floating-cube-1 {
+            top: 20%;
+            left: 10%;
+            animation-delay: 0s;
+            animation-duration: 8s;
+        }
+
+        .floating-cube-2 {
+            top: 60%;
+            right: 15%;
+            animation-delay: 2s;
+            animation-duration: 7s;
+        }
+
+        .floating-cube-3 {
+            bottom: 30%;
+            left: 20%;
+            animation-delay: 4s;
+            animation-duration: 9s;
+        }
+
+        .floating-cube-4 {
+            top: 40%;
+            right: 30%;
+            animation-delay: 6s;
+            animation-duration: 6s;
+        }
+
+        @keyframes floatCube {
+            0%, 100% { 
+                transform: translateY(0px) rotate(0deg) scale(1);
+                opacity: 0.1;
+            }
+            25% { 
+                transform: translateY(-20px) rotate(90deg) scale(1.1);
+                opacity: 0.3;
+            }
+            50% { 
+                transform: translateY(-40px) rotate(180deg) scale(0.9);
+                opacity: 0.2;
+            }
+            75% { 
+                transform: translateY(-20px) rotate(270deg) scale(1.1);
+                opacity: 0.3;
+            }
+        }
+
+
+        #loading.fade-out {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.8s ease-out, visibility 0.8s ease-out;
+        }
+
+        
+        .modal-content-element {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        .modal-content-element.animate-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        
+        .modal-header {
+            transition-delay: 0.1s;
+        }
+
+        .instruction-item:nth-child(1) { transition-delay: 0.2s; }
+        .instruction-item:nth-child(2) { transition-delay: 0.3s; }
+        .instruction-item:nth-child(3) { transition-delay: 0.4s; }
+        .instruction-item:nth-child(4) { transition-delay: 0.5s; }
+        .instruction-item:nth-child(5) { transition-delay: 0.6s; }
+        .instruction-item:nth-child(6) { transition-delay: 0.7s; }
+        .instruction-item:nth-child(7) { transition-delay: 0.8s; }
+        .instruction-item:nth-child(8) { transition-delay: 0.9s; }
+
+        .modal-footer {
+            transition-delay: 1s;
+        }
+
+        
+        .instruction-item {
+            transition: all 0.3s ease-out;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin: 6px 0;
+        }
+
+        .instruction-item:hover {
+            background-color: rgba(71, 85, 105, 0.4);
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        
+        @media (max-width: 768px) {
+            .instruction-item {
+                padding: 8px 12px;
+                margin: 4px 0;
+                border-radius: 8px;
+            }
+            
+            .instruction-item h3 {
+                font-size: 0.9rem;
+                margin-bottom: 0.25rem;
+            }
+            
+            .instruction-item p {
+                font-size: 0.85rem;
+                line-height: 1.4;
+            }
+            
+            .instruction-number {
+                width: 1.75rem;
+                height: 1.75rem;
+                font-size: 0.75rem;
+            }
+        }
+
+    
+        .instruction-number {
+            transition: all 0.3s ease-out;
+        }
+
+        .instruction-item:hover .instruction-number {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.5);
+            background: rgba(59, 130, 246, 0.3) !important;
+            border-color: rgba(59, 130, 246, 0.5) !important;
+        }
+
+        
+        .btn-disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+            filter: grayscale(30%);
+            background: rgba(148, 163, 184, 0.1) !important;
+            color: #64748b !important;
+        }
+
+        .btn-enabled {
+            opacity: 1;
+            cursor: pointer;
+            pointer-events: auto;
+            filter: none;
+            transition: all 0.2s ease-out;
+        }
+
+        .btn-enabled:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-active {
+            background: rgba(59, 130, 246, 0.15) !important;
+            border: 1px solid rgba(59, 130, 246, 0.3) !important;
+            color: #2563eb !important;
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 4px 12px rgba(59, 130, 246, 0.15) !important;
+        }
+
+        .btn-active:hover {
+            background: rgba(59, 130, 246, 0.2) !important;
+            transform: scale(1.05);
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3), 0 6px 20px rgba(59, 130, 246, 0.2) !important;
+        }
+
+        .btn-toggle-on {
+            background: rgba(34, 197, 94, 0.15) !important;
+            border: 1px solid rgba(34, 197, 94, 0.3) !important;
+            color: #16a34a !important;
+            box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2), 0 4px 12px rgba(34, 197, 94, 0.15) !important;
+        }
+
+        .btn-toggle-on:hover {
+            background: rgba(34, 197, 94, 0.2) !important;
+            transform: scale(1.05);
+            box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.3), 0 6px 20px rgba(34, 197, 94, 0.2) !important;
+        }
+
+        .btn-toggle-off {
+            background: rgba(239, 68, 68, 0.15) !important;
+            border: 1px solid rgba(239, 68, 68, 0.3) !important;
+            color: #dc2626 !important;
+            box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2), 0 4px 12px rgba(239, 68, 68, 0.15) !important;
+        }
+
+        .btn-toggle-off:hover {
+            background: rgba(239, 68, 68, 0.2) !important;
+            transform: scale(1.05);
+            box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.3), 0 6px 20px rgba(239, 68, 68, 0.2) !important;
+        }
+
+        .texture-item {
+            position: relative;
+        }
+
+        .texture-item::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 8px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            z-index: 1;
+        }
+
+        .texture-item:hover::after {
+            background: rgba(59, 130, 246, 0.9);
+        }
+
+        .glass-panel {
+            backdrop-filter: blur(10px);
+            background: rgba(30, 41, 59, 0.95);
+        }
+
+        .glassmorphic {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .glassmorphic-dark {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(71, 85, 105, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .glassmorphic-light {
+            background: rgba(248, 250, 252, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(203, 213, 225, 0.5);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #canvas-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .main-viewport {
+            background: #ffffff;
+            position: relative;
+        }
+
+        @media (max-width: 768px) {
+            .left-panel {
+                transform: translateX(-100%) !important;
+                position: fixed !important;
+                top: 80px !important;
+                left: 0 !important;
+                height: calc(100vh - 64px) !important;
+                z-index: 40 !important;
+            }
+            
+            .left-panel.open {
+                transform: translateX(0) !important;
+            }
+            
+            .right-panel {
+                transform: translateX(100%) !important;
+                position: fixed !important;
+                top: 80px !important;
+                right: 0 !important;
+                height: calc(100vh - 64px) !important;
+                z-index: 40 !important;
+            }
+            
+            .right-panel.open {
+                transform: translateX(0) !important;
+            }
+
+            #toggleLeft, #toggleRight {
+                display: block !important;
+                z-index: 40 !important;
+            }
+
+            #toggleLeft.hidden-mobile, #toggleRight.hidden-mobile {
+                display: none !important;
+            }
+
+            .controls-panel {
+        position: fixed !important;
+        bottom: 20px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        top: auto !important;
+        width: calc(100% - 40px) !important;
+        max-width: 600px !important;
+        z-index: 10 !important;
+    }
+
+    .controls-panel .flex {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        justify-content: center !important;
+    }
+
+    .controls-panel button {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        flex: 1 1 auto !important;
+        min-width: 80px !important;
+    }
+        }
+    </style>
+</head>
+
+<body class="font-poppins bg-slate-100 overflow-hidden w-screen h-screen">
+
+    <button id="toggleLeft" class="fixed top-24 md:top-20 left-4 z-50 hidden md:hidden glassmorphic-dark text-white px-4 py-2 rounded-xl shadow-lg font-medium transition-all duration-200 hover:scale-105 hover:bg-slate-600/50" title="Show Furniture Library" aria-label="Show Furniture Library">
+        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+        Furniture
+    </button>
+    <button id="toggleRight" class="fixed top-24 md:top-20 right-4 z-50 hidden md:hidden glassmorphic-dark text-white px-4 py-2 rounded-xl shadow-lg font-medium transition-all duration-200 hover:scale-105 hover:bg-slate-600/50" title="Show Materials Panel" aria-label="Show Materials Panel">
+        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"></path>
+        </svg>
+        Materials
+    </button>
+
+    <nav class="fixed top-0 left-0 right-0 z-40 bg-slate-700 backdrop-blur-md border-b border-slate-900 h-16 flex items-center justify-between px-3 md:px-6 py-2 md:py-4 shadow-sm">
+        <div class="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
+            <div class="logo-container flex-shrink-0">
+                <svg class="w-6 h-6 md:w-10 md:h-10" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- 3D Room Cube Base -->
+                    <path d="M8 20L24 12L40 20L24 28L8 20Z" fill="#60A5FA" stroke="#3B82F6" stroke-width="1.5" stroke-linejoin="round"/>
+                    
+                    <!-- Front Face -->
+                    <path d="M8 20L8 36L24 44L24 28L8 20Z" fill="#4F46E5" stroke="#3730A3" stroke-width="1.5" stroke-linejoin="round"/>
+                    
+                    <!-- Right Face -->
+                    <path d="M24 28L24 44L40 36L40 20L24 28Z" fill="#7C3AED" stroke="#5B21B6" stroke-width="1.5" stroke-linejoin="round"/>
+                    
+                    <!-- Room Elements - Furniture Icons -->
+                    <!-- Small Table -->
+                    <rect x="14" y="24" width="4" height="2" fill="#F59E0B" rx="0.5"/>
+                    <line x1="15" y1="26" x2="15" y2="28" stroke="#F59E0B" stroke-width="0.8"/>
+                    <line x1="17" y1="26" x2="17" y2="28" stroke="#F59E0B" stroke-width="0.8"/>
+                    
+                    <!-- Small Chair -->
+                    <rect x="28" y="26" width="3" height="1.5" fill="#EF4444" rx="0.3"/>
+                    <rect x="28.5" y="24" width="2" height="2" fill="#EF4444" rx="0.2"/>
+                    <line x1="28.5" y1="27.5" x2="28.5" y2="29" stroke="#EF4444" stroke-width="0.6"/>
+                    <line x1="30.5" y1="27.5" x2="30.5" y2="29" stroke="#EF4444" stroke-width="0.6"/>
+                    
+                    <!-- Grid Lines for Design Element -->
+                    <g opacity="0.4">
+                        <line x1="10" y1="22" x2="22" y2="22" stroke="#E5E7EB" stroke-width="0.5" stroke-dasharray="1,1"/>
+                        <line x1="10" y1="24" x2="22" y2="24" stroke="#E5E7EB" stroke-width="0.5" stroke-dasharray="1,1"/>
+                        <line x1="26" y1="24" x2="38" y2="24" stroke="#E5E7EB" stroke-width="0.5" stroke-dasharray="1,1"/>
+                        <line x1="26" y1="26" x2="38" y2="26" stroke="#E5E7EB" stroke-width="0.5" stroke-dasharray="1,1"/>
+                    </g>
+                    
+                    <!-- 3D Accent Lines -->
+                    <line x1="24" y1="12" x2="24" y2="20" stroke="#10B981" stroke-width="1.5" opacity="0.8"/>
+                    <line x1="16" y1="16" x2="32" y2="16" stroke="#10B981" stroke-width="1.5" opacity="0.6"/>
+                </svg>
+            </div>
+            <h1 class="text-sm md:text-2xl font-bold text-white tracking-tight truncate">3D Room Designer</h1>
+        </div>
+        
+        <div class="flex items-center space-x-1 md:space-x-3 flex-shrink-0">
+            <button id="exportOBJ" class="glassmorphic-light text-blue-900 px-1.5 md:px-4 py-1.5 md:py-2 rounded-md md:rounded-lg font-semibold shadow-sm transition-all duration-200 hover:scale-105 hover:bg-blue-50/50 text-xs md:text-sm border border-blue-300/70">
+                <span class="hidden sm:inline">Export </span>.OBJ
+            </button>
+            <button id="exportGLB" class="glassmorphic-light text-green-900 px-1.5 md:px-4 py-1.5 md:py-2 rounded-md md:rounded-lg font-semibold shadow-sm transition-all duration-200 hover:scale-105 hover:bg-green-50/50 text-xs md:text-sm border border-green-300/70">
+                <span class="hidden sm:inline">Export </span>.GLB
+            </button>
+            <button id="showInstructions" class="glassmorphic-light text-slate-900 p-1.5 md:p-2 rounded-md md:rounded-lg transition-all duration-200 hover:scale-105 hover:bg-slate-50/50 border border-slate-200/50" title="Show Instructions">
+                <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <div class="flex h-screen pt-16">
+        <div class="left-panel w-80 h-full glass-panel text-white overflow-y-auto shadow-2xl z-30 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+            <div class="sticky top-0 z-10 glass-panel border-b border-slate-600 p-4 flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-white">Furniture Library</h2>
+                <button class="panel-close-button panel-close-left md:hidden text-white hover:text-red-400 text-xl transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="p-4 space-y-6">
+                <div class="space-y-3">
+                    <h3 class="text-sm font-medium text-slate-100 uppercase tracking-wider border-b border-slate-600 pb-2">Seating</h3>
+                    
+                    <div class="furniture-item glassmorphic-dark p-4 rounded-xl cursor-grab active:cursor-grabbing flex items-center space-x-3 transition-all duration-200 hover:scale-105 hover:shadow-lg hover:bg-slate-600/30" 
+                         data-type="sofa" data-width="2" data-depth="1" data-height="0.8">
+                        <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 18H5.55556C3.59188 18 2 16.4081 2 14.4444V12C2 10.8954 2.89543 10 4 10C5.10457 10 6 10.8954 6 12V13.2C6 13.6418 6.35817 14 6.8 14H17.2C17.6418 14 18 13.6418 18 13.2V12C18 10.8954 18.8954 10 20 10C21.1046 10 22 10.8954 22 12V14.4444C22 16.4081 20.4081 18 18.4444 18H12"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 5C15.9293 5 16.394 5 16.7804 5.07686C18.3671 5.39249 19.6075 6.63288 19.9231 8.21964C20 8.60603 20 9.07069 20 10M4 10C4 9.07069 4 8.60603 4.07686 8.21964C4.39249 6.63288 5.63288 5.39249 7.21964 5.07686C7.60603 5 8.07069 5 9 5H11"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 19V18M4 19V18"/>
+                            </svg>
+                        </div>
+                        <span class="font-medium">Sofa</span>
+                    </div>
+
+                    <div class="furniture-item glassmorphic-dark p-4 rounded-xl cursor-grab active:cursor-grabbing flex items-center space-x-3 transition-all duration-200 hover:scale-105 hover:shadow-lg hover:bg-slate-600/30" 
+                         data-type="chair" data-width="0.6" data-depth="0.6" data-height="0.8">
+                        <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 21V16M7 21V16"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 16H7.00001C6.01506 16 5.52259 16 5.22538 15.6762C4.92818 15.3523 4.9669 14.9018 5.04435 14.0008C5.10026 13.3503 5.22669 12.9125 5.51257 12.5858C6.02514 12 6.8501 12 8.50001 12H15.5C17.1499 12 17.9749 12 18.4874 12.5858C18.7733 12.9125 18.8998 13.3503 18.9557 14.0008C19.0331 14.9018 19.0718 15.3523 18.7746 15.6762C18.4774 16 17.985 16 17 16H16"/>
+                                <path stroke-width="1.5" d="M7 8C7 6.13077 7 5.19615 7.40192 4.5C7.66523 4.04394 8.04394 3.66523 8.5 3.40192C9.19615 3 10.1308 3 12 3C13.8692 3 14.8038 3 15.5 3.40192C15.9561 3.66523 16.3348 4.04394 16.5981 4.5C17 5.19615 17 6.13077 17 8V12H7V8Z"/>
+                            </svg>
+                        </div>
+                        <span class="font-medium">Chair</span>
+                    </div>
+
+                    <div class="furniture-item glassmorphic-dark p-4 rounded-xl cursor-grab active:cursor-grabbing flex items-center space-x-3 transition-all duration-200 hover:scale-105 hover:shadow-lg hover:bg-slate-600/30" 
+                         data-type="armchair" data-width="0.8" data-depth="0.8" data-height="0.9">
+                        <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.2623 13.6L18.263 11.1339C18.5392 10.4533 19.2628 10 20.0731 10C21.3873 10 22.3153 11.1504 21.8997 12.2643L20.7803 15.2649C20.5852 15.7879 20.4876 16.0494 20.3588 16.2717C19.8348 17.1756 18.8608 17.8028 17.7354 17.9611C17.4587 18 17.1502 18 16.5332 18H16H6.88633C6.82438 18 6.7934 18 6.76531 17.9996C5.26517 17.9786 3.93869 17.1243 3.44197 15.8594C3.43268 15.8357 3.42288 15.8095 3.4033 15.757L3.40329 15.757L2.10028 12.2643C1.68469 11.1504 2.61268 10 3.92689 10C4.7372 10 5.46079 10.4533 5.73699 11.1339L6.83511 13.84L6.83511 13.84C6.93505 14.0863 6.98502 14.2094 7.05744 14.3101C7.22656 14.5452 7.49217 14.7116 7.79716 14.7735C7.92777 14.8 8.07437 14.8 8.36757 14.8H15.3467C15.9158 14.8 16.2004 14.8 16.4383 14.7019C16.5683 14.6484 16.6864 14.5744 16.787 14.4835C16.9713 14.317 17.0683 14.078 17.2623 13.6Z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 20V18M6 20V18.6667"/>
+                            </svg>
+                        </div>
+                        <span class="font-medium">Armchair</span>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="text-sm font-medium text-slate-100 uppercase tracking-wider border-b border-slate-600 pb-2">Tables</h3>
+                    
+                    <div class="furniture-item glassmorphic-dark p-4 rounded-xl cursor-grab active:cursor-grabbing flex items-center space-x-3 transition-all duration-200 hover:scale-105 hover:shadow-lg hover:bg-slate-600/30" 
+                         data-type="dining-table" data-width="1.5" data-depth="1" data-height="0.75">
+                        <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <rect x="2" y="6" width="20" height="2" rx="0.5" stroke-width="1.5"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 8V20M12 8V20M20 8V20M4 20H20"/>
+                            </svg>
+                        </div>
+                        <span class="font-medium">Dining Table</span>
+                    </div>
+
+                    <div class="furniture-item glassmorphic-dark p-4 rounded-xl cursor-grab active:cursor-grabbing flex items-center space-x-3 transition-all duration-200 hover:scale-105 hover:shadow-lg hover:bg-slate-600/30" 
+                         data-type="coffee-table" data-width="1.2" data-depth="0.6" data-height="0.4">
+                        <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <rect x="4" y="6" width="16" height="2" rx="0.5" stroke-width="1.5"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 8V20M18 8V20M6 16H18"/>
+                            </svg>
+                        </div>
+                        <span class="font-medium">Coffee Table</span>
+                    </div>
+
+                    <div class="furniture-item glassmorphic-dark p-4 rounded-xl cursor-grab active:cursor-grabbing flex items-center space-x-3 transition-all duration-200 hover:scale-105 hover:shadow-lg hover:bg-slate-600/30" 
+                         data-type="desk" data-width="1.2" data-depth="0.6" data-height="0.75">
+                        <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <rect x="2" y="6" width="20" height="2" rx="0.5" stroke-width="1.5"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 8V20M20 8V20"/>
+                                <rect x="14" y="8" width="4" height="12" stroke-width="1.5"/>
+                                <line x1="14" y1="12" x2="18" y2="12" stroke-width="1.2"/>
+                                <line x1="14" y1="16" x2="18" y2="16" stroke-width="1.2"/>
+                            </svg>
+                        </div>
+                        <span class="font-medium">Desk</span>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="text-sm font-medium text-slate-100 uppercase tracking-wider border-b border-slate-600 pb-2">Storage</h3>
+                    
+                    <div class="furniture-item glassmorphic-dark p-4 rounded-xl cursor-grab active:cursor-grabbing flex items-center space-x-3 transition-all duration-200 hover:scale-105 hover:shadow-lg hover:bg-slate-600/30" 
+                         data-type="wardrobe" data-width="1.2" data-depth="0.6" data-height="2">
+                        <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 22V20.5M5 22V20.5M12 20V8M15 12V15M9 12V15"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2H10C6.22876 2 4.34315 2 3.17157 3.17157C2 4.34315 2 6.22876 2 10V12C2 15.7712 2 17.6569 3.17157 18.8284C4.34315 20 6.22876 20 10 20H14C17.7712 20 19.6569 20 20.8284 18.8284C22 17.6569 22 15.7712 22 12V10C22 6.22876 22 4.34315 20.8284 3.17157C19.8853 2.22849 18.4796 2.04456 16 2.00869"/>
+                            </svg>
+                        </div>
+                        <span class="font-medium">Wardrobe</span>
+                    </div>
+
+                    <div class="furniture-item glassmorphic-dark p-4 rounded-xl cursor-grab active:cursor-grabbing flex items-center space-x-3 transition-all duration-200 hover:scale-105 hover:shadow-lg hover:bg-slate-600/30" 
+                         data-type="shelf" data-width="1" data-depth="0.3" data-height="1.8">
+                        <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 22V20.5M5 22V20.5M2 14H14M22 14H18M2 8H22"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14 2C17.7712 2 19.6569 2 20.8284 3.17157C22 4.34315 22 6.22876 22 10V12C22 15.7712 22 17.6569 20.8284 18.8284C19.6569 20 17.7712 20 14 20H10C6.22876 20 4.34315 20 3.17157 18.8284C2 17.6569 2 15.7712 2 12V10C2 6.22876 2 4.34315 3.17157 3.17157C4.34315 2 6.22876 2 10 2"/>
+                            </svg>
+                        </div>
+                        <span class="font-medium">Bookshelf</span>
+                    </div>
+
+                    <div class="furniture-item glassmorphic-dark p-4 rounded-xl cursor-grab active:cursor-grabbing flex items-center space-x-3 transition-all duration-200 hover:scale-105 hover:shadow-lg hover:bg-slate-600/30" 
+                         data-type="cabinet" data-width="0.8" data-depth="0.5" data-height="1">
+                        <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 22V20.5M5 22V20.5M12 20V8M15 12V15M9 12V15"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2H10C6.22876 2 4.34315 2 3.17157 3.17157C2 4.34315 2 6.22876 2 10V12C2 15.7712 2 17.6569 3.17157 18.8284C4.34315 20 6.22876 20 10 20H14C17.7712 20 19.6569 20 20.8284 18.8284C22 17.6569 22 15.7712 22 12V10C22 6.22876 22 4.34315 20.8284 3.17157C19.8853 2.22849 18.4796 2.04456 16 2.00869"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2 8H5M22 8H9"/>
+                            </svg>
+                        </div>
+                        <span class="font-medium">Cabinet</span>
+                    </div>
+                </div>
+
+                <div class="space-y-3 pb-20">
+                    <h3 class="text-sm font-medium text-slate-100 uppercase tracking-wider border-b border-slate-600 pb-2">Beds</h3>
+                    
+                    <div class="furniture-item glassmorphic-dark p-4 rounded-xl cursor-grab active:cursor-grabbing flex items-center space-x-3 transition-all duration-200 hover:scale-105 hover:shadow-lg hover:bg-slate-600/30" 
+                         data-type="single-bed" data-width="1" data-depth="2" data-height="0.5">
+                        <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20V18.5M5 20V18.5"/>
+                                <path stroke-width="1.5" d="M2 15C2 14.0681 2 13.6022 2.15224 13.2346C2.35523 12.7446 2.74458 12.3552 3.23463 12.1522C3.60218 12 4.06812 12 5 12H19C19.9319 12 20.3978 12 20.7654 12.1522C21.2554 12.3552 21.6448 12.7446 21.8478 13.2346C22 13.6022 22 14.0681 22 15C22 15.9319 22 16.3978 21.8478 16.7654C21.6448 17.2554 21.2554 17.6448 20.7654 17.8478C20.3978 18 19.9319 18 19 18H5C4.06812 18 3.60218 18 3.23463 17.8478C2.74458 17.6448 2.35523 17.2554 2.15224 16.7654C2 16.3978 2 15.9319 2 15Z"/>
+                                <path stroke-width="1.5" d="M21 12C21 8.22876 21 6.34315 19.8284 5.17157C18.6569 4 16.7712 4 13 4H11C7.22876 4 5.34315 4 4.17157 5.17157C3 6.34315 3 8.22876 3 12"/>
+                                <path stroke-width="1.5" d="M18.5 12V10.5C18.5 8.61438 18.5 7.67157 17.9142 7.08579C17.3284 6.5 16.3856 6.5 14.5 6.5H9.5C7.61438 6.5 6.67157 6.5 6.08579 7.08579C5.5 7.67157 5.5 8.61438 5.5 10.5V12"/>
+                            </svg>
+                        </div>
+                        <span class="font-medium">Single Bed</span>
+                    </div>
+
+                    <div class="furniture-item glassmorphic-dark p-4 rounded-xl cursor-grab active:cursor-grabbing flex items-center space-x-3 transition-all duration-200 hover:scale-105 hover:shadow-lg hover:bg-slate-600/30" 
+                         data-type="double-bed" data-width="1.5" data-depth="2" data-height="0.5">
+                        <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20V18.5M5 20V18.5"/>
+                                <path stroke-width="1.5" d="M2 15C2 14.0681 2 13.6022 2.15224 13.2346C2.35523 12.7446 2.74458 12.3552 3.23463 12.1522C3.60218 12 4.06812 12 5 12H19C19.9319 12 20.3978 12 20.7654 12.1522C21.2554 12.3552 21.6448 12.7446 21.8478 13.2346C22 13.6022 22 14.0681 22 15C22 15.9319 22 16.3978 21.8478 16.7654C21.6448 17.2554 21.2554 17.6448 20.7654 17.8478C20.3978 18 19.9319 18 19 18H5C4.06812 18 3.60218 18 3.23463 17.8478C2.74458 17.6448 2.35523 17.2554 2.15224 16.7654C2 16.3978 2 15.9319 2 15Z"/>
+                                <path stroke-width="1.5" d="M21 12C21 8.22876 21 6.34315 19.8284 5.17157C18.6569 4 16.7712 4 13 4H11C7.22876 4 5.34315 4 4.17157 5.17157C3 6.34315 3 8.22876 3 12"/>
+                                <path stroke-width="1.5" d="M18.5 12V10.5C18.5 8.61438 18.5 7.67157 17.9142 7.08579C17.3284 6.5 16.3856 6.5 14.5 6.5H9.5C7.61438 6.5 6.67157 6.5 6.08579 7.08579C5.5 7.67157 5.5 8.61438 5.5 10.5V12"/>
+                                <path stroke-width="1.5" d="M12 7V12"/>
+                            </svg>
+                        </div>
+                        <span class="font-medium">Double Bed</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-viewport flex-1 relative">
+            <div id="canvas-container"></div>
+            
+            <div class="controls-panel absolute top-4 left-4 w-auto glassmorphic-light rounded-xl shadow-lg p-4">
+                <div class="flex flex-wrap gap-2">
+                    <button id="toggleGrid" class="glassmorphic px-3 py-2 rounded-lg text-sm md:text-xs hover:bg-white/20 hover:scale-105 font-medium text-slate-900 transition-all duration-200">
+                        Grid ON
+                    </button>
+                    <button id="toggleShadows" class="glassmorphic px-3 py-2 rounded-lg text-sm font-medium text-slate-900 md:text-xs hover:bg-white/20 hover:scale-105 transition-all duration-200">
+                        Shadows ON
+                    </button>
+                    <button id="modeTranslate" class="glassmorphic px-3 py-2 rounded-lg text-sm font-medium text-slate-900 md:text-xs hover:bg-white/20 hover:scale-105 transition-all duration-200">
+                        Translate
+                    </button>
+                    <button id="modeRotate" class="glassmorphic px-3 py-2 rounded-lg text-sm font-medium text-slate-900 md:text-xs hover:bg-white/20 hover:scale-105 transition-all duration-200">
+                        Rotate
+                    </button>
+                    <button id="deleteSelected" class="glassmorphic px-4 py-2 rounded-lg text-sm md:text-xs font-medium transition-all duration-200 btn-disabled text-red-700 hover:bg-red-100/50 hover:scale-105">
+                        Delete Selected
+                    </button>
+                    <button id="clearAll" class="glassmorphic px-4 py-2 rounded-lg text-sm md:text-xs font-medium transition-all duration-200 btn-disabled text-orange-700 hover:bg-orange-100/50 hover:scale-105">
+                        Clear All
+                    </button>
+                </div>
+            </div>
+            
+            <div id="loading" class="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 z-50">
+                <div class="text-center">
+                    <!-- Animated Logo Container -->
+                    <div class="logo-loader-container mb-8">
+                        <svg class="w-20 h-20 mx-auto" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <!-- 3D Room Cube Base -->
+                            <path d="M8 20L24 12L40 20L24 28L8 20Z" fill="#60A5FA" stroke="#3B82F6" stroke-width="1.5" stroke-linejoin="round"/>
+                            
+                            <!-- Front Face -->
+                            <path d="M8 20L8 36L24 44L24 28L8 20Z" fill="#4F46E5" stroke="#3730A3" stroke-width="1.5" stroke-linejoin="round"/>
+                            
+                            <!-- Right Face -->
+                            <path d="M24 28L24 44L40 36L40 20L24 28Z" fill="#7C3AED" stroke="#5B21B6" stroke-width="1.5" stroke-linejoin="round"/>
+                            
+                            <!-- Room Elements - Furniture Icons -->
+                            <!-- Small Table -->
+                            <rect x="14" y="24" width="4" height="2" fill="#F59E0B" rx="0.5"/>
+                            <line x1="15" y1="26" x2="15" y2="28" stroke="#F59E0B" stroke-width="0.8"/>
+                            <line x1="17" y1="26" x2="17" y2="28" stroke="#F59E0B" stroke-width="0.8"/>
+                            
+                            <!-- Small Chair -->
+                            <rect x="28" y="26" width="3" height="1.5" fill="#EF4444" rx="0.3"/>
+                            <rect x="28.5" y="24" width="2" height="2" fill="#EF4444" rx="0.2"/>
+                            <line x1="28.5" y1="27.5" x2="28.5" y2="29" stroke="#EF4444" stroke-width="0.6"/>
+                            <line x1="30.5" y1="27.5" x2="30.5" y2="29" stroke="#EF4444" stroke-width="0.6"/>
+                            
+                            <!-- Grid Lines for Design Element -->
+                            <g opacity="0.4">
+                                <line x1="10" y1="22" x2="22" y2="22" stroke="#E5E7EB" stroke-width="0.5" stroke-dasharray="1,1"/>
+                                <line x1="10" y1="24" x2="22" y2="24" stroke="#E5E7EB" stroke-width="0.5" stroke-dasharray="1,1"/>
+                                <line x1="26" y1="24" x2="38" y2="24" stroke="#E5E7EB" stroke-width="0.5" stroke-dasharray="1,1"/>
+                                <line x1="26" y1="26" x2="38" y2="26" stroke="#E5E7EB" stroke-width="0.5" stroke-dasharray="1,1"/>
+                            </g>
+                            
+                            <!-- 3D Accent Lines -->
+                            <line x1="24" y1="12" x2="24" y2="20" stroke="#10B981" stroke-width="1.5" opacity="0.8"/>
+                            <line x1="16" y1="16" x2="32" y2="16" stroke="#10B981" stroke-width="1.5" opacity="0.6"/>
+                        </svg>
+                    </div>
+                    
+                    <!-- Website Name -->
+                    <h1 class="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">3D Room Designer</h1>
+                    <p class="text-slate-100 text-lg mb-8">Creating your perfect space...</p>
+                    
+                    <!-- Animated Dots -->
+                    <div class="flex justify-center items-center space-x-2">
+                        <div class="loading-dot w-3 h-3 bg-blue-400 rounded-full"></div>
+                        <div class="loading-dot w-3 h-3 bg-purple-400 rounded-full"></div>
+                        <div class="loading-dot w-3 h-3 bg-green-400 rounded-full"></div>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="mt-8 w-64 mx-auto">
+                        <div class="bg-slate-700 rounded-full h-2 overflow-hidden">
+                            <div id="loadingProgress" class="loading-progress h-full bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 rounded-full"></div>
+                        </div>
+                        <p class="text-slate-200 text-sm mt-2 text-center">Loading resources...</p>
+                    </div>
+                </div>
+                
+                <!-- Floating Elements -->
+                <div class="floating-elements">
+                    <div class="floating-cube floating-cube-1"></div>
+                    <div class="floating-cube floating-cube-2"></div>
+                    <div class="floating-cube floating-cube-3"></div>
+                    <div class="floating-cube floating-cube-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel w-80 h-full glass-panel text-white overflow-y-auto shadow-2xl z-30 transform translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+            <div class="sticky top-0 z-10 glass-panel border-b border-slate-600 p-4 flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-white">Materials & Textures</h2>
+                <button class="panel-close-button panel-close-right md:hidden text-white hover:text-red-400 text-xl transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="p-4 space-y-6">
+                <div class="space-y-3">
+                    <h3 class="text-sm font-medium text-slate-100 uppercase tracking-wider border-b border-slate-600 pb-2">Wood</h3>
+                    <div class="grid grid-cols-5 gap-3">
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #8B4513;" data-material="wood-dark" title="Dark Wood"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #DEB887;" data-material="wood-light" title="Light Wood"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #D2691E;" data-material="wood-medium" title="Medium Wood"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #A0522D;" data-material="wood-red" title="Red Wood"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #654321;" data-material="wood-brown" title="Brown Wood"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="text-sm font-medium text-slate-100 uppercase tracking-wider border-b border-slate-600 pb-2">Fabric</h3>
+                    <div class="grid grid-cols-5 gap-3">
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #FF6B6B;" data-material="fabric-red" title="Red Fabric"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #4ECDC4;" data-material="fabric-teal" title="Teal Fabric"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #45B7D1;" data-material="fabric-blue" title="Blue Fabric"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #96CEB4;" data-material="fabric-green" title="Green Fabric"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #F5DEB3;" data-material="fabric-beige" title="Beige Fabric"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #9370DB;" data-material="fabric-purple" title="Purple Fabric"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="text-sm font-medium text-slate-100 uppercase tracking-wider border-b border-slate-600 pb-2">Metal</h3>
+                    <div class="grid grid-cols-5 gap-3">
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #C0C0C0;" data-material="metal-silver" title="Silver Metal"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #FFD700;" data-material="metal-gold" title="Gold Metal"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #2C3E50;" data-material="metal-dark" title="Dark Metal"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #B87333;" data-material="metal-bronze" title="Bronze Metal"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #E5E4E2;" data-material="metal-platinum" title="Platinum Metal"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="text-sm font-medium text-slate-100 uppercase tracking-wider border-b border-slate-600 pb-2">Other</h3>
+                    <div class="grid grid-cols-5 gap-3">
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #FFFFFF;" data-material="plastic-white" title="White Plastic"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #000000;" data-material="plastic-black" title="Black Plastic"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #808080;" data-material="concrete" title="Concrete"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #FFA500;" data-material="glass-orange" title="Orange Glass"></div>
+                        <div class="material-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background-color: #00FF00;" data-material="glass-green" title="Green Glass"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="text-sm font-medium text-slate-100 uppercase tracking-wider border-b border-slate-600 pb-2">Wood Textures</h3>
+                    <div class="grid grid-cols-5 gap-3">
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(45deg, #8B4513 25%, #A0522D 25%, #A0522D 50%, #8B4513 50%, #8B4513 75%, #A0522D 75%, #A0522D); background-size: 8px 8px;" 
+                             data-material="wood-grain-dark" title="Dark Wood Grain"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(90deg, #DEB887 50%, #D2B48C 50%); background-size: 6px 100%;" 
+                             data-material="wood-grain-light" title="Light Wood Grain"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(45deg, #CD853F 25%, #D2691E 25%, #D2691E 50%, #CD853F 50%, #CD853F 75%, #D2691E 75%, #D2691E); background-size: 4px 4px;" 
+                             data-material="wood-planks" title="Wood Planks"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: radial-gradient(circle at 50% 50%, #8B4513 30%, #A0522D 31%, #A0522D 40%, #654321 41%); background-size: 12px 12px;" 
+                             data-material="wood-rings" title="Wood Rings"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(180deg, #8B4513 0%, #A0522D 25%, #654321 50%, #A0522D 75%, #8B4513 100%); background-size: 100% 8px;" 
+                             data-material="wood-veneer" title="Wood Veneer"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="text-sm font-medium text-slate-100 uppercase tracking-wider border-b border-slate-600 pb-2">Fabric Textures</h3>
+                    <div class="grid grid-cols-5 gap-3">
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(45deg, #FF6B6B 25%, #FF8E8E 25%, #FF8E8E 50%, #FF6B6B 50%, #FF6B6B 75%, #FF8E8E 75%, #FF8E8E); background-size: 3px 3px;" 
+                             data-material="fabric-woven-red" title="Red Woven Fabric"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(90deg, #4ECDC4 50%, #5DD8D0 50%); background-size: 2px 100%;" 
+                             data-material="fabric-stripe-teal" title="Teal Striped Fabric"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: radial-gradient(circle at 25% 25%, #45B7D1 30%, #5CC3DD 31%, #5CC3DD 40%, #45B7D1 41%); background-size: 8px 8px;" 
+                             data-material="fabric-dots-blue" title="Blue Dotted Fabric"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(45deg, #96CEB4 25%, #A8D5C1 25%, #A8D5C1 50%, #96CEB4 50%, #96CEB4 75%, #A8D5C1 75%, #A8D5C1); background-size: 4px 4px;" 
+                             data-material="fabric-tweed-green" title="Green Tweed"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(0deg, #F5DEB3 25%, #F0D498 25%, #F0D498 50%, #F5DEB3 50%, #F5DEB3 75%, #F0D498 75%, #F0D498); background-size: 100% 6px;" 
+                             data-material="fabric-ribbed-beige" title="Beige Ribbed Fabric"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="text-sm font-medium text-slate-100 uppercase tracking-wider border-b border-slate-600 pb-2">Metal Textures</h3>
+                    <div class="grid grid-cols-5 gap-3">
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(45deg, #C0C0C0 25%, #D3D3D3 25%, #D3D3D3 50%, #C0C0C0 50%, #C0C0C0 75%, #D3D3D3 75%, #D3D3D3); background-size: 2px 2px;" 
+                             data-material="metal-brushed-silver" title="Brushed Silver"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(90deg, #FFD700 50%, #FFF700 50%); background-size: 1px 100%;" 
+                             data-material="metal-brushed-gold" title="Brushed Gold"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(45deg, #2C3E50 25%, #34495E 25%, #34495E 50%, #2C3E50 50%, #2C3E50 75%, #34495E 75%, #34495E); background-size: 3px 3px;" 
+                             data-material="metal-hammered-dark" title="Hammered Dark Metal"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: radial-gradient(circle at 50% 50%, #B87333 30%, #CD853F 31%, #CD853F 40%, #B87333 41%); background-size: 6px 6px;" 
+                             data-material="metal-perforated-bronze" title="Perforated Bronze"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(135deg, #E5E4E2 25%, #F5F5DC 25%, #F5F5DC 50%, #E5E4E2 50%, #E5E4E2 75%, #F5F5DC 75%, #F5F5DC); background-size: 4px 4px;" 
+                             data-material="metal-diamond-plate" title="Diamond Plate"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-3 pb-20">
+                    <h3 class="text-sm font-medium text-slate-100 uppercase tracking-wider border-b border-slate-600 pb-2">Stone & Concrete Textures</h3>
+                    <div class="grid grid-cols-5 gap-3">
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(45deg, #696969 25%, #778899 25%, #778899 50%, #696969 50%, #696969 75%, #778899 75%, #778899); background-size: 6px 6px;" 
+                             data-material="stone-rough" title="Rough Stone"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(0deg, #808080 25%, #A0A0A0 25%, #A0A0A0 50%, #808080 50%, #808080 75%, #A0A0A0 75%, #A0A0A0); background-size: 100% 8px;" 
+                             data-material="concrete-smooth" title="Smooth Concrete"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: radial-gradient(circle at 30% 30%, #8B7355 20%, #A0522D 21%, #A0522D 30%, #8B7355 31%); background-size: 10px 10px;" 
+                             data-material="brick-red" title="Red Brick"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(45deg, #D2B48C 25%, #F5DEB3 25%, #F5DEB3 50%, #D2B48C 50%, #D2B48C 75%, #F5DEB3 75%, #F5DEB3); background-size: 12px 12px;" 
+                             data-material="marble-beige" title="Beige Marble"></div>
+                        <div class="material-item texture-item w-12 h-12 rounded-xl cursor-pointer border-2 border-transparent hover:border-blue-400 hover:scale-110 transition-all duration-200 shadow-lg" 
+                             style="background: linear-gradient(90deg, #2F4F4F 50%, #708090 50%); background-size: 4px 100%;" 
+                             data-material="slate-gray" title="Gray Slate"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="instructionsOverlay" class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-md z-50 hidden items-center justify-center p-4 opacity-0">
+        <div id="instructionsModal" class="modal-content glassmorphic-dark rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col transform scale-95 opacity-0">
+            <div class="p-4 md:p-6 flex-shrink-0">
+                <div class="modal-content-element modal-header flex items-center justify-between mb-4 md:mb-6">
+                    <h2 class="text-lg md:text-2xl font-bold text-white pr-2">How to Use the 3D Room Designer</h2>
+                    <button class="close-instructions-btn text-slate-300 hover:text-white transition-colors flex-shrink-0">
+                        <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="px-4 md:px-6 flex-1 overflow-y-auto">
+                <div class="space-y-4 text-slate-100">
+                    <div class="modal-content-element instruction-item flex items-start space-x-3">
+                        <div class="instruction-number w-8 h-8 bg-blue-500/20 text-blue-300 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 border border-blue-500/30">1</div>
+                        <div>
+                            <h3 class="font-semibold text-white mb-1">Add Furniture</h3>
+                            <p>Click or drag items from the left panel into the room. Furniture automatically snaps to the grid for precise placement.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-content-element instruction-item flex items-start space-x-3">
+                        <div class="instruction-number w-8 h-8 bg-blue-500/20 text-blue-300 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 border border-blue-500/30">2</div>
+                        <div>
+                            <h3 class="font-semibold text-white mb-1">Select & Move</h3>
+                            <p>Click an object to select it. Press <kbd class="px-2 py-1 bg-slate-600/50 rounded text-xs text-blue-200 border border-slate-500/50">T</kbd> or click "Translate" to move it around.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-content-element instruction-item flex items-start space-x-3">
+                        <div class="instruction-number w-8 h-8 bg-blue-500/20 text-blue-300 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 border border-blue-500/30">3</div>
+                        <div>
+                            <h3 class="font-semibold text-white mb-1">Rotate Objects</h3>
+                            <p>Press <kbd class="px-2 py-1 bg-slate-600/50 rounded text-xs text-blue-200 border border-slate-500/50">R</kbd> or click "Rotate" to spin objects using the circular handles.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-content-element instruction-item flex items-start space-x-3">
+                        <div class="instruction-number w-8 h-8 bg-blue-500/20 text-blue-300 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 border border-blue-500/30">4</div>
+                        <div>
+                            <h3 class="font-semibold text-white mb-1">Navigate the Scene</h3>
+                            <div class="space-y-1">
+                                <div class="flex items-start space-x-2">
+                                    <svg class="w-3 h-3 mt-1 text-blue-300 flex-shrink-0" fill="currentColor" viewBox="0 0 8 8">
+                                        <circle cx="4" cy="4" r="3"/>
+                                    </svg>
+                                    <span><strong class="text-blue-200">Rotate view:</strong> Left-click & drag on empty space</span>
+                                </div>
+                                <div class="flex items-start space-x-2">
+                                    <svg class="w-3 h-3 mt-1 text-blue-300 flex-shrink-0" fill="currentColor" viewBox="0 0 8 8">
+                                        <circle cx="4" cy="4" r="3"/>
+                                    </svg>
+                                    <span><strong class="text-blue-200">Pan:</strong> Right-click & drag (or middle-button drag)</span>
+                                </div>
+                                <div class="flex items-start space-x-2">
+                                    <svg class="w-3 h-3 mt-1 text-blue-300 flex-shrink-0" fill="currentColor" viewBox="0 0 8 8">
+                                        <circle cx="4" cy="4" r="3"/>
+                                    </svg>
+                                    <span><strong class="text-blue-200">Zoom:</strong> Use the scroll wheel</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-content-element instruction-item flex items-start space-x-3">
+                        <div class="instruction-number w-8 h-8 bg-blue-500/20 text-blue-300 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 border border-blue-500/30">5</div>
+                        <div>
+                            <h3 class="font-semibold text-white mb-1">Change Materials & Textures</h3>
+                            <p>Select an object, then click a material or texture swatch on the right panel to change its appearance.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-content-element instruction-item flex items-start space-x-3">
+                        <div class="instruction-number w-8 h-8 bg-blue-500/20 text-blue-300 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 border border-blue-500/30">6</div>
+                        <div>
+                            <h3 class="font-semibold text-white mb-1">View Measurements</h3>
+                            <p>Wall dimensions are shown around the room. Selected items display their Width × Depth × Height above them.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-content-element instruction-item flex items-start space-x-3">
+                        <div class="instruction-number w-8 h-8 bg-blue-500/20 text-blue-300 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 border border-blue-500/30">7</div>
+                        <div>
+                            <h3 class="font-semibold text-white mb-1">Delete Objects</h3>
+                            <p>Press the <kbd class="px-2 py-1 bg-slate-600/50 rounded text-xs text-blue-200 border border-slate-500/50">Delete</kbd> key or click "Delete Selected" to remove the highlighted item.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-content-element instruction-item flex items-start space-x-3">
+                        <div class="instruction-number w-8 h-8 bg-blue-500/20 text-blue-300 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 border border-blue-500/30">8</div>
+                        <div>
+                            <h3 class="font-semibold text-white mb-1">Export Your Design</h3>
+                            <p>Use the export buttons in the top navigation to save your room layout as OBJ or GLB files for use in other 3D applications.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-content-element modal-footer p-4 md:p-6 border-t border-slate-600/50 flex-shrink-0">
+                <button class="close-instructions-btn w-full glassmorphic-light bg-slate-100/90 hover:bg-slate-200/90 text-slate-900 py-2.5 md:py-3 px-4 md:px-6 rounded-lg font-medium transition-all duration-200 text-sm md:text-base hover:scale-105 border border-slate-300/50 shadow-lg">
+                    Got it, let's start designing!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/OBJExporter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let transformControls;
+        let gridHelper;
+        let raycaster, mouse;
+        let selectedObject = null;
+        let placedObjects = [];
+        let isDragging = false;
+        let dragOffset = new THREE.Vector3();
+        let gridSize = 0.5;
+        let roomSize = { width: 10, depth: 10 };
+        let measurements = [];
+        let dimensionsDisplay = null;
+        let shadowsEnabled = true;
+        let selectionBox = null;
+
+        let isDraggingFromLibrary = false;
+        let previewObject = null;
+        let selectedFurnitureType = null;
+        let selectedFurnitureDimensions = null;
+        let pendingDrag = false;
+        let dragStartPos = { x: 0, y: 0 };
+
+        
+        function updateButtonStates() {
+            const deleteBtn = document.getElementById('deleteSelected');
+            const clearBtn = document.getElementById('clearAll');
+            
+            
+            if (selectedObject) {
+                deleteBtn.classList.remove('btn-disabled');
+                deleteBtn.classList.add('btn-enabled');
+            } else {
+                deleteBtn.classList.remove('btn-enabled');
+                deleteBtn.classList.add('btn-disabled');
+            }
+            
+            
+            if (placedObjects.length > 0) {
+                clearBtn.classList.remove('btn-disabled');
+                clearBtn.classList.add('btn-enabled');
+            } else {
+                clearBtn.classList.remove('btn-enabled');
+                clearBtn.classList.add('btn-disabled');
+            }
+        }
+
+        function setActiveMode(mode) {
+            const translateBtn = document.getElementById('modeTranslate');
+            const rotateBtn = document.getElementById('modeRotate');
+            
+            translateBtn.classList.remove('btn-active');
+            rotateBtn.classList.remove('btn-active');
+            
+            if (mode === 'translate') {
+                translateBtn.classList.add('btn-active');
+            } else if (mode === 'rotate') {
+                rotateBtn.classList.add('btn-active');
+            }
+        }
+
+        function setToggleState(buttonId, isOn) {
+            const button = document.getElementById(buttonId);
+            button.classList.remove('btn-toggle-on', 'btn-toggle-off');
+            
+            if (isOn) {
+                button.classList.add('btn-toggle-on');
+            } else {
+                button.classList.add('btn-toggle-off');
+            }
+
+            if (buttonId === 'toggleGrid') {
+                button.textContent = isOn ? 'Grid ON' : 'Grid OFF';
+            } else if (buttonId === 'toggleShadows') {
+                button.textContent = isOn ? 'Shadows ON' : 'Shadows OFF';
+            }
+        }
+
+        function createTexture(patternType, color1, color2, size = 64) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            switch (patternType) {
+                case 'diagonal':
+                    ctx.fillStyle = color1;
+                    ctx.fillRect(0, 0, size, size);
+                    ctx.fillStyle = color2;
+                    for (let i = 0; i < size; i += 8) {
+                        for (let j = 0; j < size; j += 8) {
+                            if ((i + j) % 16 < 8) {
+                                ctx.fillRect(i, j, 8, 8);
+                            }
+                        }
+                    }
+                    break;
+                case 'vertical':
+                    ctx.fillStyle = color1;
+                    ctx.fillRect(0, 0, size, size);
+                    ctx.fillStyle = color2;
+                    for (let i = 0; i < size; i += 4) {
+                        ctx.fillRect(i, 0, 2, size);
+                    }
+                    break;
+                case 'horizontal':
+                    ctx.fillStyle = color1;
+                    ctx.fillRect(0, 0, size, size);
+                    ctx.fillStyle = color2;
+                    for (let i = 0; i < size; i += 8) {
+                        ctx.fillRect(0, i, size, 4);
+                    }
+                    break;
+                case 'dots':
+                    ctx.fillStyle = color1;
+                    ctx.fillRect(0, 0, size, size);
+                    ctx.fillStyle = color2;
+                    for (let i = 8; i < size; i += 16) {
+                        for (let j = 8; j < size; j += 16) {
+                            ctx.beginPath();
+                            ctx.arc(i, j, 3, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                    break;
+                case 'rings':
+                    ctx.fillStyle = color1;
+                    ctx.fillRect(0, 0, size, size);
+                    ctx.strokeStyle = color2;
+                    ctx.lineWidth = 2;
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.arc(size/2, size/2, 10 + i * 8, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                    break;
+                case 'brick':
+                    ctx.fillStyle = color1;
+                    ctx.fillRect(0, 0, size, size);
+                    ctx.fillStyle = color2;
+                    for (let y = 0; y < size; y += 16) {
+                        for (let x = 0; x < size; x += 32) {
+                            const offset = (y / 16) % 2 === 0 ? 0 : 16;
+                            ctx.fillRect(x + offset, y, 30, 14);
+                        }
+                    }
+                    break;
+                case 'checker':
+                    for (let i = 0; i < size; i += 8) {
+                        for (let j = 0; j < size; j += 8) {
+                            ctx.fillStyle = ((i + j) / 8) % 2 === 0 ? color1 : color2;
+                            ctx.fillRect(i, j, 8, 8);
+                        }
+                    }
+                    break;
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(2, 2);
+            return texture;
+        }
+
+        const materials = {
+            'wood-dark': new THREE.MeshPhongMaterial({ color: 0x8B4513 }),
+            'wood-light': new THREE.MeshPhongMaterial({ color: 0xDEB887 }),
+            'wood-medium': new THREE.MeshPhongMaterial({ color: 0xD2691E }),
+            'wood-red': new THREE.MeshPhongMaterial({ color: 0xA0522D }),
+            'wood-brown': new THREE.MeshPhongMaterial({ color: 0x654321 }),
+            'fabric-red': new THREE.MeshPhongMaterial({ color: 0xFF6B6B }),
+            'fabric-teal': new THREE.MeshPhongMaterial({ color: 0x4ECDC4 }),
+            'fabric-blue': new THREE.MeshPhongMaterial({ color: 0x45B7D1 }),
+            'fabric-green': new THREE.MeshPhongMaterial({ color: 0x96CEB4 }),
+            'fabric-beige': new THREE.MeshPhongMaterial({ color: 0xF5DEB3 }),
+            'fabric-purple': new THREE.MeshPhongMaterial({ color: 0x9370DB }),
+            'metal-silver': new THREE.MeshPhongMaterial({ color: 0xC0C0C0, metalness: 0.8, roughness: 0.2 }),
+            'metal-gold': new THREE.MeshPhongMaterial({ color: 0xFFD700, metalness: 0.8, roughness: 0.2 }),
+            'metal-dark': new THREE.MeshPhongMaterial({ color: 0x2C3E50, metalness: 0.8, roughness: 0.2 }),
+            'metal-bronze': new THREE.MeshPhongMaterial({ color: 0xB87333, metalness: 0.8, roughness: 0.3 }),
+            'metal-platinum': new THREE.MeshPhongMaterial({ color: 0xE5E4E2, metalness: 0.9, roughness: 0.1 }),
+            'plastic-white': new THREE.MeshPhongMaterial({ color: 0xFFFFFF }),
+            'plastic-black': new THREE.MeshPhongMaterial({ color: 0x000000 }),
+            'concrete': new THREE.MeshPhongMaterial({ color: 0x808080, roughness: 0.8 }),
+            'glass-orange': new THREE.MeshPhongMaterial({ color: 0xFFA500, transparent: true, opacity: 0.7 }),
+            'glass-green': new THREE.MeshPhongMaterial({ color: 0x00FF00, transparent: true, opacity: 0.7 }),
+            
+            // Wood Textures
+            'wood-grain-dark': new THREE.MeshPhongMaterial({ 
+                map: createTexture('diagonal', '#8B4513', '#A0522D'), 
+                roughness: 0.7 
+            }),
+            'wood-grain-light': new THREE.MeshPhongMaterial({ 
+                map: createTexture('vertical', '#DEB887', '#D2B48C'), 
+                roughness: 0.6 
+            }),
+            'wood-planks': new THREE.MeshPhongMaterial({ 
+                map: createTexture('checker', '#CD853F', '#D2691E'), 
+                roughness: 0.8 
+            }),
+            'wood-rings': new THREE.MeshPhongMaterial({ 
+                map: createTexture('rings', '#8B4513', '#A0522D'), 
+                roughness: 0.7 
+            }),
+            'wood-veneer': new THREE.MeshPhongMaterial({ 
+                map: createTexture('horizontal', '#8B4513', '#A0522D'), 
+                roughness: 0.5 
+            }),
+            
+            // Fabric Textures
+            'fabric-woven-red': new THREE.MeshPhongMaterial({ 
+                map: createTexture('checker', '#FF6B6B', '#FF8E8E', 32), 
+                roughness: 0.9 
+            }),
+            'fabric-stripe-teal': new THREE.MeshPhongMaterial({ 
+                map: createTexture('vertical', '#4ECDC4', '#5DD8D0', 32), 
+                roughness: 0.8 
+            }),
+            'fabric-dots-blue': new THREE.MeshPhongMaterial({ 
+                map: createTexture('dots', '#45B7D1', '#5CC3DD'), 
+                roughness: 0.9 
+            }),
+            'fabric-tweed-green': new THREE.MeshPhongMaterial({ 
+                map: createTexture('diagonal', '#96CEB4', '#A8D5C1', 32), 
+                roughness: 0.9 
+            }),
+            'fabric-ribbed-beige': new THREE.MeshPhongMaterial({ 
+                map: createTexture('horizontal', '#F5DEB3', '#F0D498', 32), 
+                roughness: 0.8 
+            }),
+            
+            // Metal Textures
+            'metal-brushed-silver': new THREE.MeshPhongMaterial({ 
+                map: createTexture('diagonal', '#C0C0C0', '#D3D3D3', 16), 
+                metalness: 0.9, 
+                roughness: 0.4 
+            }),
+            'metal-brushed-gold': new THREE.MeshPhongMaterial({ 
+                map: createTexture('vertical', '#FFD700', '#FFF700', 16), 
+                metalness: 0.9, 
+                roughness: 0.4 
+            }),
+            'metal-hammered-dark': new THREE.MeshPhongMaterial({ 
+                map: createTexture('checker', '#2C3E50', '#34495E', 24), 
+                metalness: 0.8, 
+                roughness: 0.6 
+            }),
+            'metal-perforated-bronze': new THREE.MeshPhongMaterial({ 
+                map: createTexture('dots', '#B87333', '#CD853F'), 
+                metalness: 0.8, 
+                roughness: 0.5 
+            }),
+            'metal-diamond-plate': new THREE.MeshPhongMaterial({ 
+                map: createTexture('diagonal', '#E5E4E2', '#F5F5DC', 32), 
+                metalness: 0.9, 
+                roughness: 0.3 
+            }),
+            
+            // Stone & Concrete Textures
+            'stone-rough': new THREE.MeshPhongMaterial({ 
+                map: createTexture('diagonal', '#696969', '#778899'), 
+                roughness: 0.9 
+            }),
+            'concrete-smooth': new THREE.MeshPhongMaterial({ 
+                map: createTexture('horizontal', '#808080', '#A0A0A0'), 
+                roughness: 0.7 
+            }),
+            'brick-red': new THREE.MeshPhongMaterial({ 
+                map: createTexture('brick', '#8B7355', '#A0522D'), 
+                roughness: 0.8 
+            }),
+            'marble-beige': new THREE.MeshPhongMaterial({ 
+                map: createTexture('diagonal', '#D2B48C', '#F5DEB3'), 
+                roughness: 0.2 
+            }),
+            'slate-gray': new THREE.MeshPhongMaterial({ 
+                map: createTexture('vertical', '#2F4F4F', '#708090'), 
+                roughness: 0.6 
+            })
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf8fafc);
+            scene.fog = new THREE.Fog(0xf8fafc, 10, 50);
+
+            const container = document.getElementById('canvas-container');
+            const aspect = container.clientWidth / container.clientHeight;
+            camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+            camera.position.set(10, 10, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2;
+
+            transformControls = new THREE.TransformControls(camera, renderer.domElement);
+            transformControls.addEventListener('dragging-changed', event => {
+                controls.enabled = !event.value;
+            });
+            scene.add(transformControls);
+
+            transformControls.setTranslationSnap(gridSize);
+            transformControls.setRotationSnap(Math.PI / 12);
+
+            transformControls.addEventListener('objectChange', () => {
+                const o = transformControls.object;
+                if (!o) return;
+                o.position.x = Math.round(o.position.x / gridSize) * gridSize;
+                o.position.z = Math.round(o.position.z / gridSize) * gridSize;
+            });
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.camera.left = -15;
+            directionalLight.shadow.camera.right = 15;
+            directionalLight.shadow.camera.top = 15;
+            directionalLight.shadow.camera.bottom = -15;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+
+            const floorGeometry = new THREE.PlaneGeometry(roomSize.width, roomSize.depth);
+            const floorMaterial = new THREE.MeshPhongMaterial({
+                color: 0xffffff,
+                side: THREE.DoubleSide
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            floor.userData.isFloor = true;
+            scene.add(floor);
+
+            gridHelper = new THREE.GridHelper(roomSize.width, roomSize.width / gridSize, 0x94a3b8, 0xe2e8f0);
+            scene.add(gridHelper);
+
+            createWalls();
+
+            dimensionsDisplay = document.createElement('div');
+            dimensionsDisplay.className = 'absolute bg-slate-900 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none z-10 shadow-lg border border-slate-600';
+            dimensionsDisplay.style.display = 'none';
+            document.querySelector('.main-viewport').appendChild(dimensionsDisplay);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            
+            const hideLoader = () => {
+                const loader = document.getElementById('loading');
+                const statusText = loader.querySelector('p');
+                
+                if (statusText) {
+                    statusText.textContent = 'Ready!';
+                }
+                
+                
+                setTimeout(() => {
+                    loader.classList.add('fade-out');
+                    
+                    
+                    setTimeout(() => {
+                        loader.style.display = 'none';
+                    }, 800);
+                }, 500);
+            };
+
+            
+            const progressBar = document.getElementById('loadingProgress');
+            let animationCompleted = false;
+            
+            progressBar.addEventListener('animationend', () => {
+                animationCompleted = true;
+                
+                const statusText = document.querySelector('#loading p');
+                if (statusText) {
+                    statusText.textContent = 'Initializing 3D scene...';
+                }
+                
+                
+                hideLoader();
+            });
+
+            
+            setTimeout(() => {
+                if (!animationCompleted) {
+                    hideLoader();
+                }
+            }, 4000); 
+
+            
+            updateButtonStates();
+
+            setActiveMode('translate');
+
+            setToggleState('toggleGrid', gridHelper.visible);
+            setToggleState('toggleShadows', shadowsEnabled);
+
+            setupEventListeners();
+
+            animate();
+        }
+
+        function createWalls() {
+            const wallHeight = 3;
+            const wallThickness = 0.1;
+            const wallMaterial = new THREE.MeshPhongMaterial({ color: 0xe2e8f0 });
+
+            const backWall = new THREE.Mesh(
+                new THREE.BoxGeometry(roomSize.width, wallHeight, wallThickness),
+                wallMaterial
+            );
+            backWall.position.set(0, wallHeight / 2, -roomSize.depth / 2);
+            backWall.castShadow = true;
+            backWall.receiveShadow = true;
+            backWall.userData.isWall = true;
+            scene.add(backWall);
+
+            const leftWall = new THREE.Mesh(
+                new THREE.BoxGeometry(wallThickness, wallHeight, roomSize.depth),
+                wallMaterial
+            );
+            leftWall.position.set(-roomSize.width / 2, wallHeight / 2, 0);
+            leftWall.castShadow = true;
+            leftWall.receiveShadow = true;
+            leftWall.userData.isWall = true;
+            scene.add(leftWall);
+
+            const rightWall = new THREE.Mesh(
+                new THREE.BoxGeometry(wallThickness, wallHeight, roomSize.depth),
+                wallMaterial
+            );
+            rightWall.position.set(roomSize.width / 2, wallHeight / 2, 0);
+            rightWall.castShadow = true;
+            rightWall.receiveShadow = true;
+            rightWall.userData.isWall = true;
+            scene.add(rightWall);
+
+            const frontWallLeft = new THREE.Mesh(
+                new THREE.BoxGeometry(roomSize.width / 2 - 1, wallHeight, wallThickness),
+                wallMaterial
+            );
+            frontWallLeft.position.set(-roomSize.width / 4 - 0.5, wallHeight / 2, roomSize.depth / 2);
+            frontWallLeft.castShadow = true;
+            frontWallLeft.receiveShadow = true;
+            frontWallLeft.userData.isWall = true;
+            scene.add(frontWallLeft);
+
+            const frontWallRight = new THREE.Mesh(
+                new THREE.BoxGeometry(roomSize.width / 2 - 1, wallHeight, wallThickness),
+                wallMaterial
+            );
+            frontWallRight.position.set(roomSize.width / 4 + 0.5, wallHeight / 2, roomSize.depth / 2);
+            frontWallRight.castShadow = true;
+            frontWallRight.receiveShadow = true;
+            frontWallRight.userData.isWall = true;
+            scene.add(frontWallRight);
+
+            addWallMeasurements();
+        }
+
+        function addWallMeasurements() {
+            document.querySelectorAll('.measurement').forEach(el => el.remove());
+
+            function createMeasurement(text, position) {
+                const vector = position.clone();
+                vector.project(camera);
+
+                const x = (vector.x * 0.5 + 0.5) * renderer.domElement.clientWidth;
+                const y = (-vector.y * 0.5 + 0.5) * renderer.domElement.clientHeight;
+
+                const measurement = document.createElement('div');
+                measurement.className = 'absolute bg-slate-900 text-white px-2 py-1 rounded text-xs font-medium pointer-events-none z-10 shadow-lg border border-slate-600';
+                measurement.textContent = text;
+                measurement.style.left = x + 'px';
+                measurement.style.top = y + 'px';
+                document.querySelector('.main-viewport').appendChild(measurement);
+                measurements.push(measurement);
+            }
+
+            createMeasurement(`${roomSize.width}m`, new THREE.Vector3(0, 0.5, -roomSize.depth / 2 - 1));
+            createMeasurement(`${roomSize.depth}m`, new THREE.Vector3(-roomSize.width / 2 - 1, 0.5, 0));
+            createMeasurement(`${roomSize.depth}m`, new THREE.Vector3(roomSize.width / 2 + 1, 0.5, 0));
+            createMeasurement(`${roomSize.width / 2 - 1}m`, new THREE.Vector3(-roomSize.width / 4 - 0.5, 0.5, roomSize.depth / 2 + 1));
+            createMeasurement(`${roomSize.width / 2 - 1}m`, new THREE.Vector3(roomSize.width / 4 + 0.5, 0.5, roomSize.depth / 2 + 1));
+        }
+
+        function updateHighlight(object) {
+            if (selectionBox) {
+                scene.remove(selectionBox);
+                selectionBox = null;
+            }
+            if (object) {
+                selectionBox = new THREE.BoxHelper(object, 0xff0000);
+                scene.add(selectionBox);
+            }
+            
+            updateButtonStates();
+        }
+
+        function createFurniture(type, dimensions) {
+            let geometry;
+            let material = materials['wood-medium'];
+            let group = new THREE.Group();
+
+            switch (type) {
+                case 'sofa':
+                    geometry = new THREE.BoxGeometry(dimensions.width, dimensions.height * 0.5, dimensions.depth);
+                    const sofaBase = new THREE.Mesh(geometry, materials['fabric-blue']);
+                    sofaBase.position.y = dimensions.height * 0.25;
+                    sofaBase.castShadow = true;
+                    sofaBase.receiveShadow = true;
+                    group.add(sofaBase);
+
+                    geometry = new THREE.BoxGeometry(dimensions.width, dimensions.height * 0.5, dimensions.depth * 0.3);
+                    const sofaBack = new THREE.Mesh(geometry, materials['fabric-blue']);
+                    sofaBack.position.set(0, dimensions.height * 0.75, -dimensions.depth * 0.35);
+                    sofaBack.castShadow = true;
+                    sofaBack.receiveShadow = true;
+                    group.add(sofaBack);
+
+                    geometry = new THREE.BoxGeometry(dimensions.width * 0.1, dimensions.height * 0.6, dimensions.depth * 0.8);
+                    const leftArm = new THREE.Mesh(geometry, materials['wood-medium']);
+                    leftArm.position.set(-dimensions.width * 0.45, dimensions.height * 0.3, 0);
+                    leftArm.castShadow = true;
+                    leftArm.receiveShadow = true;
+                    group.add(leftArm);
+
+                    const rightArm = new THREE.Mesh(geometry, materials['wood-medium']);
+                    rightArm.position.set(dimensions.width * 0.45, dimensions.height * 0.3, 0);
+                    rightArm.castShadow = true;
+                    rightArm.receiveShadow = true;
+                    group.add(rightArm);
+                    break;
+
+                case 'chair':
+                case 'armchair':
+                    geometry = new THREE.BoxGeometry(dimensions.width, 0.1, dimensions.depth);
+                    const seat = new THREE.Mesh(geometry, materials['fabric-red']);
+                    seat.position.y = dimensions.height * 0.5;
+                    seat.castShadow = true;
+                    seat.receiveShadow = true;
+                    group.add(seat);
+
+                    const legGeometry = new THREE.CylinderGeometry(0.03, 0.03, dimensions.height * 0.5);
+                    const legPositions = [
+                        [-dimensions.width * 0.4, 0, -dimensions.depth * 0.4],
+                        [dimensions.width * 0.4, 0, -dimensions.depth * 0.4],
+                        [-dimensions.width * 0.4, 0, dimensions.depth * 0.4],
+                        [dimensions.width * 0.4, 0, dimensions.depth * 0.4]
+                    ];
+                    legPositions.forEach(pos => {
+                        const leg = new THREE.Mesh(legGeometry, materials['wood-dark']);
+                        leg.position.set(pos[0], dimensions.height * 0.25, pos[2]);
+                        leg.castShadow = true;
+                        leg.receiveShadow = true;
+                        group.add(leg);
+                    });
+
+                    geometry = new THREE.BoxGeometry(dimensions.width, dimensions.height * 0.4, 0.05);
+                    const chairBack = new THREE.Mesh(geometry, materials['fabric-red']);
+                    chairBack.position.set(0, dimensions.height * 0.8, -dimensions.depth * 0.45);
+                    chairBack.castShadow = true;
+                    chairBack.receiveShadow = true;
+                    group.add(chairBack);
+
+                    if (type === 'armchair') {
+                        geometry = new THREE.BoxGeometry(0.1, 0.4, dimensions.depth * 0.8);
+                        const leftArm = new THREE.Mesh(geometry, materials['wood-dark']);
+                        leftArm.position.set(-dimensions.width * 0.45, dimensions.height * 0.7, 0);
+                        leftArm.castShadow = true;
+                        leftArm.receiveShadow = true;
+                        group.add(leftArm);
+
+                        const rightArm = new THREE.Mesh(geometry, materials['wood-dark']);
+                        rightArm.position.set(dimensions.width * 0.45, dimensions.height * 0.7, 0);
+                        rightArm.castShadow = true;
+                        rightArm.receiveShadow = true;
+                        group.add(rightArm);
+                    }
+                    break;
+
+                case 'dining-table':
+                case 'coffee-table':
+                case 'desk':
+                    geometry = new THREE.BoxGeometry(dimensions.width, 0.05, dimensions.depth);
+                    const tableTop = new THREE.Mesh(geometry, material);
+                    tableTop.position.y = dimensions.height;
+                    tableTop.castShadow = true;
+                    tableTop.receiveShadow = true;
+                    group.add(tableTop);
+
+                    const tableLegGeometry = new THREE.BoxGeometry(0.1, dimensions.height, 0.1);
+                    const tableLegPositions = [
+                        [-dimensions.width * 0.45, dimensions.height * 0.5, -dimensions.depth * 0.45],
+                        [dimensions.width * 0.45, dimensions.height * 0.5, -dimensions.depth * 0.45],
+                        [-dimensions.width * 0.45, dimensions.height * 0.5, dimensions.depth * 0.45],
+                        [dimensions.width * 0.45, dimensions.height * 0.5, dimensions.depth * 0.45]
+                    ];
+                    tableLegPositions.forEach(pos => {
+                        const leg = new THREE.Mesh(tableLegGeometry, material);
+                        leg.position.set(pos[0], pos[1], pos[2]);
+                        leg.castShadow = true;
+                        leg.receiveShadow = true;
+                        group.add(leg);
+                    });
+
+                    if (type === 'desk') {
+                        geometry = new THREE.BoxGeometry(dimensions.width * 0.8, dimensions.height * 0.4, dimensions.depth * 0.4);
+                        const drawer = new THREE.Mesh(geometry, material);
+                        drawer.position.set(0, dimensions.height * 0.2, dimensions.depth * 0.3);
+                        drawer.castShadow = true;
+                        drawer.receiveShadow = true;
+                        group.add(drawer);
+                    }
+                    break;
+
+                case 'wardrobe':
+                    geometry = new THREE.BoxGeometry(dimensions.width, dimensions.height, dimensions.depth);
+                    const wardrobe = new THREE.Mesh(geometry, material);
+                    wardrobe.position.y = dimensions.height / 2;
+                    wardrobe.castShadow = true;
+                    wardrobe.receiveShadow = true;
+                    group.add(wardrobe);
+
+                    const doorGeometry = new THREE.BoxGeometry(dimensions.width * 0.45, dimensions.height * 0.9, 0.02);
+                    const leftDoor = new THREE.Mesh(doorGeometry, materials['wood-dark']);
+                    leftDoor.position.set(-dimensions.width * 0.25, dimensions.height / 2, dimensions.depth / 2 + 0.01);
+                    leftDoor.castShadow = true;
+                    leftDoor.receiveShadow = true;
+                    group.add(leftDoor);
+
+                    const rightDoor = new THREE.Mesh(doorGeometry, materials['wood-dark']);
+                    rightDoor.position.set(dimensions.width * 0.25, dimensions.height / 2, dimensions.depth / 2 + 0.01);
+                    rightDoor.castShadow = true;
+                    rightDoor.receiveShadow = true;
+                    group.add(rightDoor);
+
+                    const handleGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.1, 16);
+                    const leftHandle = new THREE.Mesh(handleGeometry, materials['metal-silver']);
+                    leftHandle.position.set(-dimensions.width * 0.4, dimensions.height / 2, dimensions.depth / 2 + 0.02);
+                    leftHandle.rotation.z = Math.PI / 2;
+                    leftHandle.castShadow = true;
+                    leftHandle.receiveShadow = true;
+                    group.add(leftHandle);
+
+                    const rightHandle = new THREE.Mesh(handleGeometry, materials['metal-silver']);
+                    rightHandle.position.set(dimensions.width * 0.4, dimensions.height / 2, dimensions.depth / 2 + 0.02);
+                    rightHandle.rotation.z = Math.PI / 2;
+                    rightHandle.castShadow = true;
+                    rightHandle.receiveShadow = true;
+                    group.add(rightHandle);
+                    break;
+
+                case 'shelf':
+                    const frameGeometry = new THREE.BoxGeometry(dimensions.width, dimensions.height, dimensions.depth);
+                    const frame = new THREE.Mesh(frameGeometry, material);
+                    frame.position.y = dimensions.height / 2;
+                    frame.castShadow = true;
+                    frame.receiveShadow = true;
+                    group.add(frame);
+
+                    const shelfCount = 4;
+                    const shelfGeometry = new THREE.BoxGeometry(dimensions.width - 0.1, 0.02, dimensions.depth - 0.05);
+                    for (let i = 0; i < shelfCount; i++) {
+                        const shelf = new THREE.Mesh(shelfGeometry, material);
+                        shelf.position.y = (i + 1) * (dimensions.height / (shelfCount + 1));
+                        shelf.castShadow = true;
+                        shelf.receiveShadow = true;
+                        group.add(shelf);
+                    }
+                    break;
+
+                case 'cabinet':
+                    geometry = new THREE.BoxGeometry(dimensions.width, dimensions.height, dimensions.depth);
+                    const cabinet = new THREE.Mesh(geometry, material);
+                    cabinet.position.y = dimensions.height / 2;
+                    cabinet.castShadow = true;
+                    cabinet.receiveShadow = true;
+                    group.add(cabinet);
+
+                    const cabinetDoorGeometry = new THREE.BoxGeometry(dimensions.width * 0.9, dimensions.height * 0.9, 0.02);
+                    const cabinetDoor = new THREE.Mesh(cabinetDoorGeometry, materials['wood-dark']);
+                    cabinetDoor.position.set(0, dimensions.height / 2, dimensions.depth / 2 + 0.01);
+                    cabinetDoor.castShadow = true;
+                    cabinetDoor.receiveShadow = true;
+                    group.add(cabinetDoor);
+
+                    const cabinetHandleGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.1, 16);
+                    const cabinetHandle = new THREE.Mesh(cabinetHandleGeometry, materials['metal-silver']);
+                    cabinetHandle.position.set(dimensions.width * 0.3, dimensions.height / 2, dimensions.depth / 2 + 0.02);
+                    cabinetHandle.rotation.z = Math.PI / 2;
+                    cabinetHandle.castShadow = true;
+                    cabinetHandle.receiveShadow = true;
+                    group.add(cabinetHandle);
+                    break;
+
+                case 'single-bed':
+                case 'double-bed':
+                    geometry = new THREE.BoxGeometry(dimensions.width, 0.2, dimensions.depth);
+                    const mattress = new THREE.Mesh(geometry, materials['fabric-beige']);
+                    mattress.position.y = 0.1;
+                    mattress.castShadow = true;
+                    mattress.receiveShadow = true;
+                    group.add(mattress);
+
+                    const frameWidth = dimensions.width + 0.1;
+                    const frameDepth = dimensions.depth + 0.1;
+                    const bedframeGeometry = new THREE.BoxGeometry(frameWidth, 0.15, frameDepth);
+                    const bedFrame = new THREE.Mesh(bedframeGeometry, materials['wood-medium']);
+                    bedFrame.position.y = 0.075;
+                    bedFrame.castShadow = true;
+                    bedFrame.receiveShadow = true;
+                    group.add(bedFrame);
+
+                    const headboardGeometry = new THREE.BoxGeometry(frameWidth, 0.8, 0.1);
+                    const headboard = new THREE.Mesh(headboardGeometry, materials['wood-medium']);
+                    headboard.position.set(0, 0.5, -frameDepth / 2 + 0.05);
+                    headboard.castShadow = true;
+                    headboard.receiveShadow = true;
+                    group.add(headboard);
+
+                    if (type === 'double-bed') {
+                        const footboardGeometry = new THREE.BoxGeometry(frameWidth, 0.4, 0.1);
+                        const footboard = new THREE.Mesh(footboardGeometry, materials['wood-medium']);
+                        footboard.position.set(0, 0.3, frameDepth / 2 - 0.05);
+                        footboard.castShadow = true;
+                        footboard.receiveShadow = true;
+                        group.add(footboard);
+                    }
+                    break;
+            }
+
+            group.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    child.castShadow = shadowsEnabled;
+                    child.receiveShadow = shadowsEnabled;
+                    child.material = child.material.clone();
+                }
+            });
+
+            group.userData = {
+                type,
+                dimensions,
+                material: 'wood-medium',
+                width: dimensions.width,
+                depth: dimensions.depth,
+                height: dimensions.height
+            };
+
+            group.updateMatrixWorld(true);
+
+            group.traverse(function (child) {
+                if (child instanceof THREE.Mesh) {
+                    child.geometry.computeBoundingBox();
+                }
+            });
+
+            return group;
+        }
+
+        function closePanels() {
+            document.querySelector('.left-panel').classList.remove('open');
+            document.querySelector('.right-panel').classList.remove('open');
+            document.getElementById('toggleLeft').classList.remove('hidden-mobile');
+            document.getElementById('toggleRight').classList.remove('hidden-mobile');
+        }
+
+        function openLeftPanel() {
+            closePanels();
+            document.querySelector('.left-panel').classList.add('open');
+            document.getElementById('toggleLeft').classList.add('hidden-mobile');
+        }
+
+        function openRightPanel() {
+            closePanels();
+            document.querySelector('.right-panel').classList.add('open');
+            document.getElementById('toggleRight').classList.add('hidden-mobile');
+        }
+
+        function setupEventListeners() {
+            var closeLeft = document.querySelector('.panel-close-left');
+            var closeRight = document.querySelector('.panel-close-right');
+            if (closeLeft) {
+                closeLeft.addEventListener('click', function () {
+                    closePanels();
+                });
+            }
+            if (closeRight) {
+                closeRight.addEventListener('click', function () {
+                    closePanels();
+                });
+            }
+            document.querySelectorAll('.furniture-item').forEach(item => {
+                item.addEventListener('mousedown', () => {
+                    document.body.classList.add('no-select');
+                });
+            });
+            document.addEventListener('mouseup', () => {
+                document.body.classList.remove('no-select');
+            });
+
+            document.getElementById('toggleLeft').onclick = () => {
+                openLeftPanel();
+            };
+            document.getElementById('toggleRight').onclick = () => {
+                openRightPanel();
+            };
+
+            window.addEventListener('resize', onWindowResize, false);
+
+            renderer.domElement.addEventListener('mousedown', onMouseDown, false);
+            renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+            renderer.domElement.addEventListener('mouseup', onMouseUp, false);
+            renderer.domElement.addEventListener('click', onClick, false);
+            renderer.domElement.addEventListener('touchstart', function (e) {
+                if (e.touches.length === 1) {
+                    onMouseDown({
+                        clientX: e.touches[0].clientX,
+                        clientY: e.touches[0].clientY,
+                        preventDefault: () => e.preventDefault(),
+                        stopPropagation: () => e.stopPropagation()
+                    });
+                }
+            }, { passive: false });
+            renderer.domElement.addEventListener('touchmove', function (e) {
+                if (e.touches.length === 1) {
+                    onMouseMove({
+                        clientX: e.touches[0].clientX,
+                        clientY: e.touches[0].clientY,
+                        preventDefault: () => e.preventDefault(),
+                        stopPropagation: () => e.stopPropagation()
+                    });
+                }
+            }, { passive: false });
+            renderer.domElement.addEventListener('touchend', function (e) {
+                if (e.changedTouches.length === 1) {
+                    onMouseUp({
+                        clientX: e.changedTouches[0].clientX,
+                        clientY: e.changedTouches[0].clientY,
+                        preventDefault: () => e.preventDefault(),
+                        stopPropagation: () => e.stopPropagation()
+                    });
+                    onClick({
+                        clientX: e.changedTouches[0].clientX,
+                        clientY: e.changedTouches[0].clientY,
+                        preventDefault: () => e.preventDefault(),
+                        stopPropagation: () => e.stopPropagation()
+                    });
+                }
+            }, { passive: false });
+
+            document.querySelectorAll('.furniture-item').forEach(item => {
+
+                item.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    pendingDrag = true;
+                    dragStartPos = { x: e.clientX, y: e.clientY };
+
+                    selectedFurnitureType = item.dataset.type;
+                    selectedFurnitureDimensions = {
+                        width: parseFloat(item.dataset.width),
+                        depth: parseFloat(item.dataset.depth),
+                        height: parseFloat(item.dataset.height)
+                    };
+                });
+
+                item.addEventListener('touchstart', (e) => {
+                    e.stopPropagation();
+                    pendingDrag = true;
+                    var touch = e.touches[0];
+                    dragStartPos = { x: touch.clientX, y: touch.clientY };
+                    selectedFurnitureType = item.dataset.type;
+                    selectedFurnitureDimensions = {
+                        width: parseFloat(item.dataset.width),
+                        depth: parseFloat(item.dataset.depth),
+                        height: parseFloat(item.dataset.height)
+                    };
+                }, { passive: false });
+
+                item.addEventListener('click', (e) => {
+                    if (!pendingDrag) return;
+                    e.stopPropagation();
+
+                    const furniture = createFurniture(
+                        item.dataset.type,
+                        {
+                            width: parseFloat(item.dataset.width),
+                            depth: parseFloat(item.dataset.depth),
+                            height: parseFloat(item.dataset.height)
+                        });
+
+                    const offsetX = Math.random() * 4 - 2;
+                    const offsetZ = Math.random() * 4 - 2;
+                    furniture.position.set(offsetX, 0, offsetZ);
+                    scene.add(furniture);
+                    placedObjects.push(furniture);
+                    selectedObject = furniture;
+                    updateHighlight(selectedObject);
+
+                    updateDimensionsDisplay(furniture);
+                    updateButtonStates(); 
+
+                    pendingDrag = false;
+
+                    if (window.innerWidth <= 768) {
+                        closePanels();
+                    }
+                });
+            });
+
+            document.querySelectorAll('.material-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (selectedObject) {
+                        const materialName = item.dataset.material;
+                        const material = materials[materialName];
+
+                        selectedObject.traverse((child) => {
+                            if (child instanceof THREE.Mesh) {
+                                child.material = material.clone();
+                            }
+                        });
+
+                        selectedObject.userData.material = materialName;
+
+                        document.querySelectorAll('.material-item').forEach(m => m.classList.remove('selected'));
+                        item.classList.add('selected');
+                    }
+                    if (window.innerWidth <= 768) {
+                        closePanels();
+                    }
+                });
+            });
+
+            document.getElementById('exportOBJ').addEventListener('click', exportOBJ);
+            document.getElementById('exportGLB').addEventListener('click', exportGLB);
+            document.getElementById('clearAll').addEventListener('click', clearAll);
+            document.getElementById('toggleGrid').addEventListener('click', toggleGrid);
+            document.getElementById('toggleShadows').addEventListener('click', toggleShadows);
+            document.getElementById('modeTranslate')
+                .addEventListener('click', () => {
+                    transformControls.setMode('translate');
+                    setActiveMode('translate');
+                });
+            document.getElementById('modeRotate')
+                .addEventListener('click', () => {
+                    transformControls.setMode('rotate');
+                    setActiveMode('rotate');
+                });
+
+            document.getElementById('deleteSelected').addEventListener('click', () => {
+                if (selectedObject) {
+                    scene.remove(selectedObject);
+                    placedObjects = placedObjects.filter(obj => obj !== selectedObject);
+                    
+                    
+                    selectedObject = null;
+                    transformControls.detach();
+                    updateHighlight(null);
+                    dimensionsDisplay.style.display = 'none';
+                    updateButtonStates(); 
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Delete' && selectedObject) {
+                    scene.remove(selectedObject);
+                    placedObjects = placedObjects.filter(obj => obj !== selectedObject);
+                    
+                    
+                    selectedObject = null;
+                    transformControls.detach();
+                    updateHighlight(null);
+                    dimensionsDisplay.style.display = 'none';
+                    updateButtonStates(); 
+                }
+                if (e.key === 't') {
+                    transformControls.setMode('translate');
+                    setActiveMode('translate');
+                }
+                if (e.key === 'r') {
+                    transformControls.setMode('rotate');
+                    setActiveMode('rotate');
+                }
+
+            });
+
+            const overlay = document.getElementById('instructionsOverlay');
+            const modal = document.getElementById('instructionsModal');
+            
+            
+            function openModal() {
+                overlay.style.display = 'flex';
+                
+                overlay.offsetHeight;
+                
+                
+                overlay.classList.add('show');
+                modal.classList.add('show');
+                
+                
+                setTimeout(() => {
+                    const contentElements = modal.querySelectorAll('.modal-content-element');
+                    contentElements.forEach(element => {
+                        element.classList.add('animate-in');
+                    });
+                }, 150); 
+            }
+            
+            
+            function closeModal() {
+                
+                const contentElements = modal.querySelectorAll('.modal-content-element');
+                contentElements.forEach(element => {
+                    element.classList.remove('animate-in');
+                });
+                
+                
+                overlay.classList.remove('show');
+                overlay.classList.add('hide');
+                modal.classList.remove('show');
+                modal.classList.add('hide');
+                
+                
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    overlay.classList.remove('hide');
+                    modal.classList.remove('hide');
+                }, 300); 
+            }
+            
+            
+            document.getElementById('showInstructions')
+                .addEventListener('click', openModal);
+            
+            
+            document.querySelectorAll('.close-instructions-btn').forEach(button => {
+                button.addEventListener('click', closeModal);
+            });
+            
+            
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    closeModal();
+                }
+            });
+            
+            
+            modal.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
+
+        function onMouseDown(event) {
+            event.preventDefault();
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(placedObjects, true);
+
+            if (intersects.length > 0) {
+                controls.enabled = false;
+                isDragging = true;
+
+                selectedObject = intersects[0].object.parent;
+                transformControls.attach(selectedObject);
+                updateHighlight(selectedObject);
+
+                const intersectionPoint = intersects[0].point;
+                dragOffset.copy(selectedObject.position).sub(intersectionPoint);
+
+                updateDimensionsDisplay(selectedObject);
+            } else {
+                transformControls.detach();
+                selectedObject = null;
+                updateHighlight(null);
+
+                dimensionsDisplay.style.display = 'none';
+            }
+        }
+
+        function onMouseMove(event) {
+            event.preventDefault();
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            if (pendingDrag && !isDraggingFromLibrary) {
+                const dx = Math.abs(event.clientX - dragStartPos.x);
+                const dy = Math.abs(event.clientY - dragStartPos.y);
+                if (dx > 5 || dy > 5) {
+                    isDraggingFromLibrary = true;
+
+                    previewObject = createFurniture(selectedFurnitureType, selectedFurnitureDimensions);
+                    previewObject.position.set(0, 0, 0);
+                    scene.add(previewObject);
+
+                    previewObject.traverse((child) => {
+                        if (child instanceof THREE.Mesh) {
+                            child.material.transparent = true;
+                            child.material.opacity = 0.7;
+                        }
+                    });
+
+                    controls.enabled = false;
+                }
+            }
+
+            if (isDraggingFromLibrary && previewObject) {
+                raycaster.setFromCamera(mouse, camera);
+
+                const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+                const intersectionPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, intersectionPoint);
+
+                if (intersectionPoint) {
+                    const newPosition = intersectionPoint;
+                    newPosition.x = Math.round(newPosition.x / gridSize) * gridSize;
+                    newPosition.z = Math.round(newPosition.z / gridSize) * gridSize;
+                    newPosition.y = 0;
+
+                    previewObject.position.copy(newPosition);
+                }
+            } else if (isDragging && selectedObject) {
+                raycaster.setFromCamera(mouse, camera);
+
+                const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+                const intersectionPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, intersectionPoint);
+
+                if (intersectionPoint) {
+                    const newPosition = intersectionPoint.add(dragOffset);
+                    newPosition.x = Math.round(newPosition.x / gridSize) * gridSize;
+                    newPosition.z = Math.round(newPosition.z / gridSize) * gridSize;
+                    newPosition.y = 0;
+
+                    const halfWidth = selectedObject.userData.width / 2;
+                    const halfDepth = selectedObject.userData.depth / 2;
+
+                    newPosition.x = Math.max(-roomSize.width / 2 + halfWidth, Math.min(roomSize.width / 2 - halfWidth, newPosition.x));
+                    newPosition.z = Math.max(-roomSize.depth / 2 + halfDepth, Math.min(roomSize.depth / 2 - halfDepth, newPosition.z));
+
+                    selectedObject.position.copy(newPosition);
+
+                    updateDimensionsDisplay(selectedObject);
+                }
+            }
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(placedObjects, true);
+
+            if (intersects.length > 0) {
+                renderer.domElement.style.cursor = 'pointer';
+            } else {
+                renderer.domElement.style.cursor = isDraggingFromLibrary ? 'grabbing' : 'auto';
+            }
+        }
+
+        function onMouseUp(event) {
+            pendingDrag = false;
+            if (isDraggingFromLibrary && previewObject) {
+                const furniture = createFurniture(selectedFurnitureType, selectedFurnitureDimensions);
+                furniture.position.copy(previewObject.position);
+                scene.add(furniture);
+                placedObjects.push(furniture);
+                selectedObject = furniture;
+                updateHighlight(selectedObject);
+
+                scene.remove(previewObject);
+                previewObject = null;
+
+                updateDimensionsDisplay(furniture);
+                updateButtonStates();
+            }
+
+            isDraggingFromLibrary = false;
+            controls.enabled = true;
+            isDragging = false;
+        }
+
+        function onClick(event) {
+            if (isDraggingFromLibrary || isDragging) return;
+            if (!isDragging) {
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(placedObjects, true);
+
+                if (intersects.length > 0) {
+                    selectedObject = intersects[0].object.parent;
+                    transformControls.attach(selectedObject);
+                    updateHighlight(selectedObject);
+
+                    updateDimensionsDisplay(selectedObject);
+                } else {
+                    transformControls.detach();
+                    selectedObject = null;
+                    updateHighlight(null);
+
+                    dimensionsDisplay.style.display = 'none';
+                }
+            }
+        }
+
+        function updateDimensionsDisplay(object) {
+            if (!object || !object.userData) return;
+
+            const vector = object.position.clone();
+            vector.y += object.userData.height + 0.2;
+            vector.project(camera);
+
+            const x = (vector.x * 0.5 + 0.5) * renderer.domElement.clientWidth;
+            const y = (-vector.y * 0.5 + 0.5) * renderer.domElement.clientHeight;
+
+            dimensionsDisplay.textContent = `${object.userData.width.toFixed(1)}m × ${object.userData.depth.toFixed(1)}m × ${object.userData.height.toFixed(1)}m`;
+            dimensionsDisplay.style.left = x + 'px';
+            dimensionsDisplay.style.top = y + 'px';
+            dimensionsDisplay.style.display = 'block';
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function exportOBJ() {
+            try {
+                const exporter = new THREE.OBJExporter();
+
+                const exportScene = new THREE.Scene();
+
+                scene.children.forEach(child => {
+                    if (child.userData.isFloor || child.userData.isWall) {
+                        exportScene.add(child.clone());
+                    }
+                });
+
+                placedObjects.forEach(obj => {
+                    exportScene.add(obj.clone());
+                });
+
+                const result = exporter.parse(exportScene);
+
+                const blob = new Blob([result], { type: 'text/plain' });
+                const link = document.createElement('a');
+                link.style.display = 'none';
+                link.href = URL.createObjectURL(blob);
+                link.download = 'room_layout.obj';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                console.log('OBJ export successful');
+            } catch (error) {
+                console.error('Error exporting OBJ:', error);
+                alert('Error exporting OBJ. Check console for details.');
+            }
+        }
+
+        function exportGLB() {
+            try {
+                const exporter = new THREE.GLTFExporter();
+
+                const exportScene = new THREE.Scene();
+
+                scene.children.forEach(child => {
+                    if (child.userData.isFloor || child.userData.isWall) {
+                        exportScene.add(child.clone());
+                    }
+                });
+
+                placedObjects.forEach(obj => {
+                    exportScene.add(obj.clone());
+                });
+
+                exporter.parse(
+                    exportScene,
+                    (gltf) => {
+                        if (gltf instanceof ArrayBuffer) {
+                            saveArrayBuffer(gltf, 'room_layout.glb');
+                        } else {
+                            const output = JSON.stringify(gltf, null, 2);
+                            saveString(output, 'room_layout.gltf');
+                        }
+                    },
+                    {
+                        binary: true,
+                        onlyVisible: false,
+                        truncateDrawRange: true,
+                        embedImages: true
+                    }
+                );
+
+                console.log('GLB export successful');
+            } catch (error) {
+                console.error('Error exporting GLB:', error);
+                alert('Error exporting GLB. Check console for details.');
+            }
+        }
+
+        function saveArrayBuffer(buffer, filename) {
+            const blob = new Blob([buffer], { type: 'application/octet-stream' });
+            saveBlob(blob, filename);
+        }
+
+        function saveString(text, filename) {
+            const blob = new Blob([text], { type: 'text/plain' });
+            saveBlob(blob, filename);
+        }
+
+        function saveBlob(blob, filename) {
+            const link = document.createElement('a');
+            link.style.display = 'none';
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function clearAll() {
+            placedObjects.forEach(obj => {
+                scene.remove(obj);
+            });
+            measurements.forEach(measurement => {
+                measurement.remove();
+            });
+            placedObjects = [];
+            measurements = [];
+            
+            
+            selectedObject = null;
+            transformControls.detach(); 
+            updateHighlight(null);
+
+            dimensionsDisplay.style.display = 'none';
+            updateButtonStates(); 
+        }
+
+        function toggleGrid() {
+            gridHelper.visible = !gridHelper.visible;
+            setToggleState('toggleGrid', gridHelper.visible);
+        }
+
+        function toggleShadows() {
+            shadowsEnabled = !shadowsEnabled;
+
+            scene.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    child.castShadow = shadowsEnabled;
+                    child.receiveShadow = shadowsEnabled;
+                }
+            });
+
+            renderer.shadowMap.enabled = shadowsEnabled;
+
+            const oldFloor = scene.children.find(c => c.userData.isFloor);
+            if (oldFloor) {
+                oldFloor.geometry.dispose();
+                oldFloor.material.dispose();
+                scene.remove(oldFloor);
+            }
+
+            const floorGeometry = new THREE.PlaneGeometry(roomSize.width, roomSize.depth);
+            const floorMaterial = new THREE.MeshPhongMaterial({
+                color: 0xffffff,
+                side: THREE.DoubleSide
+            });
+            const newFloor = new THREE.Mesh(floorGeometry, floorMaterial);
+            newFloor.rotation.x = -Math.PI / 2;
+            newFloor.receiveShadow = shadowsEnabled;
+            newFloor.userData.isFloor = true;
+            scene.add(newFloor);
+
+            setToggleState('toggleShadows', shadowsEnabled);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            controls.update();
+
+            measurements.forEach(m => m.remove());
+            measurements = [];
+
+            addWallMeasurements();
+
+            if (selectedObject) {
+                updateDimensionsDisplay(selectedObject);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const loader = document.getElementById('loading');
+            loader.style.display = 'flex';
+        });
+
+        window.addEventListener('load', init);
+    </script>
+
+</body>
+
+</html>
