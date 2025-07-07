@@ -1,1400 +1,1647 @@
 "use client";
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
-  FaPlay,
-  FaPause,
-  FaVolumeUp,
-  FaVolumeMute,
-  FaRedo,
-  FaRocket,
-  FaGamepad,
-  FaCircle,
-  FaGhost,
-  FaDotCircle
-} from "react-icons/fa";
-interface Position {
-  x: number;
-  y: number;
+  FiEye,
+  FiEyeOff,
+  FiX,
+  FiUser,
+  FiShield,
+  FiSettings,
+  FiSave,
+  FiChevronDown,
+  FiCheck,
+  FiMenu,
+  FiAlertCircle,
+  FiCheckCircle,
+  FiPlay,
+  FiArrowRight,
+  FiZap,
+  FiSmartphone,
+  FiLock,
+} from "react-icons/fi";
+import zxcvbn from "zxcvbn";
+
+interface SuccessToastProps {
+  message: string;
+  onClose: () => void;
 }
-interface Ghost {
-  position: Position;
-  color: string;
-  mode: "chase" | "scatter" | "frightened" | "eaten";
-  target: Position;
-  direction: Position;
-  speed: number;
-  aiPattern: "aggressive" | "ambush" | "flanking" | "patrol";
-  frightenedTargetTimer?: number;
+interface ErrorToastProps {
+  message: string;
+  onClose: () => void;
 }
-interface GameState {
-  pacman: {
-    position: Position;
-    direction: Position;
-    nextDirection: Position;
-    mouthOpen: boolean;
+function SuccessToast({ message, onClose }: SuccessToastProps) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+  return (
+    <div className="fixed top-4 right-4 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl bg-white/95 backdrop-blur-sm border border-green-200/50 z-50 animate-slideInFromTop max-w-md">
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-green-400 to-emerald-600 rounded-l-2xl"></div>
+      <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-green-400 to-emerald-600 rounded-xl flex items-center justify-center">
+        <FiCheckCircle className="w-4 h-4 text-white" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-slate-800 leading-relaxed">{message}</p>
+      </div>
+      <button
+        onClick={onClose}
+        className="flex-shrink-0 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all duration-200 group cursor-pointer"
+      >
+        <FiX className="w-4 h-4 group-hover:rotate-90 transition-transform duration-200" />
+      </button>
+    </div>
+  );
+}
+function ErrorToast({ message, onClose }: ErrorToastProps) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+  return (
+    <div className="fixed top-4 right-4 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl bg-white/95 backdrop-blur-sm border border-red-200/50 z-50 animate-slideInFromTop max-w-md">
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-red-400 to-rose-600 rounded-l-2xl"></div>
+      <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-red-400 to-rose-600 rounded-xl flex items-center justify-center">
+        <FiAlertCircle className="w-4 h-4 text-white" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-slate-800 leading-relaxed">{message}</p>
+      </div>
+      <button
+        onClick={onClose}
+        className="flex-shrink-0 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all duration-200 group cursor-pointer"
+      >
+        <FiX className="w-4 h-4 group-hover:rotate-90 transition-transform duration-200" />
+      </button>
+    </div>
+  );
+}
+interface FormData {
+  profile: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    bio: string;
+    avatar: string;
   };
-  ghosts: Ghost[];
-  score: number;
-  lives: number;
-  level: number;
-  gameStatus: "welcome" | "playing" | "paused" | "gameOver" | "victory";
-  powerPelletActive: boolean;
-  powerPelletTimer: number;
-  scoreMultiplier: number;
-  dots: boolean[][];
-  powerPellets: Position[];
-  scatterChaseTimer: number;
-  scatterChasePhase: number;
-  frightenedTargetTimer?: number;
+  security: {
+    newPassword: string;
+    confirmPassword: string;
+    twoFactorAuth: boolean;
+    loginAlerts: boolean;
+    sessionTimeout: boolean;
+    passwordChangeEnabled: boolean;
+  };
+  preferences: {
+    timezone: string;
+    language: string;
+    emailNotifications: boolean;
+    pushNotifications: boolean;
+    notificationFrequency: string;
+  };
 }
-const MAZE_WIDTH = 28;
-const MAZE_HEIGHT = 31;
-const CELL_SIZE = 20;
-const PACMAN_SPEED = 0.1;
-const GHOST_SPEED = 0.07;
-const FRIGHTENED_SPEED = 0.05;
-const POWER_PELLET_DURATION = 10000;
-const ENEMY_SCORE = 200;
-const SCATTER_CHASE_CYCLE = [
-  { mode: "scatter", duration: 10000 },
-  { mode: "chase", duration: 20000 },
-  { mode: "scatter", duration: 10000 },
-  { mode: "chase", duration: 20000 },
-  { mode: "scatter", duration: 5000 },
-  { mode: "chase", duration: 5000 },
-  { mode: "scatter", duration: 15000 },
-  { mode: "chase", duration: Infinity },
-];
-const MAZE: number[][] = [
-  [
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1,
-  ],
-  [
-    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 1,
-  ],
-  [
-    1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1,
-    1, 0, 1,
-  ],
-  [
-    1, 3, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1,
-    1, 3, 1,
-  ],
-  [
-    1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1,
-    1, 0, 1,
-  ],
-  [
-    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 1,
-  ],
-  [
-    1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1,
-    1, 0, 1,
-  ],
-  [
-    1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1,
-    1, 0, 1,
-  ],
-  [
-    1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
-    0, 0, 1,
-  ],
-  [
-    1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 0, 1, 1, 1,
-    1, 1, 1,
-  ],
-  [
-    1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 0, 1, 1, 1,
-    1, 1, 1,
-  ],
-  [
-    1, 1, 1, 1, 1, 1, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 0, 1, 1, 1,
-    1, 1, 1,
-  ],
-  [
-    1, 1, 1, 1, 1, 1, 0, 1, 1, 2, 1, 1, 1, 2, 2, 1, 1, 1, 2, 1, 1, 0, 1, 1, 1,
-    1, 1, 1,
-  ],
-  [
-    1, 1, 1, 1, 1, 1, 0, 1, 1, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 0, 1, 1, 1,
-    1, 1, 1,
-  ],
-  [
-    2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 0, 2, 2, 2,
-    2, 2, 2,
-  ],
-  [
-    1, 1, 1, 1, 1, 1, 0, 1, 1, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 0, 1, 1, 1,
-    1, 1, 1,
-  ],
-  [
-    1, 1, 1, 1, 1, 1, 0, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 0, 1, 1, 1,
-    1, 1, 1,
-  ],
-  [
-    1, 1, 1, 1, 1, 1, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 0, 1, 1, 1,
-    1, 1, 1,
-  ],
-  [
-    1, 1, 1, 1, 1, 1, 0, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 0, 1, 1, 1,
-    1, 1, 1,
-  ],
-  [
-    1, 1, 1, 1, 1, 1, 0, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 0, 1, 1, 1,
-    1, 1, 1,
-  ],
-  [
-    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 1,
-  ],
-  [
-    1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1,
-    1, 0, 1,
-  ],
-  [
-    1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1,
-    1, 0, 1,
-  ],
-  [
-    1, 3, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0,
-    0, 3, 1,
-  ],
-  [
-    1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0,
-    1, 1, 1,
-  ],
-  [
-    1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0,
-    1, 1, 1,
-  ],
-  [
-    1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0,
-    0, 0, 1,
-  ],
-  [
-    1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 0, 1,
-  ],
-  [
-    1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 0, 1,
-  ],
-  [
-    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 1,
-  ],
-  [
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1,
-  ],
-];
-const INITIAL_GAME_STATE: GameState = {
-  pacman: {
-    position: { x: 14, y: 23 },
-    direction: { x: 0, y: 0 },
-    nextDirection: { x: 0, y: 0 },
-    mouthOpen: true,
-  },
-  ghosts: [
-    {
-      position: { x: 14, y: 11 },
-      color: "#ff0000",
-      mode: "scatter",
-      target: { x: 25, y: 0 },
-      direction: { x: 1, y: 0 },
-      speed: GHOST_SPEED,
-      aiPattern: "aggressive",
-    },
-    {
-      position: { x: 13, y: 14 },
-      color: "#ffb8ff",
-      mode: "scatter",
-      target: { x: 2, y: 0 },
-      direction: { x: 1, y: 0 },
-      speed: GHOST_SPEED,
-      aiPattern: "ambush",
-    },
-    {
-      position: { x: 14, y: 14 },
-      color: "#00ffff",
-      mode: "scatter",
-      target: { x: 27, y: 30 },
-      direction: { x: -1, y: 0 },
-      speed: GHOST_SPEED,
-      aiPattern: "flanking",
-    },
-    {
-      position: { x: 15, y: 14 },
-      color: "#ffb851",
-      mode: "scatter",
-      target: { x: 0, y: 30 },
-      direction: { x: 0, y: 1 },
-      speed: GHOST_SPEED,
-      aiPattern: "patrol",
-    },
-  ],
-  score: 0,
-  lives: 1,
-  level: 1,
-  gameStatus: "welcome",
-  powerPelletActive: false,
-  powerPelletTimer: 0,
-  scoreMultiplier: 1,
-  dots: MAZE.map((row) => row.map((cell) => cell === 0)),
-  powerPellets: [],
-  scatterChaseTimer: 10000,
-  scatterChasePhase: 0,
-};
-export default function MazeRunner() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>(null);
-  const lastTimeRef = useRef<number>(0);
-  const gameStateRef = useRef<GameState>(INITIAL_GAME_STATE);
-  const [uiState, setUiState] = useState({
-    score: INITIAL_GAME_STATE.score,
-    lives: INITIAL_GAME_STATE.lives,
-    level: INITIAL_GAME_STATE.level,
-    gameStatus: INITIAL_GAME_STATE.gameStatus,
-    powerPelletActive: INITIAL_GAME_STATE.powerPelletActive,
-    powerPelletTimer: INITIAL_GAME_STATE.powerPelletTimer,
-    scoreMultiplier: INITIAL_GAME_STATE.scoreMultiplier,
-    scale: 1,
-    isMobile: false,
-    touchStart: null as Position | null,
-    joystickPosition: { x: 0, y: 0 },
-    isJoystickActive: false,
-  });
-  const [isPaused, setIsPaused] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const audioContext = useRef<AudioContext | null>(null);
-  const playSound = useCallback(async (frequency: number, duration: number) => {
-    if (isMuted) return;
-    try {
-      if (!audioContext.current) {
-        audioContext.current = new (window.AudioContext ||
-          (window as any).webkitAudioContext)();
+interface ErrorState {
+  [key: string]: string;
+}
+interface CustomDropdownProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  error?: string;
+}
+function CustomDropdown({ value, onChange, options, placeholder, error }: CustomDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
       }
-      if (audioContext.current.state === 'suspended') {
-        await audioContext.current.resume();
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  const selectedOption = options.find((opt) => opt.value === value);
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full px-4 py-3 text-left bg-white/70 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 flex items-center justify-between cursor-pointer shadow-sm hover:shadow-md ${
+          error
+            ? "border-red-400 bg-red-50/80 focus:border-red-500 focus:ring-red-500/20"
+            : isOpen
+            ? "border-purple-500 ring-4 ring-purple-500/20"
+            : "border-slate-200 hover:border-slate-300"
+        }`}
+      >
+        <span className={`font-medium ${selectedOption ? "text-slate-800" : "text-slate-400"}`}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <div className="flex items-center gap-2">
+          <FiChevronDown
+            className={`w-5 h-5 text-slate-400 transition-all duration-300 ${
+              isOpen ? "transform rotate-180 text-purple-500" : ""
+            }`}
+          />
+        </div>
+      </button>
+      {isOpen && (
+        <div
+          className={`absolute z-50 w-full mt-2 bg-white border-2 border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto custom-dropdown-scroll ${
+            dropdownRef.current && dropdownRef.current.getBoundingClientRect().bottom + 200 > window.innerHeight
+              ? "bottom-full mb-2 mt-0"
+              : ""
+          }`}
+        >
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
+              }}
+              className={`w-full px-3 py-2.5 text-left transition-all duration-200 flex items-center justify-between cursor-pointer first:rounded-t-xl last:rounded-b-xl text-sm ${
+                value === option.value
+                  ? "text-purple-700 bg-purple-50 font-medium border-l-4 border-l-purple-500"
+                  : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              <span>{option.label}</span>
+              {value === option.value && <FiCheck className="w-4 h-4 text-purple-500" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+function LandingPage({ onStartDemo, isLoading }: { onStartDemo: () => void; isLoading: boolean }) {
+  return (
+    <div
+      className="space-grotesk min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 overflow-x-hidden"
+    >
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        .space-grotesk {
+          font-family: 'Space Grotesk', sans-serif;
+        }
+      `}</style>
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-slate-500/20 rounded-full blur-3xl animate-pulse [animation-delay:1s]"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-purple-400/10 rounded-full blur-2xl animate-pulse [animation-delay:0.5s]"></div>
+      </div>
+      <nav className="relative z-10 p-6 bg-slate-800/30 backdrop-blur-md border-b border-white/10">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-slate-600 rounded-xl flex items-center justify-center">
+              <FiSettings className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-white">Account Settings Pro</span>
+          </div>
+        </div>
+      </nav>
+      <main className="relative z-10 max-w-7xl mx-auto px-6 pt-12">
+        <div className="text-center mb-16">
+          <div className="inline-block mb-6">
+            <span className="px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-sm text-gray-300 font-medium">
+              Professional Account Management
+            </span>
+          </div>
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+            <span className="text-white">Beautiful</span>
+            <br />
+            <span className="bg-gradient-to-r from-purple-400 to-slate-400 bg-clip-text text-transparent">
+              Account Settings
+            </span>
+          </h1>
+          <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
+            Experience premium form design with glassmorphism effects, smooth animations, and modern interactions. Built
+            with Tailwind CSS and React.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <button
+              onClick={onStartDemo}
+              disabled={isLoading}
+              className="group relative px-8 py-4 bg-gradient-to-r from-purple-500 via-purple-600 to-slate-600 text-white font-semibold rounded-2xl shadow-2xl hover:shadow-purple-500/30 hover:scale-105 hover:from-purple-400 hover:via-purple-500 hover:to-slate-500 transition-all duration-300 overflow-hidden disabled:opacity-80 disabled:cursor-not-allowed disabled:hover:scale-100 cursor-pointer"
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 group-hover:translate-x-full transition-transform duration-700 -translate-x-full"></div>
+                  <div className="relative flex items-center gap-2">
+                    <FiPlay className="w-5 h-5" />
+                    <span>Get Started</span>
+                    <FiArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+        <section id="features" className="grid md:grid-cols-3 gap-8 mb-16">
+          <div className="group bg-white/10 backdrop-blur-sm border border-white/20 p-8 rounded-2xl hover:bg-white/15 hover:border-white/30 hover:scale-105 transition-all duration-300">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-slate-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <FiEye className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Glassmorphism Design</h3>
+            </div>
+            <p className="text-gray-300 leading-relaxed group-hover:text-white transition-colors duration-300">
+              Modern transparent effects with backdrop blur, creating depth and visual hierarchy.
+            </p>
+          </div>
+          <div className="group bg-white/10 backdrop-blur-sm border border-white/20 p-8 rounded-2xl hover:bg-white/15 hover:border-white/30 hover:scale-105 transition-all duration-300">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-slate-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <FiZap className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Smooth Animations</h3>
+            </div>
+            <p className="text-gray-300 leading-relaxed group-hover:text-white transition-colors duration-300">
+              Micro-interactions and transitions that delight users and provide clear feedback.
+            </p>
+          </div>
+          <div className="group bg-white/10 backdrop-blur-sm border border-white/20 p-8 rounded-2xl hover:bg-white/15 hover:border-white/30 hover:scale-105 transition-all duration-300">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-slate-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <FiSmartphone className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Fully Responsive</h3>
+            </div>
+            <p className="text-gray-300 leading-relaxed group-hover:text-white transition-colors duration-300">
+              Optimized for all devices with mobile-first design and touch-friendly interactions.
+            </p>
+          </div>
+        </section>
+      </main>
+      <footer className="relative z-10 text-center py-6 text-gray-400 bg-slate-800/30 backdrop-blur-md border-t border-white/10">
+        <p>2025 Account Settings Pro. Built with modern web technologies.</p>
+      </footer>
+    </div>
+  );
+}
+export default function AccountSettings() {
+  const [activeSection, setActiveSection] = useState("profile");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
+  const autoSaveTimer = useRef<NodeJS.Timeout | null>(null);
+  const lastErrorTime = useRef<number>(0);
+  const [showLanding, setShowLanding] = useState(true);
+  const [isLoadingDemo, setIsLoadingDemo] = useState(false);
+  const initialState: FormData = {
+    profile: {
+      firstName: "John",
+      lastName: "Doe",
+      email: "john.doe@example.com",
+      bio: "Software developer passionate about creating great user experiences.",
+      avatar: "",
+    },
+    security: {
+      newPassword: "",
+      confirmPassword: "",
+      twoFactorAuth: false,
+      loginAlerts: true,
+      sessionTimeout: true,
+      passwordChangeEnabled: false,
+    },
+    preferences: {
+      timezone: "America/New_York",
+      language: "en",
+      emailNotifications: true,
+      pushNotifications: false,
+      notificationFrequency: "daily",
+    },
+  };
+  const [formData, setFormData] = useState<FormData>(initialState);
+  const [savedState, setSavedState] = useState<FormData>(initialState);
+  const [sectionSavedState, setSectionSavedState] = useState<FormData>(initialState);
+  const [errors, setErrors] = useState<ErrorState>({});
+  const validateForm = (data: FormData) => {
+    const newErrors: ErrorState = {};
+    if (!data.profile.firstName.trim()) {
+      newErrors["profile.firstName"] = "First name is required";
+    }
+    if (!data.profile.lastName.trim()) {
+      newErrors["profile.lastName"] = "Last name is required";
+    }
+    if (!data.profile.email.trim()) {
+      newErrors["profile.email"] = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(data.profile.email)) {
+      newErrors["profile.email"] = "Email is invalid";
+    }
+    if (data.profile.bio && data.profile.bio.length > 500) {
+      newErrors["profile.bio"] = "Bio must be less than 500 characters";
+    }
+    if (data.security.passwordChangeEnabled) {
+    if (!data.security.newPassword) {
+      newErrors["security.newPassword"] = "Password is required";
+    } else if (data.security.newPassword.length < 8) {
+      newErrors["security.newPassword"] = "Password must be at least 8 characters";
+    }
+    if (!data.security.confirmPassword) {
+      newErrors["security.confirmPassword"] = "Please confirm your password";
+    } else if (data.security.newPassword !== data.security.confirmPassword) {
+      newErrors["security.confirmPassword"] = "Passwords do not match";
+    }
+    if (data.security.newPassword) {
+      const strength = zxcvbn(data.security.newPassword);
+      if (strength.score < 2) {
+        newErrors["security.newPassword"] = "Password is too weak. Please follow the suggestions below.";
       }
-      if (audioContext.current.state !== 'running') {
+    }
+    }
+    return newErrors;
+  };
+  const validatePreferences = (preferences: FormData["preferences"]): ErrorState => {
+    const errors: ErrorState = {};
+    if (!preferences.timezone) {
+      errors["preferences.timezone"] = "Please select a timezone";
+    }
+    if (!preferences.language) {
+      errors["preferences.language"] = "Please select a language";
+    }
+    if (!preferences.notificationFrequency) {
+      errors["preferences.notificationFrequency"] = "Please select notification frequency";
+    } else {
+      const validFrequencies = notificationFrequencies.map((freq) => freq.value);
+      if (!validFrequencies.includes(preferences.notificationFrequency)) {
+        errors["preferences.notificationFrequency"] = "Invalid notification frequency selected";
+      }
+    }
+    if (preferences.emailNotifications || preferences.pushNotifications) {
+      if (!preferences.notificationFrequency) {
+        errors["preferences.notificationFrequency"] =
+          "Please select notification frequency when notifications are enabled";
+      }
+    }
+    if (!preferences.emailNotifications && !preferences.pushNotifications) {
+      errors["preferences.notifications"] = "Please enable at least one type of notification";
+    }
+    return errors;
+  };
+  const calculatePasswordStrength = (password: string) => {
+    if (!password)
+      return {
+        score: 0,
+        label: "",
+        color: "",
+        feedback: { warning: "", suggestions: [] },
+      };
+    const result = zxcvbn(password);
+    const strengthMap = {
+      0: { label: "Very Weak", color: "bg-red-500" },
+      1: { label: "Weak", color: "bg-orange-500" },
+      2: { label: "Fair", color: "bg-yellow-500" },
+      3: { label: "Good", color: "bg-blue-500" },
+      4: { label: "Strong", color: "bg-green-500" },
+    } as const;
+    return {
+      score: result.score,
+      ...strengthMap[result.score as keyof typeof strengthMap],
+      feedback: result.feedback,
+    };
+  };
+  const passwordStrength = calculatePasswordStrength(formData.security.newPassword);
+  useEffect(() => {
+    const draft = localStorage.getItem("accountSettingsDraft");
+    if (draft) {
+      const parsedDraft = JSON.parse(draft);
+      setFormData(parsedDraft);
+      const validationResult = validateAllSections(parsedDraft);
+      if (validationResult.hasErrors) {
+        setErrors(validationResult.errors);
+      }
+    }
+  }, []);
+  useEffect(() => {
+    if (isSidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isSidebarOpen]);
+  const showSuccessToast = (message: string) => {
+    const now = Date.now();
+    const timeSinceLastError = now - lastErrorTime.current;
+    const minimumDelay = 500;
+    setTimeout(() => {
+      setErrorToast(null);
+      setSuccessToast(message);
+    }, Math.max(minimumDelay, timeSinceLastError));
+  };
+  const showErrorToast = (message: string) => {
+    lastErrorTime.current = Date.now();
+    setTimeout(() => {
+      setSuccessToast(null);
+      setErrorToast(message);
+    }, 100);
+  };
+  useEffect(() => {
+    if (isDirty) {
+      if (autoSaveTimer.current) {
+        clearTimeout(autoSaveTimer.current);
+      }
+      autoSaveTimer.current = setTimeout(() => {
+        localStorage.setItem("accountSettingsDraft", JSON.stringify(formData));
+        setLastSaved(new Date());
+        const timeSinceLastError = Date.now() - lastErrorTime.current;
+        if (timeSinceLastError > 500) {
+          showSuccessToast("Draft saved automatically.");
+        }
+      }, 2000);
+    }
+    return () => {
+      if (autoSaveTimer.current) {
+        clearTimeout(autoSaveTimer.current);
+      }
+    };
+  }, [formData, isDirty]);
+  const timezones = [
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "Europe/London",
+    "Europe/Paris",
+    "Asia/Tokyo",
+    "Asia/Shanghai",
+    "Australia/Sydney",
+  ];
+  const notificationFrequencies = [
+    { value: "realtime", label: "Real-time updates" },
+    { value: "hourly", label: "Every hour" },
+    { value: "daily", label: "Once a day" },
+    { value: "weekly", label: "Weekly digest" },
+    { value: "never", label: "Never" },
+  ];
+  const timezoneOptions = timezones.map((tz) => ({
+    value: tz,
+    label: tz.replace("_", " ").replace(/\//g, " / "),
+  }));
+  const notificationFrequencyOptions = notificationFrequencies.map((freq) => ({
+    value: freq.value,
+    label: freq.label,
+  }));
+  const languageOptions = [
+    { value: "en", label: "English" },
+    { value: "es", label: "Spanish" },
+    { value: "fr", label: "French" },
+    { value: "de", label: "German" },
+  ];
+  const handleInputChange = (section: keyof FormData, field: string, value: string | boolean) => {
+    const updatedFormData = {
+      ...formData,
+      [section]: {
+        ...formData[section],
+        [field]: value,
+      },
+    };
+    setFormData(updatedFormData);
+    setIsDirty(true);
+    if (section === "security" && (field === "newPassword" || field === "confirmPassword")) {
+      const newErrors: ErrorState = {};
+      const newPassword = field === "newPassword" ? value as string : updatedFormData.security.newPassword;
+      const confirmPassword = field === "confirmPassword" ? value as string : updatedFormData.security.confirmPassword;
+      if (newPassword && newPassword.length < 8) {
+        newErrors["security.newPassword"] = "Password must be at least 8 characters";
+      } else if (newPassword) {
+        const strength = zxcvbn(newPassword);
+        if (strength.score < 2) {
+          newErrors["security.newPassword"] = "Password is too weak. Please follow the suggestions below.";
+        }
+      }
+      if (confirmPassword && newPassword !== confirmPassword) {
+        newErrors["security.confirmPassword"] = "Passwords do not match";
+      }
+      setErrors((prev) => {
+        const updatedErrors = { ...prev };
+        if (newErrors["security.newPassword"]) {
+          updatedErrors["security.newPassword"] = newErrors["security.newPassword"];
+    } else {
+          delete updatedErrors["security.newPassword"];
+        }
+        if (newErrors["security.confirmPassword"]) {
+          updatedErrors["security.confirmPassword"] = newErrors["security.confirmPassword"];
+        } else {
+          delete updatedErrors["security.confirmPassword"];
+        }
+        return updatedErrors;
+      });
+    } else if (section === "profile") {
+      // Real-time validation for profile fields
+      const newErrors: ErrorState = {};
+      
+      if (field === "firstName" && !(value as string).trim()) {
+        newErrors["profile.firstName"] = "First name is required";
+      }
+      
+      if (field === "lastName" && !(value as string).trim()) {
+        newErrors["profile.lastName"] = "Last name is required";
+      }
+      
+      if (field === "email") {
+        const emailValue = value as string;
+        if (!emailValue.trim()) {
+          newErrors["profile.email"] = "Email is required";
+        } else if (!/\S+@\S+\.\S+/.test(emailValue)) {
+          newErrors["profile.email"] = "Email is invalid";
+        }
+      }
+      
+      if (field === "bio") {
+        const bioValue = value as string;
+        if (bioValue.length > 500) {
+          newErrors["profile.bio"] = "Bio must be less than 500 characters";
+        }
+      }
+      
+      setErrors((prev) => {
+        const updatedErrors = { ...prev };
+        
+        // Clear or set the specific field error
+        if (newErrors[`${section}.${field}`]) {
+          updatedErrors[`${section}.${field}`] = newErrors[`${section}.${field}`];
+        } else {
+          delete updatedErrors[`${section}.${field}`];
+        }
+        
+        return updatedErrors;
+      });
+    } else {
+      setErrors((prev) => {
+        const updatedErrors = { ...prev };
+        delete updatedErrors[`${section}.${field}`];
+        return updatedErrors;
+      });
+    }
+  };
+  const sections = [
+    { id: "profile", label: "Profile", icon: FiUser },
+    { id: "security", label: "Security", icon: FiShield },
+    { id: "preferences", label: "Preferences", icon: FiSettings },
+  ];
+  const validateAllSections = (data: FormData) => {
+    const allErrors: ErrorState = {};
+    const errorSections: string[] = [];
+    const profileErrors = validateForm(data);
+    if (Object.keys(profileErrors).length > 0) {
+      Object.assign(allErrors, profileErrors);
+      if (Object.keys(profileErrors).some(k => k.startsWith('profile.'))) {
+        errorSections.push("Profile");
+      }
+      if (Object.keys(profileErrors).some(k => k.startsWith('security.'))) {
+        errorSections.push("Security");
+      }
+    }
+
+    const preferenceErrors = validatePreferences(data.preferences);
+    if (Object.keys(preferenceErrors).length > 0) {
+      Object.assign(allErrors, preferenceErrors);
+      errorSections.push("Preferences");
+    }
+    return {
+      hasErrors: Object.keys(allErrors).length > 0,
+      errors: allErrors,
+      errorSections: [...new Set(errorSections)],
+    };
+  };
+  const handleSectionSave = (sectionName: keyof FormData) => {
+    const sectionData = formData[sectionName];
+    if (sectionName === "profile") {
+      const profileErrors = validateForm(formData);
+      const sectionErrors = Object.keys(profileErrors).filter(key => key.startsWith("profile."));
+      if (sectionErrors.length > 0) {
+        showErrorToast(`Please fix the errors in the ${sectionName} section.`);
         return;
       }
-      const oscillator = audioContext.current.createOscillator();
-      const gainNode = audioContext.current.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.current.destination);
-      oscillator.frequency.value = frequency;
-      gainNode.gain.value = 0.1;
-      oscillator.start();
-      oscillator.stop(audioContext.current.currentTime + duration);
-    } catch (error) {
-      console.warn('Audio playback failed:', error);
+    } else if (sectionName === "security") {
+      if (formData.security.passwordChangeEnabled) {
+        if (!formData.security.newPassword || formData.security.newPassword.length < 8) {
+          showErrorToast("Please enter a valid password (at least 8 characters).");
+          return;
+        }
+        if (formData.security.newPassword !== formData.security.confirmPassword) {
+          showErrorToast("Passwords do not match.");
+          return;
+        }
+        const strength = zxcvbn(formData.security.newPassword);
+        if (strength.score < 2) {
+          showErrorToast("Password is too weak. Please follow the suggestions.");
+          return;
+        }
+      }
+    } else if (sectionName === "preferences") {
+      const preferenceErrors = validatePreferences(formData.preferences);
+      if (Object.keys(preferenceErrors).length > 0) {
+        showErrorToast(`Please fix the errors in the ${sectionName} section.`);
+        return;
+      }
     }
-  }, [isMuted]);
-  useEffect(() => {
-    const powerPellets: Position[] = [];
-    MAZE.forEach((row, y) => {
-      row.forEach((cell, x) => {
-        if (cell === 3) {
-          powerPellets.push({ x, y });
+    setSectionSavedState(prev => ({
+      ...prev,
+      [sectionName]: { ...sectionData }
+    }));
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      Object.keys(newErrors).forEach(key => {
+        if (key.startsWith(`${sectionName}.`)) {
+          delete newErrors[key];
         }
       });
+      return newErrors;
     });
-    gameStateRef.current.powerPellets = powerPellets;
-  }, []);
-  useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
-      const status = gameStateRef.current.gameStatus;
-      if (status === "welcome" && e.key === "Enter") {
-        await startGame();
-      }
-      if (status !== "playing" && status !== "welcome" && e.key === "Enter") {
-        await restartGame();
-      }
-      if (e.key === " " || e.key === "Spacebar") {
-        e.preventDefault();
-        if (status === "playing" || status === "paused") {
-          setIsPaused(prev => !prev);
+    showSuccessToast(`${sectionName.charAt(0).toUpperCase() + sectionName.slice(1)} section saved locally!`);
+  };
+  const handleSave = () => {
+    const validationResult = validateAllSections(formData);
+    setErrors(validationResult.errors);
+    if (validationResult.hasErrors) {
+      const errorMessage = `Please fix the errors in the following sections: ${validationResult.errorSections.join(
+        ", "
+      )}`;
+      showErrorToast(errorMessage);
+      return;
+    }
+    setSavedState(formData);
+    setSectionSavedState(formData);
+    setIsDirty(false);
+    localStorage.removeItem("accountSettingsDraft");
+    showSuccessToast("All settings saved successfully!");
+  };
+  const handleSectionUndo = (sectionName: keyof FormData) => {
+    setFormData(prev => ({
+      ...prev,
+      [sectionName]: { ...savedState[sectionName] }
+    }));
+    setSectionSavedState(prev => ({
+      ...prev,
+      [sectionName]: { ...savedState[sectionName] }
+    }));
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      Object.keys(newErrors).forEach(key => {
+        if (key.startsWith(`${sectionName}.`)) {
+          delete newErrors[key];
         }
-      }
-      if (e.key === "m" || e.key === "M") {
-        setIsMuted(prev => !prev);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-  useEffect(() => {
-    const handleResize = () => {
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      const isMobile = viewportWidth < 768;
-      const headerHeight = 80;
-      let availableWidth, availableHeight, padding;
-      if (isMobile) {
-        padding = 16;
-        availableWidth = viewportWidth - padding;
-        availableHeight = viewportHeight - headerHeight - 100 - padding;
-      } else {
-        padding = 32;
-        availableWidth = (viewportWidth * 0.7) - padding;
-        availableHeight = viewportHeight - headerHeight - padding;
-      }
-      const gameWidth = MAZE_WIDTH * CELL_SIZE;
-      const gameHeight = MAZE_HEIGHT * CELL_SIZE;
-      const scaleX = availableWidth / gameWidth;
-      const scaleY = availableHeight / gameHeight;
-      let newScale = Math.min(scaleX, scaleY);
-      newScale = Math.max(newScale, 0.25);
-      if (isMobile) {
-        newScale = Math.min(newScale, 1.8);
-        newScale *= 0.98;
-      } else {
-        newScale = Math.min(newScale, 1.2);
-        newScale *= 0.9;
-      }
-      setUiState(prev => ({
-        ...prev,
-        scale: newScale,
-        isMobile: isMobile
-      }));
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("orientationchange", () => {
-      setTimeout(handleResize, 100);
+      });
+      return newErrors;
     });
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("orientationchange", handleResize);
+    const updatedFormData = {
+      ...formData,
+      [sectionName]: { ...savedState[sectionName] }
     };
-  }, []);
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (gameStateRef.current.gameStatus !== "playing") return;
-      let nextDirection = { ...gameStateRef.current.pacman.nextDirection };
-      switch (e.key) {
-        case "ArrowUp":
-        case "w":
-          nextDirection = { x: 0, y: -1 };
-          break;
-        case "ArrowDown":
-        case "s":
-          nextDirection = { x: 0, y: 1 };
-          break;
-        case "ArrowLeft":
-        case "a":
-          nextDirection = { x: -1, y: 0 };
-          break;
-        case "ArrowRight":
-        case "d":
-          nextDirection = { x: 1, y: 0 };
-          break;
-      }
-      gameStateRef.current.pacman.nextDirection = nextDirection;
-    };
-    window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
-  }, []);
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setUiState((prev) => ({
-      ...prev,
-      touchStart: {
-        x: touch.clientX - rect.left,
-        y: touch.clientY - rect.top,
-      },
-    }));
+    const hasChanges = JSON.stringify(updatedFormData) !== JSON.stringify(savedState);
+    if (!hasChanges) {
+      setIsDirty(false);
+      localStorage.removeItem("accountSettingsDraft");
+    }
+    showSuccessToast(`${sectionName.charAt(0).toUpperCase() + sectionName.slice(1)} changes undone.`);
   };
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!uiState.touchStart) return;
-    const touch = e.touches[0];
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const currentX = touch.clientX - rect.left;
-    const currentY = touch.clientY - rect.top;
-    const deltaX = currentX - uiState.touchStart.x;
-    const deltaY = currentY - uiState.touchStart.y;
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      if (deltaX > 20) {
-        gameStateRef.current.pacman.nextDirection = { x: 1, y: 0 };
-      } else if (deltaX < -20) {
-        gameStateRef.current.pacman.nextDirection = { x: -1, y: 0 };
-      }
-    } else {
-      if (deltaY > 20) {
-        gameStateRef.current.pacman.nextDirection = { x: 0, y: 1 };
-      } else if (deltaY < -20) {
-        gameStateRef.current.pacman.nextDirection = { x: 0, y: -1 };
-      }
-    }
+  const handleCancel = () => {
+    setFormData(savedState);
+    setSectionSavedState(savedState);
+    setIsDirty(false);
+    setErrors({});
+    localStorage.removeItem("accountSettingsDraft");
+    showSuccessToast("All changes cancelled. Reverted to last saved state.");
   };
-  const handleJoystickTouch = (e: React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (gameStateRef.current.gameStatus !== "playing") return;
-    const touch = e.touches[0];
-    const rect = e.currentTarget.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const deltaX = touch.clientX - centerX;
-    const deltaY = touch.clientY - centerY;
-    const maxDistance = 20;
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    const clampedDistance = Math.min(distance, maxDistance);
-    let joystickX = 0;
-    let joystickY = 0;
-    if (distance > 0) {
-      joystickX = (deltaX / distance) * clampedDistance;
-      joystickY = (deltaY / distance) * clampedDistance;
-    }
-    setUiState(prev => ({
-      ...prev,
-      joystickPosition: { x: joystickX, y: joystickY },
-      isJoystickActive: true
-    }));
-    const threshold = 15;
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      if (deltaX > threshold) {
-        gameStateRef.current.pacman.nextDirection = { x: 1, y: 0 };
-      } else if (deltaX < -threshold) {
-        gameStateRef.current.pacman.nextDirection = { x: -1, y: 0 };
-      }
-    } else {
-      if (deltaY > threshold) {
-        gameStateRef.current.pacman.nextDirection = { x: 0, y: 1 };
-      } else if (deltaY < -threshold) {
-        gameStateRef.current.pacman.nextDirection = { x: 0, y: -1 };
-      }
-    }
+  const startDemo = () => {
+    setIsLoadingDemo(true);
+    setTimeout(() => {
+      setShowLanding(false);
+      setIsLoadingDemo(false);
+    }, 800);
   };
-  const handleJoystickTouchEnd = () => {
-    setUiState(prev => ({
-      ...prev,
-      joystickPosition: { x: 0, y: 0 },
-      isJoystickActive: false
-    }));
-  };
-  function findNextDirectionBFS(
-    start: Position,
-    target: Position,
-    isValidPosition: (x: number, y: number) => boolean
-  ): Position {
-    const queue: { pos: Position; path: Position[] }[] = [
-      { pos: start, path: [] },
-    ];
-    const visited = new Set<string>();
-    const dirs = [
-      { x: 0, y: -1 },
-      { x: 1, y: 0 },
-      { x: 0, y: 1 },
-      { x: -1, y: 0 },
-    ];
-    while (queue.length > 0) {
-      const { pos, path } = queue.shift()!;
-      const key = `${Math.round(pos.x)},${Math.round(pos.y)}`;
-      if (visited.has(key)) continue;
-      visited.add(key);
-      if (
-        Math.round(pos.x) === Math.round(target.x) &&
-        Math.round(pos.y) === Math.round(target.y)
-      ) {
-        return path[0] || { x: 0, y: 0 };
-      }
-      for (const dir of dirs) {
-        const nx = Math.round(pos.x) + dir.x;
-        const ny = Math.round(pos.y) + dir.y;
-        if (isValidPosition(nx, ny)) {
-          queue.push({ pos: { x: nx, y: ny }, path: [...path, dir] });
-        }
-      }
-    }
-    return { x: 0, y: 0 };
-  }
-  const isValidPosition = useCallback((x: number, y: number): boolean => {
-    const roundedX = Math.round(x);
-    const roundedY = Math.round(y);
-    if (
-      roundedX < 0 ||
-      roundedX >= MAZE_WIDTH ||
-      roundedY < 0 ||
-      roundedY >= MAZE_HEIGHT
-    ) {
-      return false;
-    }
-    return MAZE[roundedY][roundedX] !== 1;
-  }, []);
-  const updateGhostAI = useCallback((
-    ghost: Ghost,
-    pacman: GameState['pacman'],
-    aggressiveGhost: Ghost,
-    powerPelletActive: boolean,
-    currentMode: 'chase' | 'scatter'
-  ): Ghost => {
-    const newGhost = { ...ghost };
-    if (powerPelletActive && ghost.mode !== "eaten") {
-      newGhost.mode = "frightened";
-      newGhost.speed = FRIGHTENED_SPEED;
-    } else if (!powerPelletActive && ghost.mode === "frightened") {
-      newGhost.mode = currentMode;
-      newGhost.speed = GHOST_SPEED;
-    }
-    if (newGhost.mode === "frightened") {
-      const now = performance.now();
-      if (
-        !newGhost.frightenedTargetTimer ||
-        now - newGhost.frightenedTargetTimer > 500
-      ) {
-        newGhost.target = {
-          x: Math.floor(Math.random() * MAZE_WIDTH),
-          y: Math.floor(Math.random() * MAZE_HEIGHT),
-        };
-        newGhost.frightenedTargetTimer = now;
-      }
-    } else if (newGhost.mode === "eaten") {
-      newGhost.target = { x: 14, y: 14 };
-      newGhost.speed = GHOST_SPEED * 2;
-    } else {
-      switch (ghost.aiPattern) {
-        case "aggressive":
-          newGhost.target = { ...pacman.position };
-          break;
-        case "ambush":
-          newGhost.target = {
-            x: pacman.position.x + pacman.direction.x * 4,
-            y: pacman.position.y + pacman.direction.y * 4,
-          };
-          break;
-        case "flanking":
-          const pivotX = pacman.position.x + pacman.direction.x * 2;
-          const pivotY = pacman.position.y + pacman.direction.y * 2;
-          newGhost.target = {
-            x: pivotX + (pivotX - aggressiveGhost.position.x),
-            y: pivotY + (pivotY - aggressiveGhost.position.y),
-          };
-          break;
-        case "patrol":
-          const distance = Math.sqrt(
-            Math.pow(pacman.position.x - ghost.position.x, 2) +
-            Math.pow(pacman.position.y - ghost.position.y, 2)
-          );
-          if (distance > 8) {
-            newGhost.target = { ...pacman.position };
-          } else {
-            newGhost.target = { x: 0, y: 30 };
-          }
-          break;
-      }
-    }
-    const atCenter =
-      Math.abs(newGhost.position.x - Math.round(newGhost.position.x)) < 0.05 &&
-      Math.abs(newGhost.position.y - Math.round(newGhost.position.y)) < 0.05;
-    if (atCenter) {
-      newGhost.position.x = Math.round(newGhost.position.x);
-      newGhost.position.y = Math.round(newGhost.position.y);
-      newGhost.direction = findNextDirectionBFS(
-        newGhost.position,
-        newGhost.target,
-        isValidPosition
-      );
-    }
-    const nextX = newGhost.position.x + newGhost.direction.x * newGhost.speed;
-    const nextY = newGhost.position.y + newGhost.direction.y * newGhost.speed;
-    if (isValidPosition(nextX, nextY)) {
-      newGhost.position = { x: nextX, y: nextY };
-    } else {
-      newGhost.position.x = Math.round(newGhost.position.x);
-      newGhost.position.y = Math.round(newGhost.position.y);
-    }
-    if (
-      newGhost.mode === "eaten" &&
-      Math.abs(newGhost.position.x - 14) < 1 &&
-      Math.abs(newGhost.position.y - 14) < 1
-    ) {
-      newGhost.mode = "chase";
-      newGhost.speed = GHOST_SPEED;
-    }
-    return newGhost;
-  }, [isValidPosition]);
-  const gameLoop = useCallback(
-    (timestamp: number) => {
-      if (!canvasRef.current) return;
-      const gameState = gameStateRef.current;
-      const deltaTime = timestamp - lastTimeRef.current;
-      lastTimeRef.current = timestamp;
-      const ctx = canvasRef.current.getContext("2d");
-      if (!ctx) return;
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      ctx.save();
-      ctx.scale(uiState.scale, uiState.scale);
-      ctx.strokeStyle = "#00ffff";
-      ctx.lineWidth = 2;
-      ctx.shadowColor = "#00ffff";
-      ctx.shadowBlur = 4;
-      MAZE.forEach((row, y) => {
-        row.forEach((cell, x) => {
-          if (cell === 1) {
-            ctx.strokeRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-          }
-        });
-      });
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = "#ffffff";
-      gameState.dots.forEach((row, y) => {
-        row.forEach((hasDot, x) => {
-          if (hasDot) {
-            ctx.beginPath();
-            ctx.arc(
-              x * CELL_SIZE + CELL_SIZE / 2,
-              y * CELL_SIZE + CELL_SIZE / 2,
-              2,
-              0,
-              Math.PI * 2
-            );
-            ctx.fill();
-          }
-        });
-      });
-      const pulseSize = Math.sin(timestamp / 200) * 2 + 6;
-      ctx.fillStyle = "#ffffff";
-      ctx.shadowColor = "#ffffff";
-      ctx.shadowBlur = 8;
-      gameState.powerPellets.forEach((pellet) => {
-        ctx.beginPath();
-        ctx.arc(
-          pellet.x * CELL_SIZE + CELL_SIZE / 2,
-          pellet.y * CELL_SIZE + CELL_SIZE / 2,
-          pulseSize,
-          0,
-          Math.PI * 2
-        );
-        ctx.fill();
-      });
-      ctx.shadowBlur = 0;
-      if (gameState.gameStatus === "playing" && !isPaused) {
-        const nextState = {
-          ...gameState,
-          ghosts: gameState.ghosts.map(g => ({ ...g })),
-          dots: gameState.dots.map(r => [...r]),
-          powerPellets: [...gameState.powerPellets]
-        };
-        nextState.scatterChaseTimer -= deltaTime;
-        if (nextState.scatterChaseTimer <= 0) {
-          nextState.scatterChasePhase = Math.min(
-            nextState.scatterChasePhase + 1,
-            SCATTER_CHASE_CYCLE.length - 1
-          );
-          nextState.scatterChaseTimer =
-            SCATTER_CHASE_CYCLE[nextState.scatterChasePhase].duration;
-        }
-        const currentMode = SCATTER_CHASE_CYCLE[nextState.scatterChasePhase].mode;
-        const pacman = { ...nextState.pacman };
-        const nextXForDirection = pacman.position.x + pacman.nextDirection.x * PACMAN_SPEED;
-        const nextYForDirection = pacman.position.y + pacman.nextDirection.y * PACMAN_SPEED;
-        if (isValidPosition(nextXForDirection, nextYForDirection)) {
-          if (pacman.nextDirection.x !== 0 && pacman.direction.y !== 0) {
-            pacman.position.y = Math.round(pacman.position.y);
-          }
-          if (pacman.nextDirection.y !== 0 && pacman.direction.x !== 0) {
-            pacman.position.x = Math.round(pacman.position.x);
-          }
-          pacman.direction = { ...pacman.nextDirection };
-        }
-        const moveX = pacman.position.x + pacman.direction.x * PACMAN_SPEED;
-        const moveY = pacman.position.y + pacman.direction.y * PACMAN_SPEED;
-        if (isValidPosition(moveX, moveY)) {
-          pacman.position = { x: moveX, y: moveY };
-          pacman.mouthOpen = Math.floor(timestamp / 100) % 2 === 0;
-        } else {
-          pacman.mouthOpen = true;
-        }
-        nextState.pacman = pacman;
-        const gridX = Math.round(pacman.position.x);
-        const gridY = Math.round(pacman.position.y);
-        if (
-          Math.abs(pacman.position.x - gridX) < 0.3 &&
-          Math.abs(pacman.position.y - gridY) < 0.3
-        ) {
-          if (nextState.dots[gridY]?.[gridX]) {
-            nextState.dots[gridY][gridX] = false;
-            nextState.score += 10 * nextState.scoreMultiplier;
-            playSound(440, 0.1);
-          }
-          const powerPelletIndex = nextState.powerPellets.findIndex(
-            (p) => p.x === gridX && p.y === gridY
-          );
-          if (powerPelletIndex !== -1) {
-            nextState.powerPellets.splice(powerPelletIndex, 1);
-            nextState.powerPelletActive = true;
-            nextState.powerPelletTimer = POWER_PELLET_DURATION;
-            nextState.scoreMultiplier = 2;
-            nextState.score += 50;
-            playSound(220, 0.3);
-          }
-        }
-        const aggressiveGhost = nextState.ghosts.find(g => g.aiPattern === 'aggressive') || nextState.ghosts[0];
-        nextState.ghosts = nextState.ghosts.map((ghost) =>
-          updateGhostAI(ghost, pacman, aggressiveGhost, nextState.powerPelletActive, currentMode as 'chase' | 'scatter')
-        );
-        nextState.ghosts.forEach((ghost, index) => {
-          const distance = Math.sqrt(
-            Math.pow(pacman.position.x - ghost.position.x, 2) +
-            Math.pow(pacman.position.y - ghost.position.y, 2)
-          );
-          if (distance < 0.8) {
-            if (ghost.mode === "frightened") {
-              nextState.ghosts[index].mode = "eaten";
-              nextState.score += ENEMY_SCORE * nextState.scoreMultiplier * (index + 1);
-              playSound(880, 0.2);
-            } else if (ghost.mode !== "eaten") {
-              nextState.lives -= 1;
-              if (nextState.lives <= 0) {
-                nextState.gameStatus = "gameOver";
-              } else {
-                nextState.pacman = { ...INITIAL_GAME_STATE.pacman };
-                nextState.ghosts = INITIAL_GAME_STATE.ghosts.map(g => ({ ...g }));
+  if (showLanding) {
+    return (
+      <div className="animate-fadeIn">
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+            @keyframes slideIn {
+              from {
+                transform: translateX(100%);
+                opacity: 0;
               }
-              playSound(110, 0.5);
+              to {
+                transform: translateX(0);
+                opacity: 1;
+              }
             }
-          }
-        });
-        if (nextState.powerPelletActive) {
-          nextState.powerPelletTimer -= deltaTime;
-          if (nextState.powerPelletTimer <= 0) {
-            nextState.powerPelletActive = false;
-            nextState.powerPelletTimer = 0;
-            nextState.scoreMultiplier = 1;
-          }
-        }
-        const dotsRemaining = nextState.dots.flat().filter(Boolean).length;
-        if (dotsRemaining === 0 && nextState.powerPellets.length === 0) {
-          nextState.gameStatus = "victory";
-          nextState.score += 1000 * nextState.level;
-        }
-        gameStateRef.current = nextState;
-        if (
-          gameState.score !== nextState.score ||
-          gameState.lives !== nextState.lives ||
-          gameState.gameStatus !== nextState.gameStatus ||
-          gameState.powerPelletActive !== nextState.powerPelletActive ||
-          gameState.scoreMultiplier !== nextState.scoreMultiplier ||
-          Math.ceil(gameState.powerPelletTimer / 1000) !== Math.ceil(nextState.powerPelletTimer / 1000)
-        ) {
-          setUiState(prev => ({
-            ...prev,
-            score: nextState.score,
-            lives: nextState.lives,
-            level: nextState.level,
-            gameStatus: nextState.gameStatus,
-            powerPelletActive: nextState.powerPelletActive,
-            powerPelletTimer: nextState.powerPelletTimer,
-            scoreMultiplier: nextState.scoreMultiplier,
-          }));
-        }
-      }
-      ctx.fillStyle = "#ffff00";
-      ctx.shadowColor = "#ffff00";
-      ctx.shadowBlur = 6;
-      ctx.save();
-      ctx.translate(
-        gameState.pacman.position.x * CELL_SIZE + CELL_SIZE / 2,
-        gameState.pacman.position.y * CELL_SIZE + CELL_SIZE / 2
-      );
-      let rotation = 0;
-      if (gameState.pacman.direction.x === 1) rotation = 0;
-      else if (gameState.pacman.direction.x === -1) rotation = Math.PI;
-      else if (gameState.pacman.direction.y === 1) rotation = Math.PI / 2;
-      else if (gameState.pacman.direction.y === -1) rotation = -Math.PI / 2;
-      ctx.rotate(rotation);
-      ctx.beginPath();
-      if (gameState.pacman.mouthOpen) {
-        ctx.arc(0, 0, CELL_SIZE / 2 - 2, 0.2 * Math.PI, 1.8 * Math.PI);
-      } else {
-        ctx.arc(0, 0, CELL_SIZE / 2 - 2, 0, 2 * Math.PI);
-      }
-      ctx.lineTo(0, 0);
-      ctx.fill();
-      ctx.restore();
-      ctx.shadowBlur = 0;
-      gameState.ghosts.forEach((ghost) => {
-        if (ghost.mode === "frightened") {
-          ctx.fillStyle =
-            gameState.powerPelletTimer < 2000 && Math.floor(timestamp / 200) % 2
-              ? "#ffffff"
-              : "#0000ff";
-          ctx.shadowColor = "#0000ff";
-          ctx.shadowBlur = 4;
-        } else if (ghost.mode === "eaten") {
-          ctx.fillStyle = "#444444";
-          ctx.shadowBlur = 0;
-        } else {
-          ctx.fillStyle = ghost.color;
-          ctx.shadowColor = ghost.color;
-          ctx.shadowBlur = 4;
-        }
-        const ghostX = ghost.position.x * CELL_SIZE + CELL_SIZE / 2;
-        const ghostY = ghost.position.y * CELL_SIZE + CELL_SIZE / 2;
-        ctx.beginPath();
-        ctx.arc(ghostX, ghostY - 2, CELL_SIZE / 2 - 2, Math.PI, 0);
-        ctx.lineTo(ghostX + CELL_SIZE / 2 - 2, ghostY + CELL_SIZE / 2 - 4);
-        for (let i = 0; i < 4; i++) {
-          const waveX = ghostX + CELL_SIZE / 2 - 2 - (i * (CELL_SIZE - 4)) / 3;
-          const waveY =
-            ghostY + CELL_SIZE / 2 - 4 + Math.sin(timestamp / 100 + i) * 2;
-          ctx.lineTo(waveX, waveY);
-        }
-        ctx.closePath();
-        ctx.fill();
-        if (ghost.mode !== "eaten") {
-          ctx.shadowBlur = 0;
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          ctx.arc(ghostX - 4, ghostY - 2, 3, 0, Math.PI * 2);
-          ctx.arc(ghostX + 4, ghostY - 2, 3, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = ghost.mode === "frightened" ? "#ff0000" : "#000000";
-          ctx.beginPath();
-          ctx.arc(
-            ghostX - 4 + ghost.direction.x * 2,
-            ghostY - 2 + ghost.direction.y * 2,
-            1.5,
-            0,
-            Math.PI * 2
-          );
-          ctx.arc(
-            ghostX + 4 + ghost.direction.x * 2,
-            ghostY - 2 + ghost.direction.y * 2,
-            1.5,
-            0,
-            Math.PI * 2
-          );
-          ctx.fill();
-        }
-      });
-      ctx.shadowBlur = 0;
-      ctx.restore();
-      if (
-        gameState.gameStatus === "gameOver" ||
-        gameState.gameStatus === "victory"
-      ) {
-        const centerX = canvasRef.current.width / 2;
-        const centerY = canvasRef.current.height / 2;
-        const scale = uiState.scale;
-        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(canvasRef.current.width, canvasRef.current.height) / 2);
-        gradient.addColorStop(0, "rgba(0, 0, 0, 0.7)");
-        gradient.addColorStop(1, "rgba(0, 0, 0, 0.95)");
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        const panelWidth = Math.min(400 * scale, canvasRef.current.width * 0.8);
-        const panelHeight = Math.min(300 * scale, canvasRef.current.height * 0.6);
-        const panelX = centerX - panelWidth / 2;
-        const panelY = centerY - panelHeight / 2;
-        ctx.fillStyle = "rgba(20, 20, 30, 0.95)";
-        ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
-        const isVictory = gameState.gameStatus === "victory";
-        const borderColor = isVictory ? "#00ffff" : "#c084fc";
-        ctx.strokeStyle = borderColor;
-        ctx.lineWidth = 3 * scale;
-        ctx.shadowColor = borderColor;
-        ctx.shadowBlur = 15 * scale;
-        ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
-        ctx.strokeStyle = isVictory ? "#22d3ee" : "#a855f7";
-        ctx.lineWidth = 1 * scale;
-        ctx.shadowBlur = 5 * scale;
-        ctx.strokeRect(panelX + 10 * scale, panelY + 10 * scale, panelWidth - 20 * scale, panelHeight - 20 * scale);
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = borderColor;
-        ctx.font = `bold ${Math.max(36 * scale, 28)}px 'Orbitron', monospace`;
-        ctx.textAlign = "center";
-        ctx.shadowColor = borderColor;
-        ctx.shadowBlur = 20 * scale;
-        const title = isVictory ? "LEVEL COMPLETE" : "GAME OVER";
-        ctx.fillText(title, centerX, centerY - 60 * scale);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = `${Math.max(18 * scale, 14)}px 'Rajdhani', sans-serif`;
-        ctx.shadowColor = "#ffffff";
-        ctx.shadowBlur = 10 * scale;
-        const subtitle = isVictory ? "CONGRATULATIONS!" : "BETTER LUCK NEXT TIME";
-        ctx.fillText(subtitle, centerX, centerY - 30 * scale);
-        ctx.fillStyle = "#fbbf24";
-        ctx.font = `bold ${Math.max(24 * scale, 18)}px 'Orbitron', monospace`;
-        ctx.shadowColor = "#fbbf24";
-        ctx.shadowBlur = 15 * scale;
-        ctx.fillText("FINAL SCORE", centerX, centerY + 10 * scale);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = `bold ${Math.max(32 * scale, 24)}px 'Orbitron', monospace`;
-        ctx.shadowColor = "#ffffff";
-        ctx.shadowBlur = 15 * scale;
-        ctx.fillText(gameState.score.toLocaleString(), centerX, centerY + 45 * scale);
-        const restartMessage = uiState.isMobile ? "TAP TO RESTART" : "PRESS ENTER TO RESTART";
-        ctx.fillStyle = isVictory ? "#00ffff" : "#c084fc";
-        ctx.font = `${Math.max(16 * scale, 12)}px 'Rajdhani', sans-serif`;
-        ctx.shadowColor = isVictory ? "#00ffff" : "#c084fc";
-        ctx.shadowBlur = 10 * scale;
-        ctx.fillText(restartMessage, centerX, centerY + 85 * scale);
-        const time = Date.now() / 1000;
-        const pulseAlpha = 0.3 + 0.7 * Math.sin(time * 3);
-        ctx.strokeStyle = borderColor + Math.floor(pulseAlpha * 255).toString(16).padStart(2, '0');
-        ctx.lineWidth = 2 * scale;
-        ctx.shadowColor = borderColor;
-        ctx.shadowBlur = 25 * scale;
-        ctx.strokeRect(panelX - 5 * scale, panelY - 5 * scale, panelWidth + 10 * scale, panelHeight + 10 * scale);
-        ctx.shadowBlur = 0;
-      }
-      if (isPaused && gameState.gameStatus === "playing") {
-        const centerX = canvasRef.current.width / 2;
-        const centerY = canvasRef.current.height / 2;
-        const scale = uiState.scale;
-        ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
-        ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        const panelWidth = Math.min(300 * scale, canvasRef.current.width * 0.7);
-        const panelHeight = Math.min(150 * scale, canvasRef.current.height * 0.4);
-        const panelX = centerX - panelWidth / 2;
-        const panelY = centerY - panelHeight / 2;
-        ctx.fillStyle = "rgba(15, 15, 25, 0.95)";
-        ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
-        ctx.strokeStyle = "#00ffff";
-        ctx.lineWidth = 2 * scale;
-        ctx.shadowColor = "#00ffff";
-        ctx.shadowBlur = 12 * scale;
-        ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
-        ctx.strokeStyle = "#22d3ee";
-        ctx.lineWidth = 1 * scale;
-        ctx.shadowBlur = 6 * scale;
-        ctx.strokeRect(panelX + 8 * scale, panelY + 8 * scale, panelWidth - 16 * scale, panelHeight - 16 * scale);
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "#00ffff";
-        ctx.font = `bold ${Math.max(32 * scale, 24)}px 'Orbitron', monospace`;
-        ctx.textAlign = "center";
-        ctx.shadowColor = "#00ffff";
-        ctx.shadowBlur = 15 * scale;
-        ctx.fillText("PAUSED", centerX, centerY - 10 * scale);
-        const resumeMessage = uiState.isMobile ? "TAP RESUME BUTTON" : "PRESS SPACEBAR";
-        ctx.fillStyle = "#ffffff";
-        ctx.font = `${Math.max(14 * scale, 11)}px 'Rajdhani', sans-serif`;
-        ctx.shadowColor = "#ffffff";
-        ctx.shadowBlur = 8 * scale;
-        ctx.fillText(resumeMessage, centerX, centerY + 25 * scale);
-        ctx.shadowBlur = 0;
-      }
-      animationRef.current = requestAnimationFrame(gameLoop);
-    },
-    [uiState, playSound, isPaused, updateGhostAI, isValidPosition]
-  );
-  useEffect(() => {
-    animationRef.current = requestAnimationFrame(gameLoop);
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [gameLoop]);
-  const initializeAudio = useCallback(async () => {
-    try {
-      if (!audioContext.current) {
-        audioContext.current = new (window.AudioContext ||
-          (window as any).webkitAudioContext)();
-      }
-      if (audioContext.current.state === 'suspended') {
-        await audioContext.current.resume();
-      }
-    } catch (error) {
-      console.warn('Audio initialization failed:', error);
-    }
-  }, []);
-  const startGame = async () => {
-    await initializeAudio();
-    const powerPellets: Position[] = [];
-    MAZE.forEach((row, y) => {
-      row.forEach((cell, x) => {
-        if (cell === 3) {
-          powerPellets.push({ x, y });
-        }
-      });
-    });
-    gameStateRef.current = {
-      ...INITIAL_GAME_STATE,
-      dots: MAZE.map((row) => row.map((cell) => cell === 0)),
-      powerPellets,
-      gameStatus: "playing",
-    };
-    setUiState(prev => ({
-      ...prev,
-      score: INITIAL_GAME_STATE.score,
-      lives: INITIAL_GAME_STATE.lives,
-      level: INITIAL_GAME_STATE.level,
-      gameStatus: "playing",
-      powerPelletActive: INITIAL_GAME_STATE.powerPelletActive,
-      powerPelletTimer: INITIAL_GAME_STATE.powerPelletTimer,
-      scoreMultiplier: INITIAL_GAME_STATE.scoreMultiplier,
-    }));
-    setIsPaused(false);
-  };
-  const restartGame = async () => {
-    await initializeAudio();
-    const powerPellets: Position[] = [];
-    MAZE.forEach((row, y) => {
-      row.forEach((cell, x) => {
-        if (cell === 3) {
-          powerPellets.push({ x, y });
-        }
-      });
-    });
-    gameStateRef.current = {
-      ...INITIAL_GAME_STATE,
-      dots: MAZE.map((row) => row.map((cell) => cell === 0)),
-      powerPellets,
-      gameStatus: "welcome",
-    };
-    setUiState(prev => ({
-      ...prev,
-      score: INITIAL_GAME_STATE.score,
-      lives: INITIAL_GAME_STATE.lives,
-      level: INITIAL_GAME_STATE.level,
-      gameStatus: "welcome",
-      powerPelletActive: INITIAL_GAME_STATE.powerPelletActive,
-      powerPelletTimer: INITIAL_GAME_STATE.powerPelletTimer,
-      scoreMultiplier: INITIAL_GAME_STATE.scoreMultiplier,
-    }));
-    setIsPaused(false);
-  };
+            .animate-slideIn {
+              animation: slideIn 0.3s ease-out forwards;
+            }
+            @keyframes fadeIn {
+              from {
+                opacity: 0;
+              }
+              to {
+                opacity: 1;
+              }
+            }
+            .animate-fadeIn {
+              animation: fadeIn 0.5s ease-out forwards;
+            }
+          `,
+          }}
+        />
+        <LandingPage onStartDemo={startDemo} isLoading={isLoadingDemo} />
+      </div>
+    );
+  }
   return (
-    <>
-      <style jsx global>{`
-       @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
-       * {
-         scrollbar-width: none;
-         -ms-overflow-style: none;
-       }
-       *::-webkit-scrollbar {
-         display: none;
-       }
-     `}</style>
-      <div className="w-full h-screen flex flex-col overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        {uiState.gameStatus === "welcome" ? (
-          <div className="flex-1 flex items-center justify-center p-4 overflow-hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            <div className="w-full max-w-4xl mx-auto text-center">
-              <div className="mb-8 sm:mb-12">
-                <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-bold bg-gradient-to-r from-fuchsia-500 via-cyan-400 to-purple-500 bg-clip-text text-transparent mb-2 sm:mb-4 animate-pulse" style={{ fontFamily: 'Orbitron, monospace' }}>
-                  MAZE RUNNER
-                </h1>
-                <div className="text-lg sm:text-2xl md:text-3xl font-bold text-cyan-400 mb-1 sm:mb-2 tracking-wider" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-                  NEON EDITION
-                </div>
-                <div className="text-sm sm:text-lg text-gray-400" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-                  A Modern Retro Gaming Experience
-                </div>
-              </div>
-              <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 w-full max-w-3xl mx-auto shadow-2xl border border-cyan-500/30">
-                <h2 className="text-xl sm:text-2xl font-bold text-cyan-400 mb-4 sm:mb-6 flex items-center justify-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
-                  <FaGamepad className="text-base sm:text-xl" /> HOW TO PLAY
-                </h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="space-y-3 sm:space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 sm:w-8 sm:h-8 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold flex-shrink-0">
-                        <FaDotCircle className="text-xs sm:text-sm" />
-                      </div>
-                      <span className="text-white text-sm sm:text-base" style={{ fontFamily: 'Rajdhani, sans-serif' }}>Collect all dots</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white rounded-full flex items-center justify-center animate-pulse flex-shrink-0">
-                        <FaCircle className="text-white text-xs sm:text-sm" />
-                      </div>
-                      <span className="text-white text-sm sm:text-base" style={{ fontFamily: 'Rajdhani, sans-serif' }}>Power pellets = 2x score</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 sm:w-8 sm:h-8 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                        <FaGhost className="text-white text-xs sm:text-sm" />
-                      </div>
-                      <span className="text-white text-sm sm:text-base" style={{ fontFamily: 'Rajdhani, sans-serif' }}>Avoid enemies</span>
-                    </div>
-                  </div>
-                  <div className="space-y-3 sm:space-y-4 mt-4 lg:mt-0">
-                    <div className="text-cyan-400 font-bold mb-2 text-sm sm:text-base" style={{ fontFamily: 'Orbitron, monospace' }}>CONTROLS:</div>
-                    {uiState.isMobile ? (
-                      <div className="space-y-2 text-xs sm:text-sm">
-                        <div className="text-white" style={{ fontFamily: 'Rajdhani, sans-serif' }}>• Touch & swipe to move</div>
-                        <div className="text-white" style={{ fontFamily: 'Rajdhani, sans-serif' }}>• Tap buttons to control</div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 text-xs sm:text-sm">
-                        <div className="text-white" style={{ fontFamily: 'Rajdhani, sans-serif' }}>• WASD / Arrow keys: Move</div>
-                        <div className="text-white" style={{ fontFamily: 'Rajdhani, sans-serif' }}>• SPACEBAR: Pause</div>
-                        <div className="text-white" style={{ fontFamily: 'Rajdhani, sans-serif' }}>• M: Mute/Unmute</div>
-                      </div>
+    <div className="space-grotesk min-h-screen bg-gray-100 text-gray-900 animate-fadeIn">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        .space-grotesk {
+          font-family: 'Space Grotesk', sans-serif;
+        }
+        ::-webkit-scrollbar { display: none; }
+        * { scrollbar-width: none; -ms-overflow-style: none; }
+      `}</style>
+      {successToast && <SuccessToast message={successToast} onClose={() => setSuccessToast(null)} />}
+      {errorToast && <ErrorToast message={errorToast} onClose={() => setErrorToast(null)} />}
+      <div className="flex flex-col lg:flex-row min-h-screen">
+        <div className="lg:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-40">
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <FiMenu className="w-6 h-6" />
+          </button>
+          <h1 className="text-xl font-bold text-gray-900">Account Settings</h1>
+          <div className="w-10"></div>
+        </div>
+        <div
+          className={`${
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } lg:translate-x-0 fixed lg:sticky top-0 left-0 z-50 w-80 h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 shadow-2xl border-r border-purple-800/20 transition-transform duration-300 ease-in-out`}
+        >
+          <div className="p-6 border-b border-white/10 flex items-center justify-between">
+            <h1 className="text-xl font-bold text-white whitespace-nowrap">Account Settings</h1>
+              <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="lg:hidden p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
+              >
+              <FiX className="w-5 h-5" />
+              </button>
+          </div>
+          <nav className="p-4">
+            {sections.map((section) => {
+              const Icon = section.icon;
+              const hasError = Object.keys(errors).some((key) => key.startsWith(`${section.id}.`));
+              const isSectionSaved = JSON.stringify(sectionSavedState[section.id as keyof FormData]) === JSON.stringify(formData[section.id as keyof FormData]);
+              const isGloballySaved = JSON.stringify(savedState[section.id as keyof FormData]) === JSON.stringify(formData[section.id as keyof FormData]);
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => {
+                    setActiveSection(section.id);
+                    setIsSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center px-4 py-3 mb-2 rounded-lg transition-all duration-200 relative cursor-pointer ${
+                    activeSection === section.id
+                      ? "bg-white/20 text-white font-medium shadow-lg border border-white/30 backdrop-blur-sm"
+                      : hasError
+                      ? "text-red-200 hover:bg-red-500/20 border border-red-400/30 bg-red-500/10 hover:border-red-400/50"
+                      : isGloballySaved
+                      ? "text-green-200 hover:bg-green-500/20 border border-green-400/30 bg-green-500/10 hover:border-green-400/50"
+                      : isSectionSaved
+                      ? "text-yellow-200 hover:bg-yellow-500/20 border border-yellow-400/30 bg-yellow-500/10 hover:border-yellow-400/50"
+                      : "text-gray-100 hover:bg-white/10 border border-transparent hover:text-white hover:border-white/20"
+                  }`}
+                >
+                  <Icon className="w-5 h-5 mr-3" />
+                  {section.label}
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {hasError && (
+                      <span className="w-2 h-2 rounded-full bg-red-400" />
+                  )}
+                    {!hasError && isGloballySaved && (
+                      <span className="w-2 h-2 rounded-full bg-green-400" />
+                    )}
+                    {!hasError && !isGloballySaved && isSectionSaved && (
+                      <span className="w-2 h-2 rounded-full bg-yellow-400" />
                     )}
                   </div>
-                </div>
-              </div>
-              <div className="flex flex-col items-center gap-3 sm:gap-4 w-full max-w-md mx-auto">
-                <button
-                  onClick={startGame}
-                  className="w-full sm:w-auto px-8 sm:px-12 py-3 sm:py-4 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-white font-bold text-lg sm:text-xl rounded-lg shadow-lg shadow-cyan-500/50 border-2 border-cyan-400 transition-all duration-300 transform hover:scale-105 animate-pulse flex items-center justify-center gap-2 sm:gap-3 hover:shadow-cyan-400/60 hover:border-cyan-300 cursor-pointer"
-                  style={{ fontFamily: 'Orbitron, monospace' }}
-                >
-                  <FaRocket className="text-sm sm:text-base" /> START GAME
                 </button>
-                <div className="text-gray-400 text-xs sm:text-sm text-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-                  {uiState.isMobile ? "Tap to start" : "Press ENTER or click to start"}
+              );
+            })}
+          </nav>
+          <div className="mt-auto border-t border-white/10">
+          {lastSaved && (
+              <div className="px-6 py-3 text-xs text-gray-100">
+              Draft saved {lastSaved.toLocaleTimeString()}
+            </div>
+          )}
+            <div className="p-4 space-y-3">
+              <button
+                onClick={handleSave}
+                disabled={!isDirty || !(
+                  JSON.stringify(sectionSavedState.profile) === JSON.stringify(formData.profile) &&
+                  JSON.stringify(sectionSavedState.security) === JSON.stringify(formData.security) &&
+                  JSON.stringify(sectionSavedState.preferences) === JSON.stringify(formData.preferences)
+                )}
+                className="group relative w-full flex items-center justify-center px-4 py-2.5 text-white bg-gradient-to-r from-purple-500/80 to-slate-500/80 backdrop-blur-sm border border-white/20 rounded-xl hover:from-purple-500 hover:to-slate-500 hover:border-white/30 hover:scale-105 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:from-purple-500/80 disabled:hover:to-slate-500/80 text-sm font-medium overflow-hidden cursor-pointer disabled:cursor-not-allowed"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 group-hover:translate-x-full transition-transform duration-700 -translate-x-full"></div>
+                <FiSave className="w-4 h-4 mr-2 relative z-10 group-hover:scale-110 transition-transform duration-300" />
+                <span className="relative z-10">Save</span>
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={!(
+                  (JSON.stringify(sectionSavedState.profile) === JSON.stringify(formData.profile) && JSON.stringify(savedState.profile) !== JSON.stringify(formData.profile)) ||
+                  (JSON.stringify(sectionSavedState.security) === JSON.stringify(formData.security) && JSON.stringify(savedState.security) !== JSON.stringify(formData.security)) ||
+                  (JSON.stringify(sectionSavedState.preferences) === JSON.stringify(formData.preferences) && JSON.stringify(savedState.preferences) !== JSON.stringify(formData.preferences))
+                )}
+                className="group w-full flex items-center justify-center px-4 py-2.5 text-gray-100 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl hover:bg-white/15 hover:border-red-300/50 hover:text-red-200 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/10 disabled:hover:border-white/20 disabled:hover:text-gray-100 text-sm font-medium cursor-pointer disabled:cursor-not-allowed"
+              >
+                <FiX className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+                <span>Cancel</span>
+              </button>
+              <button
+                onClick={() => setShowLanding(true)}
+                className="group w-full flex items-center justify-center px-4 py-2.5 text-gray-100 bg-transparent border border-white/20 rounded-xl hover:bg-white/10 hover:border-white/30 hover:text-white transition-all duration-300 text-sm font-medium cursor-pointer"
+              >
+                <FiArrowRight className="w-4 h-4 mr-2 rotate-180 group-hover:translate-x-[-2px] transition-transform duration-300" />
+                <span>Back to Home</span>
+              </button>
+        </div>
+          </div>
+        </div>
+        <div className="flex-1 p-2 sm:p-4 lg:p-8 mt-0 lg:mt-0 bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100 min-h-screen flex items-center justify-center">
+          <div className="max-w-4xl mx-auto w-full">
+            {activeSection === "profile" && (
+              <div className="bg-white rounded-2xl shadow-xl border border-slate-200/50 overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-600/15 to-slate-600/15 p-6 sm:p-8 border-b border-slate-200/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-slate-600 rounded-xl flex items-center justify-center text-white text-2xl">
+                      <FiUser />
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-800 to-purple-700 bg-clip-text text-transparent">
+                      Profile Information
+                    </h2>
+                  </div>
+                </div>
+                <div className="p-6 sm:p-8 lg:p-10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
+                    <div className="group">
+                      <label className="block text-sm font-semibold text-slate-700 mb-3 group-focus-within:text-purple-600 transition-colors">
+                        First Name <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={formData.profile.firstName}
+                          onChange={(e) => handleInputChange("profile", "firstName", e.target.value)}
+                          placeholder="Enter your first name"
+                          className={`w-full px-4 py-3 bg-white/70 border-2 rounded-xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 placeholder:text-slate-400 text-slate-800 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-0 ${
+                            errors["profile.firstName"]
+                              ? "border-red-400 bg-red-50/80 focus:border-red-500 focus:ring-red-500/20"
+                              : "border-slate-200 hover:border-slate-300"
+                          }`}
+                        />
+
+                      </div>
+                      {errors["profile.firstName"] && (
+                        <p className="text-red-600 text-sm mt-2 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                              fillRule="evenodd"
+                              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          {errors["profile.firstName"]}
+                        </p>
+                      )}
+                    </div>
+                    <div className="group">
+                      <label className="block text-sm font-semibold text-slate-700 mb-3 group-focus-within:text-purple-600 transition-colors">
+                        Last Name <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={formData.profile.lastName}
+                          onChange={(e) => handleInputChange("profile", "lastName", e.target.value)}
+                          placeholder="Enter your last name"
+                          className={`w-full px-4 py-3 bg-white/70 border-2 rounded-xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 placeholder:text-slate-400 text-slate-800 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-0 ${
+                            errors["profile.lastName"]
+                              ? "border-red-400 bg-red-50/80 focus:border-red-500 focus:ring-red-500/20"
+                              : "border-slate-200 hover:border-slate-300"
+                          }`}
+                        />
+
+                      </div>
+                      {errors["profile.lastName"] && (
+                        <p className="text-red-600 text-sm mt-2 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                              fillRule="evenodd"
+                              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          {errors["profile.lastName"]}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-8 group">
+                    <label className="block text-sm font-semibold text-slate-700 mb-3 group-focus-within:text-purple-600 transition-colors">
+                      Email Address <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                          />
+                        </svg>
+                      </div>
+                      <input
+                        type="email"
+                        value={formData.profile.email}
+                        onChange={(e) => handleInputChange("profile", "email", e.target.value)}
+                        placeholder="Enter your email address"
+                        className={`w-full pl-12 pr-4 py-3 bg-white/70 border-2 rounded-xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 placeholder:text-slate-400 text-slate-800 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-0 ${
+                          errors["profile.email"]
+                            ? "border-red-400 bg-red-50/80 focus:border-red-500 focus:ring-red-500/20"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                      />
+
+                    </div>
+                    {errors["profile.email"] && (
+                      <p className="text-red-600 text-sm mt-2 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path
+                            fillRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        {errors["profile.email"]}
+                      </p>
+                    )}
+                  </div>
+                  <div className="mt-8 group">
+                    <label className="block text-sm font-semibold text-slate-700 mb-3 group-focus-within:text-purple-600 transition-colors">
+                      Bio
+                    </label>
+                    <div className="relative">
+                      <textarea
+                        value={formData.profile.bio}
+                        onChange={(e) => handleInputChange("profile", "bio", e.target.value)}
+                        placeholder="Tell us about yourself..."
+                        rows={4}
+                        maxLength={500}
+                        className={`w-full px-4 py-3 bg-white/70 border-2 rounded-xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 placeholder:text-slate-400 text-slate-800 shadow-sm hover:shadow-md resize-none focus-visible:outline-none focus-visible:ring-0 ${
+                          errors["profile.bio"]
+                            ? "border-red-400 bg-red-50/80 focus:border-red-500 focus:ring-red-500/20"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                      />
+                      <div className={`absolute bottom-3 right-3 text-xs ${
+                        (formData.profile.bio?.length || 0) > 450 
+                          ? "text-amber-500 font-medium" 
+                          : errors["profile.bio"]
+                          ? "text-red-500 font-medium"
+                          : "text-slate-400"
+                      }`}>
+                        {formData.profile.bio?.length || 0}/500
+                      </div>
+
+                    </div>
+                    {errors["profile.bio"] && (
+                      <p className="text-red-600 text-sm mt-2 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path
+                            fillRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        {errors["profile.bio"]}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-3 mt-6">
+                    {(() => {
+                      const isProfileChanged = JSON.stringify(savedState.profile) !== JSON.stringify(formData.profile);
+                      const isProfileSaved = JSON.stringify(sectionSavedState.profile) === JSON.stringify(formData.profile);
+                      if (isProfileChanged) {
+                        return (
+                          <>
+                    <button
+                              onClick={() => handleSectionUndo("profile")}
+                              className="group flex items-center justify-center px-4 py-2.5 text-slate-600 bg-white border-2 border-slate-300 shadow-lg rounded-xl hover:bg-slate-50 hover:border-red-400 hover:text-red-600 transition-all duration-300 text-sm font-medium cursor-pointer"
+                    >
+                      <FiX className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+                              <span>Undo</span>
+                    </button>
+                            {isProfileSaved ? (
+                    <button
+                                disabled
+                                className="group relative flex items-center justify-center px-6 py-2.5 text-green-700 bg-green-100 border border-green-300 shadow-lg rounded-xl text-sm font-medium cursor-not-allowed"
+                              >
+                                <FiCheckCircle className="w-4 h-4 mr-2" />
+                                <span>Profile Saved</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleSectionSave("profile")}
+                                className="group relative flex items-center justify-center px-6 py-2.5 text-white bg-gradient-to-r from-purple-500 to-slate-500 border border-transparent shadow-lg rounded-xl hover:from-purple-600 hover:to-slate-600 hover:shadow-xl hover:scale-105 transition-all duration-300 text-sm font-medium overflow-hidden cursor-pointer"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 group-hover:translate-x-full transition-transform duration-700 -translate-x-full"></div>
+                      <FiSave className="w-4 h-4 mr-2 relative z-10 group-hover:scale-110 transition-transform duration-300" />
+                                <span className="relative z-10">Save Profile</span>
+                    </button>
+                            )}
+                          </>
+                        );
+                      } else {
+                        return (
+                          <button
+                            disabled
+                            className="group relative flex items-center justify-center px-6 py-2.5 text-slate-400 bg-slate-100 border border-slate-200 shadow-lg rounded-xl text-sm font-medium cursor-not-allowed opacity-50"
+                          >
+                            <FiSave className="w-4 h-4 mr-2" />
+                            <span>Save Profile</span>
+                          </button>
+                        );
+                      }
+                    })()}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="bg-gradient-to-r from-gray-800 to-gray-900 border-b border-cyan-500/30 shadow-lg flex-shrink-0">
-              <div className="max-w-9xl mx-auto px-6 py-3 sm:py-4">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-fuchsia-500 via-cyan-400 to-purple-500 bg-clip-text text-transparent" style={{ fontFamily: 'Orbitron, monospace' }}>
-                    MAZE RUNNER NEON EDITION
-                  </h1>
-                  {uiState.isMobile && (
-                    <div className="flex flex-col w-full sm:w-auto gap-2">
-                      <div className="flex justify-center sm:justify-end items-center gap-4 text-sm">
-                        <span className="text-cyan-400 font-bold" style={{ fontFamily: 'Orbitron, monospace' }}>
-                          SCORE: <span className="text-yellow-400">{uiState.score.toLocaleString()}</span>
-                        </span>
-                        <span className="text-red-400 font-bold" style={{ fontFamily: 'Orbitron, monospace' }}>
-                          LIVES: <span className="text-white">{uiState.lives}</span>
-                        </span>
-                        <span className="text-green-400 font-bold" style={{ fontFamily: 'Orbitron, monospace' }}>
-                          LEVEL: <span className="text-white">{uiState.level}</span>
-                        </span>
-                      </div>
-                      <div className="flex justify-center gap-2">
-                        <button
-                          onClick={() => setIsPaused(prev => !prev)}
-                          disabled={uiState.gameStatus !== "playing"}
-                          className={`px-3 py-1.5 rounded-lg font-bold text-white transition-all duration-200 border-2 flex items-center gap-1 text-xs cursor-pointer ${uiState.gameStatus !== "playing"
-                              ? "bg-gray-700 border-gray-600 cursor-not-allowed opacity-50"
-                              : isPaused
-                                ? "bg-gradient-to-r from-slate-700 to-slate-800 border-cyan-500 shadow-sm shadow-cyan-500/30"
-                                : "bg-gradient-to-r from-slate-800 to-slate-900 border-cyan-400 shadow-sm shadow-cyan-400/30"
-                            }`}
-                          style={{ fontFamily: 'Orbitron, monospace' }}
-                        >
-                          {isPaused ? <><FaPlay className="text-xs" /> RESUME</> : <><FaPause className="text-xs" /> PAUSE</>}
-                        </button>
-                        <button
-                          onClick={() => setIsMuted(prev => !prev)}
-                          className={`px-3 py-1.5 rounded-lg font-bold text-white transition-all duration-200 border-2 flex items-center gap-1 text-xs cursor-pointer ${isMuted
-                              ? "bg-gradient-to-r from-slate-800 to-slate-900 border-gray-500 shadow-sm shadow-gray-500/30"
-                              : "bg-gradient-to-r from-slate-700 to-slate-800 border-cyan-400 shadow-sm shadow-cyan-400/30"
-                            }`}
-                          style={{ fontFamily: 'Orbitron, monospace' }}
-                        >
-                          {isMuted ? <><FaVolumeMute className="text-xs" /> MUTE</> : <><FaVolumeUp className="text-xs" /> MUTE</>}
-                        </button>
-                        <button
-                          onClick={restartGame}
-                          className="px-3 py-1.5 rounded-lg font-bold text-white transition-all duration-200 border-2 bg-gradient-to-r from-slate-800 to-slate-900 border-purple-400 shadow-sm shadow-purple-400/30 flex items-center gap-1 text-xs hover:shadow-purple-400/50 cursor-pointer"
-                          style={{ fontFamily: 'Orbitron, monospace' }}
-                        >
-                          <FaRedo className="text-xs" /> RESTART
-                        </button>
+            )}
+            {activeSection === "security" && (
+              <div className="bg-white rounded-2xl max-w-2xl mx-auto shadow-xl border border-slate-200/50 overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-600/15 to-slate-600/15 p-6 sm:p-8 border-b border-slate-200/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-slate-600 rounded-xl flex items-center justify-center text-white text-2xl">
+                      <FiShield />
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-800 to-purple-700 bg-clip-text text-transparent">
+                      Security Settings
+                    </h2>
+                  </div>
+                </div>
+                <div className="p-6 sm:p-8 lg:p-10">
+                  <div className="space-y-6">
+                    <div className="group">
+                      <label className="block text-sm font-semibold text-slate-700 mb-4 group-focus-within:text-purple-600 transition-colors">
+                        Security Options
+                      </label>
+                      <div className="space-y-4">
+                        <label className="flex items-start group cursor-pointer p-3 rounded-xl hover:bg-slate-50/80 transition-all duration-200">
+                          <div className="relative flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.security.twoFactorAuth}
+                              onChange={(e) => handleInputChange("security", "twoFactorAuth", e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-6 h-6 border-2 border-slate-300 rounded-lg transition-all duration-300 peer-checked:border-purple-500 peer-checked:bg-gradient-to-br peer-checked:from-purple-500 peer-checked:to-slate-500 peer-focus:ring-4 peer-focus:ring-purple-500/20 group-hover:border-purple-400 group-hover:shadow-md flex items-center justify-center shadow-sm">
+                              {formData.security.twoFactorAuth && (
+                                <FiCheck className="w-4 h-4 text-white drop-shadow-sm" />
+                              )}
+                            </div>
+                          </div>
+                          <div className="ml-4 flex-1">
+                            <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900 block">
+                              Two-Factor Authentication
+                            </span>
+                            <span className="text-xs text-slate-500 mt-0.5 block">
+                              Add an extra layer of security to your account
+                            </span>
+                          </div>
+                        </label>
+                        <label className="flex items-start group cursor-pointer p-3 rounded-xl hover:bg-slate-50/80 transition-all duration-200">
+                          <div className="relative flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.security.loginAlerts}
+                              onChange={(e) => handleInputChange("security", "loginAlerts", e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-6 h-6 border-2 border-slate-300 rounded-lg transition-all duration-300 peer-checked:border-purple-500 peer-checked:bg-gradient-to-br peer-checked:from-purple-500 peer-checked:to-slate-500 peer-focus:ring-4 peer-focus:ring-purple-500/20 group-hover:border-purple-400 group-hover:shadow-md flex items-center justify-center shadow-sm">
+                              {formData.security.loginAlerts && (
+                                <FiCheck className="w-4 h-4 text-white drop-shadow-sm" />
+                              )}
+                            </div>
+                          </div>
+                          <div className="ml-4 flex-1">
+                            <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900 block">
+                              Login Alerts
+                            </span>
+                            <span className="text-xs text-slate-500 mt-0.5 block">
+                              Get notified when someone logs into your account
+                            </span>
+                          </div>
+                        </label>
+                        <label className="flex items-start group cursor-pointer p-3 rounded-xl hover:bg-slate-50/80 transition-all duration-200">
+                          <div className="relative flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.security.sessionTimeout}
+                              onChange={(e) => handleInputChange("security", "sessionTimeout", e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-6 h-6 border-2 border-slate-300 rounded-lg transition-all duration-300 peer-checked:border-purple-500 peer-checked:bg-gradient-to-br peer-checked:from-purple-500 peer-checked:to-slate-500 peer-focus:ring-4 peer-focus:ring-purple-500/20 group-hover:border-purple-400 group-hover:shadow-md flex items-center justify-center shadow-sm">
+                              {formData.security.sessionTimeout && (
+                                <FiCheck className="w-4 h-4 text-white drop-shadow-sm" />
+                              )}
+                            </div>
+                          </div>
+                          <div className="ml-4 flex-1">
+                            <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900 block">
+                              Automatic Session Timeout
+                            </span>
+                            <span className="text-xs text-slate-500 mt-0.5 block">
+                              Automatically log out after 30 minutes of inactivity
+                            </span>
+                          </div>
+                        </label>
                       </div>
                     </div>
-                  )}
+                    <div className="border-t border-slate-200 pt-6">
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-slate-50 rounded-xl border border-purple-200/50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-slate-500 rounded-lg flex items-center justify-center text-white">
+                            <FiLock className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-semibold text-slate-800">Change Password</h3>
+                            <p className="text-xs text-slate-600">Update your account password</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newValue = !formData.security.passwordChangeEnabled;
+                            if (!newValue) {
+                              const updatedSecurityData = {
+                                ...formData.security,
+                                passwordChangeEnabled: false,
+                                newPassword: "",
+                                confirmPassword: ""
+                              };
+                              setFormData(prev => ({
+                                ...prev,
+                                security: updatedSecurityData
+                              }));
+                              setErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors["security.newPassword"];
+                                delete newErrors["security.confirmPassword"];
+                                return newErrors;
+                              });
+                              const hasOtherSecurityChanges = JSON.stringify({
+                                ...updatedSecurityData,
+                                newPassword: "",
+                                confirmPassword: ""
+                              }) !== JSON.stringify({
+                                ...savedState.security,
+                                newPassword: "",
+                                confirmPassword: ""
+                              });
+                              const hasOtherChanges = 
+                                JSON.stringify(formData.profile) !== JSON.stringify(savedState.profile) ||
+                                JSON.stringify(formData.preferences) !== JSON.stringify(savedState.preferences) ||
+                                hasOtherSecurityChanges;
+                              if (hasOtherChanges) {
+                                setIsDirty(true);
+                              } else {
+                                setIsDirty(false);
+                                localStorage.removeItem("accountSettingsDraft");
+                              }
+                            } else {
+                              handleInputChange("security", "passwordChangeEnabled", newValue);
+                            }
+                          }}
+                          className={`px-4 py-2 rounded-lg cursor-pointer text-sm font-medium transition-all duration-300 ${
+                            formData.security.passwordChangeEnabled
+                              ? "bg-purple-600 text-white hover:bg-purple-700"
+                              : "bg-slate-200 text-slate-600 hover:bg-slate-300"
+                          }`}
+                        >
+                          {formData.security.passwordChangeEnabled ? "Cancel" : "Change Password"}
+                        </button>
+                      </div>
+                      {formData.security.passwordChangeEnabled && (
+                        <div className="mt-6 space-y-6 animate-fadeIn">
+                    <div className="group">
+                      <label className="block text-sm font-semibold text-slate-700 mb-3 group-focus-within:text-purple-600 transition-colors">
+                        New Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={formData.security.newPassword}
+                          onChange={(e) => handleInputChange("security", "newPassword", e.target.value)}
+                          placeholder="Enter new password"
+                                className={`w-full px-4 py-3 pr-12 bg-white/70 border-2 rounded-xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 placeholder:text-slate-400 text-slate-800 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-0 ${
+                                  errors["security.newPassword"]
+                                    ? "border-red-400 bg-red-50/80 focus:border-red-500 focus:ring-red-500/20"
+                                    : "border-slate-200 hover:border-slate-300"
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                                {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+                        </button>
+
+                      </div>
+                      {errors["security.newPassword"] && (
+                              <p className="text-red-600 text-sm mt-2 flex items-center gap-1">
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                {errors["security.newPassword"]}
+                              </p>
+                      )}
+                          </div>
+                      {formData.security.newPassword && (
+                            <div className="bg-slate-50/80 border border-slate-200/50 rounded-xl p-4">
+                              <div className="flex items-center gap-2 mb-3">
+                                <FiShield className="w-4 h-4 text-slate-600" />
+                                <span className="text-sm font-medium text-slate-700">Password Strength</span>
+                          </div>
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden">
+                            <div
+                                      className={`h-full transition-all duration-500 ${
+                                        calculatePasswordStrength(formData.security.newPassword).color
+                                      }`}
+                              style={{
+                                        width: `${(calculatePasswordStrength(formData.security.newPassword).score / 4) * 100}%`,
+                              }}
+                            />
+                          </div>
+                                  <span className="text-sm font-medium text-slate-600 min-w-[60px]">
+                                    {calculatePasswordStrength(formData.security.newPassword).label}
+                                  </span>
+                                </div>
+                                {calculatePasswordStrength(formData.security.newPassword).feedback.warning && (
+                                  <p className="text-amber-600 text-sm flex items-start gap-1">
+                                    <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                    {calculatePasswordStrength(formData.security.newPassword).feedback.warning}
+                                  </p>
+                          )}
+                                {calculatePasswordStrength(formData.security.newPassword).feedback.suggestions.length > 0 && (
+                                  <div className="space-y-1">
+                                    {calculatePasswordStrength(formData.security.newPassword).feedback.suggestions.map(
+                                      (suggestion, index) => (
+                                        <p key={index} className="text-blue-600 text-sm flex items-start gap-1">
+                                          <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                            <path
+                                              fillRule="evenodd"
+                                              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                              clipRule="evenodd"
+                                            />
+                                          </svg>
+                                          {suggestion}
+                                        </p>
+                                      )
+                          )}
+                        </div>
+                      )}
+                    </div>
+                            </div>
+                          )}
+                    <div className="group">
+                      <label className="block text-sm font-semibold text-slate-700 mb-3 group-focus-within:text-purple-600 transition-colors">
+                        Confirm New Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={formData.security.confirmPassword}
+                          onChange={(e) => handleInputChange("security", "confirmPassword", e.target.value)}
+                          placeholder="Confirm new password"
+                                className={`w-full px-4 py-3 pr-12 bg-white/70 border-2 rounded-xl focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300 placeholder:text-slate-400 text-slate-800 shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-0 ${
+                                  errors["security.confirmPassword"]
+                                    ? "border-red-400 bg-red-50/80 focus:border-red-500 focus:ring-red-500/20"
+                                    : "border-slate-200 hover:border-slate-300"
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                                {showConfirmPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+                        </button>
+
+                      </div>
+                      {errors["security.confirmPassword"] && (
+                              <p className="text-red-600 text-sm mt-2 flex items-center gap-1">
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                {errors["security.confirmPassword"]}
+                              </p>
+                      )}
+                    </div>
+                  </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3 mt-6">
+                    {(() => {
+                      const isSecurityChanged = JSON.stringify(savedState.security) !== JSON.stringify(formData.security);
+                      const isSecuritySaved = JSON.stringify(sectionSavedState.security) === JSON.stringify(formData.security);
+                      if (isSecurityChanged) {
+                        return (
+                          <>
+                    <button
+                              onClick={() => handleSectionUndo("security")}
+                              className="group flex items-center justify-center px-4 py-2.5 text-slate-600 bg-white border-2 border-slate-300 shadow-lg rounded-xl hover:bg-slate-50 hover:border-red-400 hover:text-red-600 transition-all duration-300 text-sm font-medium cursor-pointer"
+                    >
+                      <FiX className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+                              <span>Undo</span>
+                    </button>
+                            {isSecuritySaved ? (
+                    <button
+                                disabled
+                                className="group relative flex items-center justify-center px-6 py-2.5 text-green-700 bg-green-100 border border-green-300 shadow-lg rounded-xl text-sm font-medium cursor-not-allowed"
+                              >
+                                <FiCheckCircle className="w-4 h-4 mr-2" />
+                                <span>Security Saved</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleSectionSave("security")}
+                                className="group relative flex items-center justify-center px-6 py-2.5 text-white bg-gradient-to-r from-purple-500 to-slate-500 border border-transparent shadow-lg rounded-xl hover:from-purple-600 hover:to-slate-600 hover:shadow-xl hover:scale-105 transition-all duration-300 text-sm font-medium overflow-hidden cursor-pointer"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 group-hover:translate-x-full transition-transform duration-700 -translate-x-full"></div>
+                      <FiSave className="w-4 h-4 mr-2 relative z-10 group-hover:scale-110 transition-transform duration-300" />
+                                <span className="relative z-10">Save Security</span>
+                    </button>
+                            )}
+                          </>
+                        );
+                      } else {
+                        return (
+                          <button
+                            disabled
+                            className="group relative flex items-center justify-center px-6 py-2.5 text-slate-400 bg-slate-100 border border-slate-200 shadow-lg rounded-xl text-sm font-medium cursor-not-allowed opacity-50"
+                          >
+                            <FiSave className="w-4 h-4 mr-2" />
+                            <span>Save Security</span>
+                          </button>
+                        );
+                      }
+                    })()}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex-1 flex overflow-hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {!uiState.isMobile && (
-                <div className="w-[30%] bg-gradient-to-b from-gray-800 to-gray-900 border-r border-cyan-500/30 flex flex-col h-full overflow-hidden">
-                  <div className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar p-6" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                    <div className="mb-6">
-                      <h2 className="text-xl font-bold text-cyan-400 mb-4 flex items-center gap-2" style={{ fontFamily: 'Orbitron, monospace' }}>
-                        <FaGamepad /> GAME STATUS
-                      </h2>
-                      <div className="space-y-3">
-                        <div className="bg-gradient-to-r from-cyan-900/30 to-blue-900/30 rounded-lg p-3 border border-cyan-500/20">
-                          <div className="text-cyan-400 text-sm font-bold mb-1" style={{ fontFamily: 'Orbitron, monospace' }}>SCORE</div>
-                          <div className="text-yellow-400 text-2xl font-bold" style={{ fontFamily: 'Orbitron, monospace' }}>{uiState.score.toLocaleString()}</div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-gradient-to-r from-red-900/30 to-red-800/30 rounded-lg p-3 border border-red-500/20">
-                            <div className="text-red-400 text-sm font-bold mb-1" style={{ fontFamily: 'Orbitron, monospace' }}>LIVES</div>
-                            <div className="text-white text-xl font-bold" style={{ fontFamily: 'Orbitron, monospace' }}>{uiState.lives}</div>
+            )}
+            {activeSection === "preferences" && (
+              <div className="bg-white rounded-2xl shadow-xl border border-slate-200/50 overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-600/15 to-slate-600/15 p-6 sm:p-8 border-b border-slate-200/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-slate-600 rounded-xl flex items-center justify-center text-white text-2xl">
+                      <FiSettings />
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-800 to-purple-700 bg-clip-text text-transparent">
+                      Preferences
+                    </h2>
+                  </div>
+                </div>
+                <div className="p-6 sm:p-8 lg:p-10">
+                  <div className="space-y-6">
+                    <div className="group">
+                      <label className="block text-sm font-semibold text-slate-700 mb-3 group-focus-within:text-purple-600 transition-colors">
+                        Timezone
+                      </label>
+                      <CustomDropdown
+                        value={formData.preferences.timezone}
+                        onChange={(value) => handleInputChange("preferences", "timezone", value)}
+                        options={timezoneOptions}
+                        placeholder="Select timezone"
+                        error={errors["preferences.timezone"]}
+                      />
+                      {errors["preferences.timezone"] && (
+                        <p className="text-red-600 text-sm mt-1">{errors["preferences.timezone"]}</p>
+                      )}
+                    </div>
+                    <div className="group">
+                      <label className="block text-sm font-semibold text-slate-700 mb-3 group-focus-within:text-purple-600 transition-colors">
+                        Language
+                      </label>
+                      <CustomDropdown
+                        value={formData.preferences.language}
+                        onChange={(value) => handleInputChange("preferences", "language", value)}
+                        options={languageOptions}
+                        placeholder="Select language"
+                        error={errors["preferences.language"]}
+                      />
+                    </div>
+                    <div className="group">
+                      <label className="block text-sm font-semibold text-slate-700 mb-3 group-focus-within:text-purple-600 transition-colors">
+                        Notification Frequency
+                        {(formData.preferences.emailNotifications || formData.preferences.pushNotifications) && (
+                          <span className="text-red-500 ml-1">*</span>
+                        )}
+                      </label>
+                      <CustomDropdown
+                        value={formData.preferences.notificationFrequency}
+                        onChange={(value) => handleInputChange("preferences", "notificationFrequency", value)}
+                        options={notificationFrequencyOptions}
+                        placeholder="How often would you like to receive notifications?"
+                        error={errors["preferences.notificationFrequency"]}
+                      />
+                      {errors["preferences.notificationFrequency"] && (
+                        <p className="text-red-600 text-sm mt-1">{errors["preferences.notificationFrequency"]}</p>
+                      )}
+                      <p className="text-gray-500 text-sm mt-1">
+                        {formData.preferences.notificationFrequency === "never"
+                          ? "You won't receive any notifications"
+                          : formData.preferences.notificationFrequency
+                          ? `You'll receive notifications ${
+                              formData.preferences.notificationFrequency === "realtime"
+                                ? "as they happen"
+                                : formData.preferences.notificationFrequency === "hourly"
+                                ? "every hour"
+                                : formData.preferences.notificationFrequency === "daily"
+                                ? "once a day"
+                                : "once a week"
+                            }`
+                          : "Select how often you want to receive notifications"}
+                      </p>
+                    </div>
+                    <div className="group">
+                      <label className="block text-sm font-semibold text-slate-700 mb-4 group-focus-within:text-purple-600 transition-colors">
+                        Notifications
+                      </label>
+                      <div className="space-y-4">
+                        <label className="flex items-start group cursor-pointer p-3 rounded-xl hover:bg-slate-50/80 transition-all duration-200">
+                          <div className="relative flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.preferences.emailNotifications}
+                              onChange={(e) => handleInputChange("preferences", "emailNotifications", e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-6 h-6 border-2 border-slate-300 rounded-lg transition-all duration-300 peer-checked:border-purple-500 peer-checked:bg-gradient-to-br peer-checked:from-purple-500 peer-checked:to-slate-500 peer-focus:ring-4 peer-focus:ring-purple-500/20 group-hover:border-purple-400 group-hover:shadow-md flex items-center justify-center shadow-sm">
+                              {formData.preferences.emailNotifications && (
+                                <FiCheck className="w-4 h-4 text-white drop-shadow-sm" />
+                              )}
+                            </div>
                           </div>
-                          <div className="bg-gradient-to-r from-green-900/30 to-green-800/30 rounded-lg p-3 border border-green-500/20">
-                            <div className="text-green-400 text-sm font-bold mb-1" style={{ fontFamily: 'Orbitron, monospace' }}>LEVEL</div>
-                            <div className="text-white text-xl font-bold" style={{ fontFamily: 'Orbitron, monospace' }}>{uiState.level}</div>
+                          <div className="ml-4 flex-1">
+                            <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900 block">
+                              Email Notifications
+                            </span>
+                            <span className="text-xs text-slate-500 mt-0.5 block">
+                              Receive updates and alerts via email
+                            </span>
                           </div>
-                        </div>
-                        {uiState.scoreMultiplier > 1 && (
-                          <div className="bg-gradient-to-r from-purple-900/30 to-purple-800/30 rounded-lg p-3 border border-purple-500/20">
-                            <div className="text-purple-400 text-sm font-bold mb-1" style={{ fontFamily: 'Orbitron, monospace' }}>MULTIPLIER</div>
-                            <div className="text-white text-xl font-bold animate-pulse" style={{ fontFamily: 'Orbitron, monospace' }}>{uiState.scoreMultiplier}X</div>
+                        </label>
+                        <label className="flex items-start group cursor-pointer p-3 rounded-xl hover:bg-slate-50/80 transition-all duration-200">
+                          <div className="relative flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.preferences.pushNotifications}
+                              onChange={(e) => handleInputChange("preferences", "pushNotifications", e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-6 h-6 border-2 border-slate-300 rounded-lg transition-all duration-300 peer-checked:border-purple-500 peer-checked:bg-gradient-to-br peer-checked:from-purple-500 peer-checked:to-slate-500 peer-focus:ring-4 peer-focus:ring-purple-500/20 group-hover:border-purple-400 group-hover:shadow-md flex items-center justify-center shadow-sm">
+                              {formData.preferences.pushNotifications && (
+                                <FiCheck className="w-4 h-4 text-white drop-shadow-sm" />
+                              )}
+                            </div>
+                          </div>
+                          <div className="ml-4 flex-1">
+                            <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900 block">
+                              Push Notifications
+                            </span>
+                            <span className="text-xs text-slate-500 mt-0.5 block">
+                              Get instant notifications on your device
+                            </span>
+                          </div>
+                        </label>
+                        {errors["preferences.notifications"] && (
+                          <div className="p-3 rounded-xl bg-red-50/80 border border-red-200/50">
+                            <p className="text-red-600 text-sm flex items-center gap-2">
+                              <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                  fillRule="evenodd"
+                                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              {errors["preferences.notifications"]}
+                            </p>
                           </div>
                         )}
                       </div>
                     </div>
-                    {uiState.powerPelletActive && (
-                      <div className="mb-6">
-                        <h3 className="text-lg font-bold text-cyan-400 mb-3" style={{ fontFamily: 'Orbitron, monospace' }}>POWER MODE</h3>
-                        <div className="bg-gradient-to-r from-cyan-900/30 to-blue-900/30 rounded-lg p-4 border border-cyan-500/20">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-cyan-400 text-sm font-bold" style={{ fontFamily: 'Orbitron, monospace' }}>TIME REMAINING</span>
-                            <span className="text-cyan-400 text-sm font-bold" style={{ fontFamily: 'Orbitron, monospace' }}>
-                              {Math.ceil(uiState.powerPelletTimer / 1000)}s
-                            </span>
-                          </div>
-                          <div className="bg-gray-700 h-3 rounded-full overflow-hidden">
-                            <div
-                              className="bg-gradient-to-r from-cyan-400 to-blue-500 h-full transition-all duration-100 ease-linear animate-pulse"
-                              style={{
-                                width: `${(uiState.powerPelletTimer / POWER_PELLET_DURATION) * 100}%`
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    <div className="mb-6">
-                      <h3 className="text-lg font-bold text-cyan-400 mb-3" style={{ fontFamily: 'Orbitron, monospace' }}>CONTROLS</h3>
-                      <div className="space-y-3">
-                        <button
-                          onClick={() => setIsPaused(prev => !prev)}
-                          disabled={uiState.gameStatus !== "playing"}
-                                                      className={`w-full px-4 py-3 rounded-lg font-bold text-white transition-all duration-200 border-2 flex items-center justify-center gap-2 cursor-pointer ${uiState.gameStatus !== "playing"
-                              ? "bg-gray-700 border-gray-600 cursor-not-allowed opacity-50"
-                              : isPaused
-                                ? "bg-gradient-to-r from-slate-700 to-slate-800 border-cyan-500 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:border-cyan-400"
-                                : "bg-gradient-to-r from-slate-800 to-slate-900 border-cyan-400 shadow-lg shadow-cyan-400/30 hover:shadow-cyan-400/50 hover:border-cyan-300"
-                            }`}
-                            style={{ fontFamily: 'Orbitron, monospace' }}
-                        >
-                          {isPaused ? <><FaPlay /> RESUME GAME</> : <><FaPause /> PAUSE GAME</>}
-                        </button>
-                        <button
-                          onClick={() => setIsMuted(prev => !prev)}
-                                                      className={`w-full px-4 py-3 rounded-lg font-bold text-white transition-all duration-200 border-2 flex items-center justify-center gap-2 cursor-pointer ${isMuted
-                              ? "bg-gradient-to-r from-slate-800 to-slate-900 border-gray-500 shadow-lg shadow-gray-500/30 hover:shadow-gray-500/50 hover:border-gray-400"
-                              : "bg-gradient-to-r from-slate-700 to-slate-800 border-cyan-400 shadow-lg shadow-cyan-400/30 hover:shadow-cyan-400/50 hover:border-cyan-300"
-                            }`}
-                            style={{ fontFamily: 'Orbitron, monospace' }}
-                        >
-                          {isMuted ? <><FaVolumeMute /> UNMUTE SOUND</> : <><FaVolumeUp /> MUTE SOUND</>}
-                        </button>
-                        <button
-                          onClick={restartGame}
-                          className="w-full px-4 py-3 rounded-lg font-bold text-white transition-all duration-200 border-2 bg-gradient-to-r from-slate-800 to-slate-900 border-purple-400 shadow-lg shadow-purple-400/30 hover:shadow-purple-400/50 hover:border-purple-300 flex items-center justify-center gap-2 cursor-pointer"
-                          style={{ fontFamily: 'Orbitron, monospace' }}
-                        >
-                          <FaRedo /> RESTART GAME
-                        </button>
-                      </div>
-                    </div>
-                    <div className="mt-auto overflow-hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                      <h3 className="text-lg font-bold text-cyan-400 mb-3" style={{ fontFamily: 'Orbitron, monospace' }}>KEYBOARD SHORTCUTS</h3>
-                      <div className="space-y-2 text-sm text-gray-300" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-                        <div className="flex justify-between">
-                          <span>Move:</span>
-                          <span className="text-cyan-400">WASD / Arrow Keys</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Pause:</span>
-                          <span className="text-cyan-400">SPACEBAR</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Mute:</span>
-                          <span className="text-cyan-400">M</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Restart:</span>
-                          <span className="text-cyan-400">ENTER</span>
-                        </div>
-                      </div>
-                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3 mt-6">
+                    {(() => {
+                      const isPreferencesChanged = JSON.stringify(savedState.preferences) !== JSON.stringify(formData.preferences);
+                      const isPreferencesSaved = JSON.stringify(sectionSavedState.preferences) === JSON.stringify(formData.preferences);
+                      if (isPreferencesChanged) {
+                        return (
+                          <>
+                    <button
+                              onClick={() => handleSectionUndo("preferences")}
+                              className="group flex items-center justify-center px-4 py-2.5 text-slate-600 bg-white border-2 border-slate-300 shadow-lg rounded-xl hover:bg-slate-50 hover:border-red-400 hover:text-red-600 transition-all duration-300 text-sm font-medium cursor-pointer"
+                    >
+                      <FiX className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+                              <span>Undo</span>
+                    </button>
+                            {isPreferencesSaved ? (
+                    <button
+                                disabled
+                                className="group relative flex items-center justify-center px-6 py-2.5 text-green-700 bg-green-100 border border-green-300 shadow-lg rounded-xl text-sm font-medium cursor-not-allowed"
+                              >
+                                <FiCheckCircle className="w-4 h-4 mr-2" />
+                                <span>Preferences Saved</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleSectionSave("preferences")}
+                                className="group relative flex items-center justify-center px-6 py-2.5 text-white bg-gradient-to-r from-purple-500 to-slate-500 border border-transparent shadow-lg rounded-xl hover:from-purple-600 hover:to-slate-600 hover:shadow-xl hover:scale-105 transition-all duration-300 text-sm font-medium overflow-hidden cursor-pointer"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 group-hover:translate-x-full transition-transform duration-700 -translate-x-full"></div>
+                      <FiSave className="w-4 h-4 mr-2 relative z-10 group-hover:scale-110 transition-transform duration-300" />
+                                <span className="relative z-10">Save Preferences</span>
+                    </button>
+                            )}
+                          </>
+                        );
+                      } else {
+                        return (
+                          <button
+                            disabled
+                            className="group relative flex items-center justify-center px-6 py-2.5 text-slate-400 bg-slate-100 border border-slate-200 shadow-lg rounded-xl text-sm font-medium cursor-not-allowed opacity-50"
+                          >
+                            <FiSave className="w-4 h-4 mr-2" />
+                            <span>Save Preferences</span>
+                          </button>
+                        );
+                      }
+                    })()}
                   </div>
                 </div>
-              )}
-              <div className={`${uiState.isMobile ? 'w-full' : 'w-[70%]'} flex flex-col relative overflow-hidden`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                <div className="flex-1 flex items-center justify-center p-4 relative overflow-hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                  <canvas
-                    ref={canvasRef}
-                    width={MAZE_WIDTH * CELL_SIZE * uiState.scale}
-                    height={MAZE_HEIGHT * CELL_SIZE * uiState.scale}
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onClick={() => {
-                      if (uiState.gameStatus !== "playing") {
-                        restartGame();
-                      }
-                    }}
-                    onTouchEnd={() => {
-                      if (uiState.gameStatus !== "playing") {
-                        restartGame();
-                      }
-                    }}
-                    className="cursor-pointer border-2 border-cyan-500/50 rounded-lg shadow-2xl shadow-cyan-500/20 max-w-full max-h-full"
-                    style={{
-                      width: `${MAZE_WIDTH * CELL_SIZE * uiState.scale}px`,
-                      height: `${MAZE_HEIGHT * CELL_SIZE * uiState.scale}px`,
-                      imageRendering: "pixelated",
-                      touchAction: "none",
-                    }}
-                  />
-                </div>
-                {uiState.isMobile && (
-                  <div className="flex-shrink-0 flex justify-center items-center p-4 bg-gradient-to-t from-gray-800/50 to-transparent">
-                    <div className="relative">
-                      <div
-                        className="w-28 h-28 bg-gradient-to-r from-slate-800/80 to-slate-900/80 rounded-full border-2 border-cyan-400/60 flex items-center justify-center shadow-xl backdrop-blur-sm transition-all duration-200 active:scale-95 active:border-cyan-300 cursor-pointer"
-                        onTouchStart={handleJoystickTouch}
-                        onTouchMove={handleJoystickTouch}
-                        onTouchEnd={handleJoystickTouchEnd}
-                        style={{ touchAction: 'none' }}
-                      >
-                        <div className="w-20 h-20 bg-gradient-to-r from-slate-700/50 to-slate-800/50 rounded-full border border-cyan-300/50 flex items-center justify-center shadow-lg relative">
-                          <div
-                            className={`w-10 h-10 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full border border-yellow-300 shadow-lg shadow-cyan-400/30 transition-all duration-150 ease-out ${uiState.isJoystickActive ? 'animate-pulse' : ''}`}
-                            style={{
-                              transform: `translate(${uiState.joystickPosition.x}px, ${uiState.joystickPosition.y}px)`,
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {uiState.isMobile && uiState.powerPelletActive && (
-                  <div className="absolute top-4 left-4 right-4">
-                    <div className="bg-gradient-to-r from-cyan-900/80 to-blue-900/80 backdrop-blur-sm rounded-lg p-3 border border-cyan-500/30">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-cyan-400 text-xs font-bold" style={{ fontFamily: 'Orbitron, monospace' }}>POWER MODE</span>
-                        <span className="text-cyan-400 text-xs font-bold" style={{ fontFamily: 'Orbitron, monospace' }}>
-                          {Math.ceil(uiState.powerPelletTimer / 1000)}s
-                        </span>
-                      </div>
-                      <div className="bg-gray-700 h-2 rounded-full overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-cyan-400 to-blue-500 h-full transition-all duration-100 ease-linear"
-                          style={{
-                            width: `${(uiState.powerPelletTimer / POWER_PELLET_DURATION) * 100}%`
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
-          </>
+            )}
+          </div>
+        </div>
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden" 
+            onClick={() => setIsSidebarOpen(false)} 
+          />
         )}
       </div>
-      <style jsx>{`
-     .hide-scrollbar::-webkit-scrollbar { display: none; }
-     .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
-   `}</style>
-    </>
+    </div>
   );
 }

@@ -70,7 +70,8 @@
     "topojson-client": "^3.1.0",
     "use-sound": "^5.0.0",
     "usehooks-ts": "^3.1.1",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -84,6 +85,7 @@
     "@types/three": "^0.176.0",
     "@types/topojson-client": "^3.1.5",
     "@types/topojson-specification": "^1.0.5",
+    "@types/zxcvbn": "^4.4.5",
     "autoprefixer": "^10.4.21",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
