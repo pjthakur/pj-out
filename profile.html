@@ -1,0 +1,2745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speaker Profile - Dr. Sarah Martinez</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #ffffff 100%);
+            --text-dark: #1A1A1A;
+            --text-light: #FFFFFF;
+            --accent-purple: #8B5CF6;
+            --accent-pink: #EC4899;
+            --gradient-primary: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+            --gradient-secondary: linear-gradient(135deg, #667eea 0%, #f093fb 100%);
+            --border-light: rgba(255, 255, 255, 0.4);
+            --card-bg-light: rgba(255, 255, 255, 0.3);
+            --card-bg-glass: rgba(255, 255, 255, 0.25);
+            --gray-text: #6B7280;
+            --shadow-purple: rgba(139, 92, 246, 0.2);
+            --shadow-pink: rgba(236, 72, 153, 0.2);
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-dark);
+            line-height: 1.6;
+            scroll-behavior: smooth;
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+        }
+        .bg-objects {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+        .bg-object {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.6;
+            animation: float 20s ease-in-out infinite;
+        }
+        .bg-object-1 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, #8B5CF6 0%, #A855F7 30%, rgba(139, 92, 246, 0.1) 60%, transparent 80%);
+            top: 20%;
+            left: -15%;
+            animation-delay: 0s;
+        }
+        .bg-object-2 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, #EC4899 0%, #F472B6 30%, rgba(236, 72, 153, 0.1) 60%, transparent 80%);
+            bottom: 10%;
+            right: -10%;
+            animation-delay: -10s;
+        }
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px) translateX(0px) scale(1);
+            }
+            25% {
+                transform: translateY(-20px) translateX(10px) scale(1.1);
+            }
+            50% {
+                transform: translateY(10px) translateX(-15px) scale(0.9);
+            }
+            75% {
+                transform: translateY(-15px) translateX(5px) scale(1.05);
+            }
+        }
+        ::-webkit-scrollbar { width: 0; height: 0; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: transparent; }
+        ::-webkit-scrollbar-thumb:hover { background: transparent; }
+        html {
+            scrollbar-width: none;
+        }
+        body {
+            -ms-overflow-style: none;
+        }
+        header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-light);
+            z-index: 1000;
+            padding: 0.75rem 0;
+            position: relative;
+        }
+        .scroll-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: var(--gradient-primary);
+            width: 0%;
+            transition: width 0.1s ease-out;
+            z-index: 1001;
+            border-radius: 0 3px 3px 0;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+        }
+        .mobile-menu.active {
+            transform: translateY(0);
+            opacity: 1;
+            visibility: visible;
+        }
+        .mobile-menu-toggle {
+            transition: transform 0.3s ease;
+        }
+        .mobile-menu-toggle:hover {
+            transform: scale(1.1);
+        }
+        .mobile-menu-link {
+            transition: all 0.3s ease;
+        }
+        .mobile-menu-link:hover {
+            background: rgba(139, 92, 246, 0.1);
+        }
+        .font-bebas { font-family: 'Bebas Neue', sans-serif; }
+        .hero-blob {
+            background: var(--gradient-primary);
+            border-radius: 3rem;
+            position: relative;
+            overflow: hidden;
+            padding-bottom: 100%;
+            box-shadow: 0 25px 50px var(--shadow-purple);
+        }
+        @media (min-width: 768px) { .hero-blob { padding-bottom: 0; height: 100%; } }
+        .hero-blob img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+        .video-container {
+            position: relative; width: 100%; padding-bottom: 56.25%; 
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.03) 0%, rgba(236, 72, 153, 0.03) 100%);
+            border-radius: 1.5rem; overflow: hidden;
+            border: 2px solid rgba(139, 92, 246, 0.1);
+            box-shadow: 0 15px 35px rgba(139, 92, 246, 0.08), 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        .video-container video { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; 
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        .video-controls {
+            position: absolute; bottom: 0; left: 0; right: 0; 
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%);
+            padding: 1rem; display: flex; align-items: center; gap: 1rem; opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .video-container:hover .video-controls, .video-controls.active { opacity: 1; }
+        .video-controls button {
+            background: rgba(255, 255, 255, 0.2); 
+            border: 1px solid rgba(255, 255, 255, 0.3); 
+            color: white; 
+            font-size: 1.125rem; 
+            cursor: pointer;
+            padding: 0.5rem 0.75rem; 
+            border-radius: 0.5rem; 
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            font-weight: 500;
+        }
+        .video-controls button:hover { 
+            background: rgba(255, 255, 255, 0.3); 
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+        }
+        .video-controls span {
+            color: rgba(255, 255, 255, 0.95);
+            font-weight: 600;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            font-size: 0.9rem;
+        }
+        .progress-bar-container {
+            flex-grow: 1; height: 10px; background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 6px; cursor: pointer; position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            overflow: hidden;
+        }
+        @media (max-width: 767px) {
+            .progress-bar-container {
+                height: 6px;
+                border-radius: 3px;
+            }
+            .progress-bar {
+                height: 6px;
+                border-radius: 3px;
+            }
+        }
+        .progress-bar { 
+            height: 100%; 
+            width: 0%; 
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%); 
+            border-radius: 6px;
+            transition: width 0.1s ease;
+        }
+        .volume-container { display: flex; align-items: center; gap: 0.5rem; }
+        .volume-slider {
+            width: 80px; -webkit-appearance: none; height: 8px;
+            background: linear-gradient(to right, rgba(255, 255, 255, 0.9) var(--volume-level, 100%), rgba(255, 255, 255, 0.3) var(--volume-level, 100%));
+            outline: none; border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
+            background: white; border-radius: 50%; cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+        }
+        .volume-slider::-moz-range-thumb {
+            width: 16px; height: 16px; background: white;
+            border-radius: 50%; cursor: pointer; 
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+        }
+        .video-nav-button {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            color: var(--text-dark);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.2);
+        }
+        .video-nav-button:hover {
+            background: var(--gradient-primary);
+            color: white;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 15px 30px rgba(139, 92, 246, 0.4);
+            border-color: rgba(139, 92, 246, 0.6);
+        }
+        .video-nav-button.left {
+            left: 0;
+        }
+        .video-nav-button.right {
+            right: 0;
+        }
+        @media (max-width: 768px) {
+            .video-nav-button {
+                width: 50px;
+                height: 50px;
+            }
+        }
+        @media (max-width: 640px) {
+            .video-nav-button {
+                width: 45px;
+                height: 45px;
+            }
+        }
+        @media (max-width: 480px) {
+            .video-nav-button {
+                width: 40px;
+                height: 40px;
+            }
+        }
+        #video .relative.flex {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        #video .video-container {
+            flex-grow: 1;
+            flex-shrink: 1;
+            min-width: 0;
+        }
+        @media (min-width: 769px) {
+            #video .video-container {
+                margin: 0 5rem;
+            }
+            .video-nav-button {
+                opacity: 1 !important;
+                visibility: visible !important;
+            }
+        }
+        @media (max-width: 768px) {
+            #video .video-container {
+                margin: 0;
+            }
+            .video-nav-button {
+                width: 45px;
+                height: 45px;
+                z-index: 15;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+                background: transparent !important;
+                border: none !important;
+                backdrop-filter: none !important;
+                box-shadow: none !important;
+                color: rgba(255, 255, 255, 0.9);
+            }
+            .video-nav-button.show-with-controls {
+                opacity: 1;
+                visibility: visible;
+            }
+        }
+        @media (max-width: 640px) {
+            #video .video-container {
+                margin: 0;
+            }
+            .video-nav-button {
+                width: 40px;
+                height: 40px;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+                background: transparent !important;
+                border: none !important;
+                backdrop-filter: none !important;
+                box-shadow: none !important;
+                color: rgba(255, 255, 255, 0.9);
+            }
+            .video-nav-button.show-with-controls {
+                opacity: 1;
+                visibility: visible;
+            }
+        }
+        @media (max-width: 480px) {
+            #video .video-container {
+                margin: 0; 
+            }
+            .video-nav-button {
+                width: 35px;
+                height: 35px;
+                font-size: 0.8rem;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+                background: transparent !important;
+                border: none !important;
+                backdrop-filter: none !important;
+                box-shadow: none !important;
+                color: rgba(255, 255, 255, 0.9);
+            }
+            .video-nav-button.show-with-controls {
+                opacity: 1;
+                visibility: visible;
+            }
+        }
+        @media (max-width: 375px) {
+            #video .video-container {
+                margin: 0; 
+            }
+            .video-nav-button {
+                width: 32px;
+                height: 32px;
+                font-size: 0.75rem;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+                background: transparent !important;
+                border: none !important;
+                backdrop-filter: none !important;
+                box-shadow: none !important;
+                color: rgba(255, 255, 255, 0.9);
+            }
+            .video-nav-button.show-with-controls {
+                opacity: 1;
+                visibility: visible;
+            }
+        }
+        @media (max-width: 767px) {
+            .video-controls {
+                padding: 0.5rem;
+                background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(236, 72, 153, 0.25) 100%);
+                border-radius: 0 0 1.5rem 1.5rem;
+                display: flex !important;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.5rem;
+                min-height: auto;
+            }
+            .video-controls-row-1 {
+                display: flex;
+                align-items: center;
+                width: 100%;
+                gap: 0.5rem;
+                justify-content: space-between;
+            }
+            .video-controls #playPauseBtn {
+                padding: 0.4rem;
+                font-size: 0.9rem;
+                flex-shrink: 0;
+                min-width: 36px;
+                min-height: 36px;
+                border-radius: 0.4rem;
+            }
+            .video-controls .progress-bar-container {
+                flex: 1;
+                height: 6px;
+                margin: 0;
+                border-radius: 3px;
+                background-color: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+            }
+            .video-controls .progress-bar {
+                height: 6px;
+                border-radius: 3px;
+            }
+            .video-controls #fullscreenBtn {
+                padding: 0.4rem;
+                font-size: 0.9rem;
+                flex-shrink: 0;
+                min-width: 36px;
+                min-height: 36px;
+                border-radius: 0.4rem;
+            }
+            .video-controls-row-2 {
+                display: flex;
+                align-items: center;
+                width: 100%;
+                justify-content: space-between;
+                gap: 0.5rem;
+            }
+            .video-controls-time-display {
+                display: flex;
+                align-items: center;
+                gap: 0.25rem;
+                flex-shrink: 0;
+                font-size: 0.75rem;
+                color: rgba(255, 255, 255, 0.95);
+                font-weight: 600;
+            }
+            .video-controls #currentTime,
+            .video-controls #duration {
+                font-size: 0.75rem;
+                color: rgba(255, 255, 255, 0.95);
+                font-weight: 600;
+            }
+            .video-controls .volume-container {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                flex-shrink: 0;
+            }
+            .video-controls button {
+                padding: 0.4rem;
+                font-size: 0.85rem;
+                background: transparent;
+                border: none;
+                border-radius: 0.4rem;
+                min-width: 36px;
+                min-height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: rgba(255, 255, 255, 0.95);
+            }
+            .video-controls button:hover {
+                background: rgba(255, 255, 255, 0.15);
+                transform: none;
+            }
+            .video-controls span {
+                font-size: 0.75rem;
+                text-shadow: none;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.95);
+            }
+            .volume-slider {
+                width: 60px;
+                height: 4px;
+            }
+            .volume-container button {
+                padding: 0.3rem;
+                font-size: 0.8rem;
+                min-width: 32px;
+                min-height: 32px;
+                background: transparent;
+                border: none;
+                color: rgba(255, 255, 255, 0.95);
+            }
+        }
+        @media (max-width: 480px) {
+            .video-controls {
+                padding: 0.4rem;
+                gap: 0.4rem;
+            }
+            .video-controls-row-1 {
+                gap: 0.4rem;
+            }
+            .video-controls-row-2 {
+                gap: 0.4rem;
+            }
+            .video-controls button {
+                padding: 0.3rem;
+                font-size: 0.8rem;
+                min-width: 32px;
+                min-height: 32px;
+                border-radius: 0.3rem;
+                background: transparent;
+                border: none;
+                color: rgba(255, 255, 255, 0.95);
+            }
+            .video-controls #playPauseBtn,
+            .video-controls #fullscreenBtn {
+                min-width: 32px;
+                min-height: 32px;
+                padding: 0.3rem;
+            }
+            .video-controls span {
+                font-size: 0.7rem;
+            }
+            .video-controls-time-display {
+                font-size: 0.7rem;
+            }
+            .video-controls #currentTime,
+            .video-controls #duration {
+                font-size: 0.7rem;
+            }
+            .volume-slider {
+                width: 50px;
+                height: 3px;
+            }
+            .progress-bar-container {
+                height: 5px;
+                border-radius: 2.5px;
+            }
+            .progress-bar {
+                height: 5px;
+                border-radius: 2.5px;
+            }
+            .volume-container button {
+                min-width: 28px;
+                min-height: 28px;
+                padding: 0.25rem;
+                font-size: 0.75rem;
+                background: transparent;
+                border: none;
+                color: rgba(255, 255, 255, 0.95);
+            }
+        }
+        .calendar-container {
+            background: var(--card-bg-glass);
+            border: 1px solid var(--border-light);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(20px);
+            margin-bottom: 2rem;
+        }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .calendar-nav-btn {
+            background: var(--card-bg-light);
+            border: 1px solid var(--border-light);
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-dark);
+        }
+        .calendar-nav-btn:hover {
+            background: var(--gradient-primary);
+            color: white;
+            transform: scale(1.05);
+        }
+        .calendar-month-year {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            color: var(--text-dark);
+            text-align: center;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 1px;
+            background: rgba(139, 92, 246, 0.15);
+            border-radius: 1rem;
+            overflow: hidden;
+            width: 100%;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+        .calendar-day-header {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--text-dark);
+            padding: 1rem 0.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-bottom: 2px solid rgba(139, 92, 246, 0.25);
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+        .calendar-day {
+            background: rgba(255, 255, 255, 0.8);
+            min-height: 100px;
+            padding: 0.5rem;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            width: 100%;
+            min-width: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+            border-right: 1px solid rgba(139, 92, 246, 0.1);
+        }
+        .calendar-day:hover {
+            background: rgba(255, 255, 255, 0.8);
+            border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+            border-right: 1px solid rgba(139, 92, 246, 0.1);
+        }
+        .calendar-day.other-month {
+            background: rgba(255, 255, 255, 0.3);
+            color: var(--gray-text);
+            border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+            border-right: 1px solid rgba(139, 92, 246, 0.1);
+        }
+        .calendar-day.today {
+            background: var(--gradient-primary);
+            color: white;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .calendar-day.today:hover {
+            background: var(--gradient-secondary);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            border-right: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .calendar-day.today .calendar-event-title {
+            color: white !important;
+            text-shadow: none;
+        }
+        .calendar-day.today .calendar-event-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .calendar-day.today .calendar-no-events {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .calendar-day.today .calendar-event-dot {
+            background: white !important;
+            opacity: 0.9;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+        .calendar-day.today .calendar-event-dot.keynote {
+            background: rgba(255, 255, 255, 0.95) !important;
+        }
+        .calendar-day.today .calendar-event-dot.workshop {
+            background: rgba(255, 255, 255, 0.95) !important;
+        }
+        .calendar-day.today .calendar-event-dot.conference {
+            background: rgba(255, 255, 255, 0.95) !important;
+        }
+        .calendar-day.today .calendar-event-dot.webinar {
+            background: rgba(255, 255, 255, 0.95) !important;
+        }
+        .calendar-day.today .calendar-event-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .calendar-day.today .calendar-event-item:hover {
+            background: transparent !important;
+            transform: none;
+        }
+        .calendar-day.today:hover .calendar-event-title {
+            color: white !important;
+        }
+        .calendar-day.today:hover .calendar-event-item:hover {
+            background: transparent;
+        }
+        .calendar-day.today .calendar-day-number {
+            color: white !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        @media (max-width: 768px) {
+            .calendar-day.today .calendar-event-title {
+                text-shadow: none;
+            }
+            .calendar-day.today .calendar-day-number {
+                text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+            }
+        }
+        @media (max-width: 480px) {
+            .calendar-day.today .calendar-event-title {
+                text-shadow: none;
+                font-weight: 600;
+            }
+            .calendar-day.today .calendar-day-number {
+                text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+                font-weight: 700;
+            }
+        }
+        .calendar-day-number {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            flex-shrink: 0;
+            width: 100%;
+            text-align: left;
+        }
+        .calendar-event-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+            margin-bottom: 2px;
+        }
+        .calendar-event-dot.keynote {
+            background: #8B5CF6;
+        }
+        .calendar-event-dot.workshop {
+            background: #EC4899;
+        }
+        .calendar-event-dot.conference {
+            background: #3B82F6;
+        }
+        .calendar-event-dot.webinar {
+            background: #10B981;
+        }
+        .calendar-event-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 2px;
+            cursor: pointer;
+            padding: 1px 2px;
+            border-radius: 3px;
+            transition: all 0.2s ease;
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+        .calendar-event-item:hover {
+            background: transparent;
+        }
+        .calendar-event-title {
+            font-size: 0.65rem;
+            color: var(--text-dark);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-grow: 1;
+            min-width: 0;
+            max-width: 100%;
+        }
+        .calendar-day-events {
+            margin-top: 4px;
+            flex-grow: 1;
+            width: 100%;
+            min-width: 0;
+            overflow: hidden;
+        }
+        .calendar-no-events {
+            font-size: 0.6rem;
+            color: var(--gray-text);
+            font-style: italic;
+            margin-top: 4px;
+        }
+        @media (max-width: 1024px) {
+            .calendar-container {
+                padding: 1.5rem;
+            }
+            .calendar-day {
+                min-height: 90px;
+                padding: 0.4rem;
+            }
+            .calendar-day-header {
+                padding: 0.8rem 0.4rem;
+                font-size: 0.85rem;
+            }
+            .calendar-month-year {
+                font-size: 1.8rem;
+            }
+            .calendar-grid {
+                grid-template-columns: repeat(7, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 768px) {
+            .calendar-container {
+                padding: 1rem;
+                margin: 0 0.5rem;
+            }
+            .calendar-day {
+                min-height: 75px;
+                padding: 0.3rem;
+            }
+            .calendar-day-header {
+                padding: 0.6rem 0.3rem;
+                font-size: 0.8rem;
+            }
+            .calendar-day-number {
+                font-size: 0.8rem;
+                margin-bottom: 0.15rem;
+            }
+            .calendar-event-title {
+                font-size: 0.6rem;
+            }
+            .calendar-event-dot {
+                width: 6px;
+                height: 6px;
+                margin-right: 3px;
+            }
+            .calendar-month-year {
+                font-size: 1.5rem;
+            }
+            .calendar-nav-btn {
+                width: 40px;
+                height: 40px;
+            }
+            .filter-button {
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+                margin: 0.2rem;
+                box-shadow: 0 2px 6px rgba(139, 92, 246, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+            }
+            .calendar-grid {
+                grid-template-columns: repeat(7, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 640px) {
+            .calendar-container {
+                padding: 0.8rem;
+                margin: 0 0.25rem;
+            }
+            .calendar-day {
+                min-height: 65px;
+                padding: 0.2rem;
+            }
+            .calendar-day-header {
+                padding: 0.5rem 0.2rem;
+                font-size: 0.75rem;
+            }
+            .calendar-day-number {
+                font-size: 0.75rem;
+                margin-bottom: 0.1rem;
+            }
+            .calendar-event-title {
+                font-size: 0.55rem;
+            }
+            .calendar-event-dot {
+                width: 5px;
+                height: 5px;
+                margin-right: 2px;
+            }
+            .calendar-month-year {
+                font-size: 1.3rem;
+            }
+            .calendar-nav-btn {
+                width: 35px;
+                height: 35px;
+            }
+            .filter-button {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
+                margin: 0.15rem;
+                box-shadow: 0 2px 6px rgba(139, 92, 246, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+            }
+            .calendar-grid {
+                grid-template-columns: repeat(7, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 480px) {
+            .calendar-container {
+                padding: 0.6rem;
+                margin: 0;
+            }
+            .calendar-day {
+                min-height: 55px;
+                padding: 0.15rem;
+            }
+            .calendar-day-header {
+                padding: 0.4rem 0.15rem;
+                font-size: 0.7rem;
+            }
+            .calendar-day-number {
+                font-size: 0.7rem;
+                margin-bottom: 0.05rem;
+            }
+            .calendar-event-title {
+                font-size: 0.5rem;
+            }
+            .calendar-event-dot {
+                width: 4px;
+                height: 4px;
+                margin-right: 2px;
+            }
+            .calendar-month-year {
+                font-size: 1.2rem;
+            }
+            .calendar-nav-btn {
+                width: 30px;
+                height: 30px;
+            }
+            .calendar-header {
+                margin-bottom: 1rem;
+            }
+            .filter-button {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.75rem;
+                margin: 0.1rem;
+                box-shadow: 0 1px 4px rgba(139, 92, 246, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+            }
+            .flex.flex-wrap.justify-center.gap-4 {
+                flex-direction: column;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            #events h2 {
+                font-size: 3rem !important;
+                margin-bottom: 2rem !important;
+            }
+            #events {
+                padding: 1rem !important;
+            }
+            .calendar-grid {
+                grid-template-columns: repeat(7, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 640px) {
+            #events h2 {
+                font-size: 2.5rem !important;
+                margin-bottom: 1.5rem !important;
+            }
+        }
+        @media (max-width: 375px) {
+            #events h2 {
+                font-size: 2rem !important;
+                margin-bottom: 1rem !important;
+            }
+            .calendar-container {
+                padding: 0.4rem !important;
+            }
+            .calendar-day {
+                min-height: 45px !important;
+                padding: 0.1rem !important;
+            }
+            .calendar-day-header {
+                padding: 0.3rem 0.1rem !important;
+                font-size: 0.65rem !important;
+            }
+            .calendar-day-number {
+                font-size: 0.65rem !important;
+            }
+            .calendar-event-title {
+                font-size: 0.45rem !important;
+            }
+            .calendar-month-year {
+                font-size: 1rem !important;
+            }
+            .calendar-nav-btn {
+                width: 28px !important;
+                height: 28px !important;
+            }
+            .filter-button {
+                padding: 0.25rem 0.5rem !important;
+                font-size: 0.7rem !important;
+                margin: 0.05rem !important;
+                flex: 0 0 auto;
+                min-width: max-content;
+                text-align: center;
+                box-shadow: 0 1px 4px rgba(139, 92, 246, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+            }
+            .flex.flex-wrap.justify-center.gap-4 {
+                flex-wrap: nowrap;
+                justify-content: flex-start;
+                overflow-x: auto;
+                padding: 0 0.5rem;
+                gap: 0.5rem;
+                scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch;
+            }
+            .filter-button {
+                scroll-snap-align: start;
+            }
+            .calendar-grid {
+                grid-template-columns: repeat(7, minmax(0, 1fr));
+            }
+        }
+        .event-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(15px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .event-modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .event-modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            color: var(--text-dark);
+            padding: 2rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.15), 0 10px 20px rgba(236, 72, 153, 0.1);
+            backdrop-filter: blur(40px);
+            border: 2px solid rgba(139, 92, 246, 0.2);
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            transform: translateY(20px);
+            transition: transform 0.3s ease-in-out;
+        }
+        @media (max-width: 640px) {
+            .event-modal-content {
+                padding: 1.5rem;
+                margin: 1rem;
+                width: calc(100% - 2rem);
+                max-width: none;
+            }
+            .event-modal-title {
+                font-size: 1.5rem;
+                margin-bottom: 0.8rem;
+            }
+            .event-modal-details {
+                margin-bottom: 1.2rem;
+                font-size: 0.9rem;
+            }
+            .event-modal-category {
+                font-size: 0.8rem;
+                padding: 0.3rem 0.8rem;
+                margin-bottom: 0.8rem;
+            }
+            .event-modal-date-header {
+                font-size: 1.1rem;
+                margin-bottom: 1.2rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .event-modal-content {
+                padding: 1.2rem;
+                margin: 0.5rem;
+                width: calc(100% - 1rem);
+                border-radius: 1rem;
+            }
+            .event-modal-title {
+                font-size: 1.3rem;
+                margin-bottom: 0.6rem;
+            }
+            .event-modal-details {
+                margin-bottom: 1rem;
+                font-size: 0.85rem;
+            }
+            .event-modal-category {
+                font-size: 0.75rem;
+                padding: 0.25rem 0.6rem;
+                margin-bottom: 0.6rem;
+            }
+            .event-modal-date-header {
+                font-size: 1rem;
+                margin-bottom: 1rem;
+            }
+            .event-modal-close {
+                width: 30px;
+                height: 30px;
+                font-size: 1.1rem;
+                top: 0.8rem;
+                right: 0.8rem;
+            }
+        }
+        .event-modal.active .event-modal-content {
+            transform: translateY(0);
+        }
+        .event-modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            cursor: pointer;
+            color: #1a1a1a;
+            transition: all 0.3s ease;
+        }
+        .event-modal-close:hover {
+            background: var(--gradient-primary);
+            color: white;
+            transform: scale(1.1);
+        }
+        .event-modal-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: #1a1a1a;
+            font-weight: 700;
+        }
+        .event-modal-details {
+            margin-bottom: 1.5rem;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+        .event-modal-details p {
+            margin-bottom: 0.75rem;
+            color: #2d3748;
+        }
+        .event-modal-details strong {
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+        .event-modal-category {
+            display: inline-block;
+            background: var(--gradient-primary);
+            color: white;
+            padding: 0.4rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+        .event-modal-buy-btn {
+            background: var(--gradient-primary);
+            color: var(--text-light);
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-weight: 600;
+            width: 100%;
+        }
+        .event-modal-buy-btn:hover {
+            background: var(--gradient-secondary);
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px var(--shadow-purple);
+        }
+        .event-modal-placeholder {
+            text-align: center;
+            padding: 2rem;
+        }
+        .event-modal-placeholder h4 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            color: #4a5568;
+            margin-bottom: 1rem;
+        }
+        .event-modal-placeholder p {
+            color: #718096;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        .event-modal-placeholder-btn {
+            background: rgba(139, 92, 246, 0.1);
+            color: #1a1a1a;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(139, 92, 246, 0.2);
+            font-weight: 600;
+        }
+        .event-modal-placeholder-btn:hover {
+            background: var(--gradient-primary);
+            color: white;
+            transform: scale(1.02);
+            border-color: transparent;
+        }
+        .event-modal-date-header {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.3rem;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .filter-button {
+            background: var(--card-bg-light); 
+            color: var(--text-dark);
+            padding: 0.75rem 1.5rem; 
+            border-radius: 9999px; 
+            border: 1px solid var(--border-light);
+            cursor: pointer; 
+            transition: all 0.3s ease;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+        .filter-button:hover { 
+            background: var(--card-bg-glass); 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+        .filter-button.active { 
+            background: var(--gradient-primary); 
+            color: var(--text-light); 
+            border-color: var(--accent-purple);
+            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.25), 0 2px 8px rgba(139, 92, 246, 0.15);
+        }
+        .testimonial-carousel {
+            position: relative;
+            max-width: none;
+            margin: 0 auto;
+            padding: 0 5rem;
+        }
+        @media (max-width: 768px) {
+            .testimonial-carousel {
+                padding: 0;
+            }
+        }
+        @media (max-width: 640px) {
+            .testimonial-carousel {
+                padding: 0;
+            }
+        }
+        @media (max-width: 480px) {
+            .testimonial-carousel {
+                padding: 0;
+            }
+        }
+        .testimonial-container {
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            min-height: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.1);
+        }
+        @media (min-width: 640px) {
+            .testimonial-container {
+                min-height: 270px;
+            }
+        }
+        @media (min-width: 768px) {
+            .testimonial-container {
+                min-height: 300px;
+            }
+        }
+        .testimonial-slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transform: translateX(0);
+            transition: opacity 0.8s ease-in-out, transform 0.8s ease-in-out;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1.5rem;
+            border: 2px solid rgba(139, 92, 246, 0.2);
+            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.15), 0 10px 20px rgba(236, 72, 153, 0.1);
+            backdrop-filter: blur(40px);
+            padding: 2rem 1.5rem;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            min-height: 200px;
+        }
+        @media (min-width: 640px) {
+            .testimonial-slide {
+                padding: 2.5rem 2rem;
+                min-height: 230px;
+            }
+        }
+        @media (min-width: 768px) {
+            .testimonial-slide {
+                padding: 3rem 2rem;
+            min-height: 250px;
+            }
+        }
+        .testimonial-slide.active {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+        .testimonial-slide.prev {
+            opacity: 0;
+            transform: translateX(0) scale(0.95);
+        }
+        .testimonial-quote {
+            font-size: 1rem;
+            font-style: italic;
+            color: #1a1a1a;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+            font-weight: 500;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .testimonial-author {
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 0.9rem;
+            text-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);
+        }
+        @media (min-width: 640px) {
+            .testimonial-quote {
+                font-size: 1.2rem;
+            }
+            .testimonial-author {
+                font-size: 1rem;
+            }
+        }
+        @media (min-width: 768px) {
+            .testimonial-quote {
+                font-size: 1.35rem;
+            }
+            .testimonial-author {
+                font-size: 1.1rem;
+            }
+        }
+        .testimonial-nav-btn {
+            position: absolute;
+            top: 42%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            color: var(--text-dark);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.2);
+        }
+        @media (min-width: 769px) {
+            .testimonial-nav-btn {
+                width: 60px;
+                height: 60px;
+            }
+        }
+        @media (max-width: 768px) {
+            .testimonial-nav-btn {
+                background: transparent !important;
+                border: none !important;
+                backdrop-filter: none !important;
+                box-shadow: none !important;
+                color: var(--text-dark);
+                width: 45px;
+                height: 45px;
+            }
+            .testimonial-nav-btn:hover {
+                background: rgba(139, 92, 246, 0.1) !important;
+                color: var(--accent-purple) !important;
+                transform: translateY(-50%) scale(1.1) !important;
+                box-shadow: none !important;
+            }
+        }
+        @media (max-width: 640px) {
+            .testimonial-nav-btn {
+                width: 40px;
+                height: 40px;
+            }
+        }
+        @media (max-width: 480px) {
+            .testimonial-nav-btn {
+                width: 35px;
+                height: 35px;
+            }
+        }
+        @media (max-width: 375px) {
+            .testimonial-nav-btn {
+                width: 32px;
+                height: 32px;
+            }
+        }
+        .testimonial-nav-btn:hover {
+            background: var(--gradient-primary);
+            color: white;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 15px 30px rgba(139, 92, 246, 0.4);
+            border-color: rgba(139, 92, 246, 0.6);
+        }
+        .testimonial-prev {
+            left: 0;
+        }
+        .testimonial-next {
+            right: 0;
+        }
+        .testimonial-dots {
+            display: flex;
+            justify-content: center;
+            margin-top: 2rem;
+            gap: 0.75rem;
+        }
+        .testimonial-dot {
+            width: 14px;
+            height: 14px;
+            background: rgba(139, 92, 246, 0.3);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 8px rgba(139, 92, 246, 0.2);
+        }
+        .testimonial-dot.active {
+            background: var(--gradient-primary);
+            transform: scale(1.3);
+            border-color: rgba(139, 92, 246, 0.6);
+            box-shadow: 0 6px 12px rgba(139, 92, 246, 0.4);
+        }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.4); 
+            backdrop-filter: blur(15px);
+            display: flex;
+            justify-content: center; align-items: center; z-index: 2000;
+            opacity: 0; visibility: hidden; transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95); 
+            color: #1a1a1a;
+            padding: 2rem; 
+            border-radius: 1.5rem; 
+            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.15), 0 10px 20px rgba(236, 72, 153, 0.1);
+            backdrop-filter: blur(40px);
+            border: 2px solid rgba(139, 92, 246, 0.2);
+            width: 90%; max-width: 500px; position: relative;
+            transform: translateY(20px); transition: transform 0.3s ease-in-out;
+        }
+        @media (max-width: 640px) {
+            .modal-content {
+                padding: 1.5rem;
+                margin: 1rem;
+                width: calc(100% - 2rem);
+                max-width: none;
+            }
+            .modal-close-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 1.1rem;
+                top: 0.8rem;
+                right: 0.8rem;
+            }
+            .modal-input {
+                padding: 0.6rem;
+                font-size: 0.9rem;
+            }
+            .modal-submit-btn {
+                padding: 0.6rem 1.2rem;
+                font-size: 0.9rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .modal-content {
+                padding: 1.2rem;
+                margin: 0.5rem;
+                width: calc(100% - 1rem);
+                border-radius: 1rem;
+            }
+            .modal-content h3 {
+                font-size: 1.5rem;
+                margin-bottom: 1rem;
+            }
+            .modal-input {
+                padding: 0.5rem;
+                font-size: 0.85rem;
+                margin-bottom: 0.8rem;
+            }
+            .modal-submit-btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.85rem;
+            }
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        .modal-close-btn {
+            position: absolute; top: 1rem; right: 1rem; 
+            background: rgba(139, 92, 246, 0.1); 
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 50%;
+            width: 35px; height: 35px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem; cursor: pointer; color: #1a1a1a;
+            transition: all 0.3s ease;
+        }
+        .modal-close-btn:hover { 
+            background: var(--gradient-primary); 
+            color: white;
+            transform: scale(1.1);
+        }
+        .modal-input {
+            width: 100%; padding: 0.75rem; margin-bottom: 1rem;
+            border: 2px solid rgba(139, 92, 246, 0.2); border-radius: 0.5rem;
+            background: rgba(255, 255, 255, 0.8); color: #1a1a1a;
+            backdrop-filter: blur(10px);
+            font-weight: 500;
+        }
+        .modal-input::placeholder { color: #718096; }
+        .modal-input:focus { 
+            outline: none; 
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+        .modal-content label {
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+        .modal-submit-btn {
+            background: var(--gradient-primary); 
+            color: white;
+            padding: 0.75rem 1.5rem; border-radius: 9999px; cursor: pointer;
+            transition: all 0.3s ease; width: 100%; font-weight: 600;
+            border: none;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+        .modal-submit-btn:hover { 
+            background: var(--gradient-secondary);
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+        }
+        .modal-submit-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+        .toast-container {
+            position: fixed; bottom: 1rem; right: 1rem; z-index: 3000;
+            display: flex; flex-direction: column; gap: 0.5rem;
+        }
+        .toast-message {
+            background: rgba(255, 255, 255, 0.95); 
+            color: #1a1a1a;
+            padding: 0.75rem 1.5rem; border-radius: 0.75rem;
+            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.2), 0 5px 10px rgba(236, 72, 153, 0.1);
+            backdrop-filter: blur(40px);
+            border: 2px solid rgba(139, 92, 246, 0.2);
+            opacity: 0; transform: translateY(20px);
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            font-weight: 500;
+        }
+        .toast-message.show { opacity: 1; transform: translateY(0); }
+        .animate-fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .animate-fade-in.in-view {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        body.modal-open {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            left: 0;
+        }
+        @media (max-width: 768px) {
+            body {
+                font-size: 16px;
+                line-height: 1.6;
+            }
+            main {
+                padding-top: 4.5rem;
+            }
+            #home {
+                padding: 1.5rem 1rem 2rem;
+                gap: 1rem;
+                min-height: auto;
+            }
+            #home h1 {
+                letter-spacing: -0.03em;
+                line-height: 0.85;
+                text-align: center;
+                margin-bottom: 1rem;
+            }
+            #home h1 br {
+                display: none;
+            }
+            #home p {
+                text-align: center;
+                margin-bottom: 1.5rem;
+                max-width: 100%;
+                color: #4a5568;
+                font-size: 1.1rem;
+                line-height: 1.5;
+            }
+            #home .grid {
+                gap: 1.5rem;
+                margin-top: 0;
+            }
+            #home .grid > div {
+                text-align: center;
+                padding: 1rem;
+                background: rgba(255, 255, 255, 0.7);
+                border-radius: 1rem;
+                border: 1px solid rgba(139, 92, 246, 0.1);
+                backdrop-filter: blur(10px);
+            }
+            #home .grid h3 {
+                background: var(--gradient-primary);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin-bottom: 0.5rem;
+            }
+            #home .grid p {
+                margin-bottom: 0;
+                font-size: 0.95rem;
+                color: #2d3748;
+                font-weight: 500;
+            }
+            .hero-blob {
+                margin-bottom: 1.5rem;
+                box-shadow: 0 20px 40px rgba(139, 92, 246, 0.15);
+            }
+            section {
+                padding: 1.5rem 1rem;
+            }
+            .filter-button {
+                padding: 0.75rem 1.25rem;
+                font-size: 0.95rem;
+                font-weight: 600;
+                box-shadow: 0 2px 8px rgba(139, 92, 246, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+            }
+            header {
+                padding: 0.75rem;
+                backdrop-filter: blur(25px);
+                background: rgba(255, 255, 255, 0.95);
+            }
+            header .max-w-7xl {
+                min-height: 2.5rem;
+                display: flex;
+                align-items: center;
+            }
+            #downloadAssetsBtn {
+                padding: 1rem 2rem;
+                font-size: 1.1rem;
+                font-weight: 600;
+                margin-top: 2rem;
+            }
+        }
+        @media (max-width: 480px) {
+            body {
+                font-size: 15px;
+            }
+            main {
+                padding-top: 4rem;
+            }
+            #home {
+                padding: 1rem 0.75rem 1.5rem;
+                gap: 0.75rem;
+            }
+            #home h1 {
+                font-size: 3.5rem !important;
+                margin-bottom: 0.75rem;
+            }
+            #home p {
+                font-size: 1rem;
+                margin-bottom: 1rem;
+                padding: 0 0.5rem;
+            }
+            .hero-blob {
+                height: 300px !important;
+                margin-bottom: 1rem;
+            }
+            #home .grid {
+                gap: 1rem;
+            }
+            #home .grid > div {
+                padding: 0.75rem;
+            }
+            #home .grid h3 {
+                font-size: 2.5rem !important;
+            }
+            #home .grid p {
+                font-size: 0.9rem;
+            }
+            h2 {
+                margin-bottom: 1.5rem !important;
+            }
+            section {
+                padding: 1.25rem 0.75rem;
+            }
+            .filter-button {
+                padding: 0.6rem 1rem;
+                font-size: 0.9rem;
+                box-shadow: 0 2px 6px rgba(139, 92, 246, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+            }
+        }
+        @media (max-width: 375px) {
+            body {
+                font-size: 14px;
+            }
+            main {
+                padding-top: 3.5rem;
+            }
+            #home {
+                padding: 0.75rem 0.5rem 1.25rem;
+                gap: 0.5rem;
+            }
+            #home h1 {
+                font-size: 3rem !important;
+                margin-bottom: 0.5rem;
+            }
+            #home p {
+                font-size: 0.95rem;
+                margin-bottom: 0.75rem;
+                padding: 0;
+            }
+            .hero-blob {
+                height: 280px !important;
+                margin-bottom: 0.75rem;
+            }
+            #home .grid {
+                gap: 0.75rem;
+            }
+            #home .grid > div {
+                padding: 0.6rem;
+            }
+            #home .grid h3 {
+                font-size: 2.25rem !important;
+            }
+            #home .grid p {
+                font-size: 0.85rem;
+                line-height: 1.4;
+            }
+            section {
+                padding: 1rem 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="bg-objects">
+        <div class="bg-object bg-object-1"></div>
+        <div class="bg-object bg-object-2"></div>
+    </div>
+    <header class="fixed top-0 left-0 right-0 p-3 shadow-sm z-50">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2 cursor-pointer">
+                <span class="font-bebas text-3xl md:text-3xl text-text-dark">SM</span>
+            </div>
+            <nav class="hidden md:block">
+                <ul class="flex space-x-8 text-text-dark font-medium">
+                    <li><a href="#home" class="hover:text-accent-orange transition-colors cursor-pointer">Home</a></li>
+                    <li><a href="#video" class="hover:text-accent-orange transition-colors cursor-pointer">Reels</a></li>
+                    <li><a href="#events" class="hover:text-accent-orange transition-colors cursor-pointer">Events</a></li>
+                    <li><a href="#contact" class="hover:text-accent-orange transition-colors cursor-pointer">Testimonials</a></li>
+                </ul>
+            </nav>
+            <button class="md:hidden mobile-menu-toggle cursor-pointer p-2" id="mobileMenuToggle">
+                <svg class="w-6 h-6 text-text-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
+        </div>
+        <nav class="md:hidden mobile-menu absolute top-full left-0 right-0 bg-white/95 backdrop-blur-20 border-b border-gray-200 shadow-lg transform -translate-y-full opacity-0 invisible transition-all duration-300 ease-in-out" id="mobileMenu">
+            <ul class="flex flex-col p-4 space-y-1">
+                <li><a href="#home" class="block py-2 px-3 text-text-dark hover:bg-gray-100 rounded-lg transition-colors cursor-pointer mobile-menu-link text-base font-medium">Home</a></li>
+                <li><a href="#video" class="block py-2 px-3 text-text-dark hover:bg-gray-100 rounded-lg transition-colors cursor-pointer mobile-menu-link text-base font-medium">Reels</a></li>
+                <li><a href="#events" class="block py-2 px-3 text-text-dark hover:bg-gray-100 rounded-lg transition-colors cursor-pointer mobile-menu-link text-base font-medium">Events</a></li>
+                <li><a href="#contact" class="block py-2 px-3 text-text-dark hover:bg-gray-100 rounded-lg transition-colors cursor-pointer mobile-menu-link text-base font-medium">Testimonials</a></li>
+            </ul>
+        </nav>
+        <div class="scroll-progress" id="scrollProgress"></div>
+    </header>
+    <main class="pt-16 lg:pt-12 md:pt-16">
+        <section id="home" class="px-4 md:px-8 lg:px-16 max-w-7xl mx-auto py-8 md:py-16 lg:py-24 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-16 items-center animate-fade-in">
+            <div class="flex flex-col justify-center order-2 md:order-1">
+                <h1 class="font-bebas text-text-dark text-6xl sm:text-7xl md:text-6xl lg:text-8xl xl:text-9xl leading-none mb-4 md:mb-6">
+                    Dr. Sarah <br>Martinez
+                </h1>
+                <p class="text-lg sm:text-xl md:text-lg text-gray-text max-w-md mb-6 md:mb-8 leading-relaxed font-medium">
+                    Transforming organizations through inspiring leadership insights and actionable strategies. Empowering teams to achieve breakthrough results.
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+                    <div>
+                        <h3 class="font-bebas text-5xl sm:text-6xl md:text-5xl text-text-dark mb-2">500+</h3>
+                        <p class="text-gray-text text-base sm:text-lg leading-relaxed font-medium">Keynote speeches delivered across 30+ countries worldwide</p>
+                    </div>
+                    <div class="relative">
+                        <h3 class="font-bebas text-5xl sm:text-6xl md:text-5xl text-text-dark mb-2">1M+</h3>
+                        <p class="text-gray-text text-base sm:text-lg leading-relaxed font-medium">Professionals inspired through transformational speaking engagements</p>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-blob h-[350px] sm:h-[400px] md:h-[500px] lg:h-[600px] flex items-center justify-center order-1 md:order-2 mb-6 md:mb-0">
+                <img src="https://images.pexels.com/photos/3747435/pexels-photo-3747435.jpeg" alt="Dr. Sarah Martinez speaking" class="object-contain object-top">
+                <div class="absolute bottom-6 md:bottom-24 left-6 md:left-16 bg-white rounded-full p-2 md:p-3 shadow-md cursor-pointer">
+                    <img src="https://images.pexels.com/photos/3747435/pexels-photo-3747435.jpeg" alt="Dr. Sarah Martinez portrait" class="rounded-full w-8 h-8 md:w-10 md:h-10 object-cover">
+                </div>
+            </div>
+        </section>
+        <section id="video" class="px-4 md:px-8 lg:px-16 max-w-7xl mx-auto py-12 md:py-12 animate-fade-in">
+            <h2 class="font-bebas text-text-dark text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl text-center mb-8 md:mb-8 lg:mb-12">Reels</h2>
+            <div class="relative flex items-center justify-center">
+                <button class="video-nav-button left cursor-pointer" id="prevVideoBtn" aria-label="Previous Video">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                </button>
+                <div class="video-container shadow-xl flex-grow">
+                    <video id="speakerVideo" preload="auto">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="video-controls" id="videoControls">
+                        <button id="playPauseBtn" aria-label="Play/Pause" class="cursor-pointer">
+                            <svg id="playIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5,3 19,12 5,21"/>
+                            </svg>
+                            <svg id="pauseIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                                <rect x="6" y="4" width="4" height="16"/>
+                                <rect x="14" y="4" width="4" height="16"/>
+                            </svg>
+                        </button>
+                        <div class="progress-bar-container cursor-pointer" id="progressBarContainer">
+                            <div class="progress-bar" id="progressBar"></div>
+                        </div>
+                        <span id="currentTime" class="text-sm text-white">0:00</span> / <span id="duration" class="text-sm text-white">0:00</span>
+                        <div class="volume-container">
+                            <button id="muteUnmuteBtn" aria-label="Mute/Unmute" class="cursor-pointer">
+                                <svg id="volumeLowIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                                    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/>
+                                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                                </svg>
+                                <svg id="volumeMediumIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                                    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/>
+                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                                </svg>
+                                <svg id="volumeHighIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/>
+                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                                </svg>
+                                <svg id="muteIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                                    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/>
+                                    <line x1="23" y1="9" x2="17" y2="15"/>
+                                    <line x1="17" y1="9" x2="23" y2="15"/>
+                                </svg>
+                            </button>
+                            <input type="range" id="volumeSlider" class="volume-slider cursor-pointer" min="0" max="1" step="0.01" value="1" aria-label="Volume">
+                        </div>
+                        <button id="fullscreenBtn" aria-label="Fullscreen" class="cursor-pointer">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3"/>
+                                <path d="M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <button class="video-nav-button right cursor-pointer" id="nextVideoBtn" aria-label="Next Video">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+            <button id="downloadAssetsBtn" class="mt-8 md:mt-12 block mx-auto bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-2 px-6 md:py-3 md:px-8 text-sm md:text-base rounded-full hover:from-purple-600 hover:to-pink-600 transition-all duration-300 shadow-lg cursor-pointer transform hover:scale-105 flex items-center gap-2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="opacity-90">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7,10 12,15 17,10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Get to know assets
+            </button>
+        </section>
+        <section id="events" class="px-4 md:px-8 lg:px-16 max-w-7xl mx-auto py-12 md:py-12 animate-fade-in">
+            <h2 class="font-bebas text-text-dark text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl text-center mb-8 md:mb-8 lg:mb-12">Event Calendar</h2>
+            <div class="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 mb-6 md:mb-8 px-2">
+                <button class="filter-button active cursor-pointer" data-filter-category="all">All Events</button>
+                <button class="filter-button cursor-pointer" data-filter-category="keynote">Keynotes</button>
+                <button class="filter-button cursor-pointer" data-filter-category="workshop">Workshops</button>
+                <button class="filter-button cursor-pointer" data-filter-category="conference">Conferences</button>
+                <button class="filter-button cursor-pointer" data-filter-category="webinar">Webinars</button>
+            </div>
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <button class="calendar-nav-btn cursor-pointer" id="prevMonth" aria-label="Previous Month">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 18l-6-6 6-6"/>
+                        </svg>
+                    </button>
+                    <h3 class="calendar-month-year" id="monthYear"></h3>
+                    <button class="calendar-nav-btn cursor-pointer" id="nextMonth" aria-label="Next Month">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 18l6-6-6-6"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
+        </section>
+        <div id="eventModal" class="event-modal">
+            <div class="event-modal-content">
+                <button class="event-modal-close cursor-pointer" id="eventModalClose">&times;</button>
+                <div class="event-modal-date-header" id="eventModalDateHeader"></div>
+                <div id="eventModalEventContent">
+                    <div class="event-modal-category" id="eventModalCategory"></div>
+                    <h3 class="event-modal-title" id="eventModalTitle"></h3>
+                    <div class="event-modal-details" id="eventModalDetails"></div>
+                    <button class="event-modal-buy-btn cursor-pointer" id="eventModalBuyBtn">Buy Tickets</button>
+                </div>
+                <div id="eventModalPlaceholder" class="event-modal-placeholder" style="display: none;">
+                    <h4>No Events Scheduled</h4>
+                    <p>There are currently no events scheduled for this date.</p>
+                    <button class="event-modal-placeholder-btn cursor-pointer" onclick="document.getElementById('eventModal').classList.remove('active')">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+        <section id="testimonials" class="px-4 md:px-8 lg:px-16 max-w-7xl mx-auto py-12 md:py-12 animate-fade-in">
+            <h2 class="font-bebas text-text-dark text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl text-center mb-8 md:mb-8 lg:mb-12">testimonials</h2>
+            <div class="testimonial-carousel">
+                <div class="testimonial-container">
+                    <div class="testimonial-slide active" id="testimonialSlide">
+                        <p class="testimonial-quote"></p>
+                        <p class="testimonial-author"></p>
+                    </div>
+                </div>
+                <button class="testimonial-nav-btn testimonial-prev" id="prevTestimonialBtn" aria-label="Previous Testimonial">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="md:w-6 md:h-6">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                </button>
+                <button class="testimonial-nav-btn testimonial-next" id="nextTestimonialBtn" aria-label="Next Testimonial">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="md:w-6 md:h-6">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+                <div class="testimonial-dots" id="testimonialDots"></div>
+            </div>
+        </section>
+    </main>
+    <footer id="contact" class="mt-4 md:mt-8 py-6 text-center relative">
+        <div class="relative px-4 max-w-7xl mx-auto">
+            <p class="text-gray-700 font-medium text-sm sm:text-sm tracking-wide">2025 Dr. Sarah Martinez. All rights reserved.</p>
+        </div>
+    </footer>
+    <div id="buyTicketModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close-btn cursor-pointer" id="closeModalBtn">&times;</button>
+            <h3 class="text-2xl font-semibold mb-6 text-center">Purchase Tickets</h3>
+            <form id="ticketPurchaseForm">
+                <label for="numTickets" class="block text-sm font-medium mb-2">Number of Tickets:</label>
+                <input type="number" id="numTickets" class="modal-input" value="1" min="1" max="10" required>
+                <label for="email" class="block text-sm font-medium mb-2">Email:</label>
+                <input type="email" id="email" class="modal-input" placeholder="your.email@example.com" required>
+                <label for="cardNumber" class="block text-sm font-medium mb-2">Card Number:</label>
+                <input type="text" id="cardNumber" class="modal-input" placeholder="XXXX XXXX XXXX XXXX" required>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="expiryDate" class="block text-sm font-medium mb-2">Expiry Date (MM/YY):</label>
+                        <input type="text" id="expiryDate" class="modal-input" placeholder="MM/YY" required>
+                    </div>
+                    <div>
+                        <label for="cvc" class="block text-sm font-medium mb-2">CVC:</label>
+                        <input type="text" id="cvc" class="modal-input" placeholder="CVC" required>
+                    </div>
+                </div>
+                <button type="submit" class="modal-submit-btn mt-6 cursor-pointer">Purchase</button>
+            </form>
+        </div>
+    </div>
+    <div id="toastContainer" class="toast-container"></div>
+    <script>
+        const eventsData = [
+            { id: 1, title: "Leadership in the Digital Age", date: new Date(2025, 0, 15), location: "Madrid Convention Center, Spain", category: "keynote", description: "Exploring how leaders can navigate digital transformation while maintaining authentic human connections." },
+            { id: 2, title: "Building High-Performance Teams", date: new Date(2025, 0, 22), location: "Manchester Business Hub, UK", category: "workshop", description: "Interactive workshop on creating cohesive teams that deliver exceptional results under pressure." },
+            { id: 3, title: "Women in Leadership Summit", date: new Date(2025, 1, 8), location: "Milan Conference Hall, Italy", category: "conference", description: "Empowering the next generation of female leaders with practical strategies and inspiring stories." },
+            { id: 4, title: "Resilience & Change Management", date: new Date(2025, 1, 14), location: "Virtual Event", category: "webinar", description: "Online masterclass on developing organizational resilience and leading through uncertainty." },
+            { id: 5, title: "Future of Work Summit", date: new Date(2025, 2, 15), location: "New York, NY", category: "keynote", description: "Keynote on how workplace dynamics are evolving and what leaders need to know." },
+            { id: 6, title: "Executive Coaching Intensive", date: new Date(2025, 2, 20), location: "Virtual", category: "workshop", description: "Two-day intensive workshop for C-suite executives on advanced leadership strategies." },
+            { id: 7, title: "Global Leadership Conference", date: new Date(2025, 3, 10), location: "San Francisco, CA", category: "conference", description: "International conference bringing together thought leaders to discuss the future of leadership." },
+            { id: 8, title: "Innovation & Leadership", date: new Date(2025, 3, 25), location: "Virtual", category: "webinar", description: "How to foster innovation while maintaining strong leadership principles." },
+            { id: 9, title: "Strategic Communication Masterclass", date: new Date(2025, 4, 5), location: "London, UK", category: "workshop", description: "Advanced workshop on communication strategies for executive leaders." },
+            { id: 10, title: "Corporate Culture Summit", date: new Date(2025, 4, 15), location: "Berlin, Germany", category: "conference", description: "Forum on building and maintaining positive corporate cultures in modern organizations." },
+            { id: 11, title: "Summer Leadership Intensive", date: new Date(2025, 6, 4), location: "Los Angeles, CA", category: "keynote", description: "Keynote presentation on transformational leadership strategies for the modern workplace." },
+            { id: 12, title: "Emotional Intelligence Workshop", date: new Date(2025, 6, 8), location: "Virtual", category: "workshop", description: "Developing emotional intelligence skills for effective leadership and team management." },
+            { id: 13, title: "Executive Presence Masterclass", date: new Date(2025, 6, 8), location: "Chicago, IL", category: "workshop", description: "Intensive workshop on developing commanding executive presence and authentic leadership style." },
+            { id: 14, title: "Mid-Year Leadership Review", date: new Date(2025, 6, 12), location: "Virtual", category: "webinar", description: "Analysis of leadership trends and emerging challenges facing executives in 2025." },
+            { id: 15, title: "C-Suite Excellence Summit", date: new Date(2025, 6, 18), location: "Toronto, Canada", category: "conference", description: "Exclusive gathering of C-suite executives sharing best practices and strategic insights." },
+            { id: 16, title: "Adaptive Leadership Workshop", date: new Date(2025, 6, 22), location: "Amsterdam, Netherlands", category: "workshop", description: "Workshop on developing adaptive leadership skills for rapidly changing business environments." },
+            { id: 17, title: "Future of Leadership Keynote", date: new Date(2025, 6, 25), location: "Sydney, Australia", category: "keynote", description: "Visionary presentation on the evolution of leadership in the digital age." },
+            { id: 18, title: "Organizational Excellence Summit", date: new Date(2025, 6, 28), location: "Dublin, Ireland", category: "conference", description: "International conference on building high-performance organizations through effective leadership." },
+            { id: 19, title: "Leadership Philosophy Webinar", date: new Date(2025, 6, 30), location: "Virtual", category: "webinar", description: "Deep dive into developing a personal leadership philosophy and authentic leadership approach." },
+        ];
+        const testimonialsData = [
+            { quote: "Dr. Martinez's keynote on digital leadership was transformational. Our executive team implemented her strategies immediately.", author: "Jennifer Thompson, CEO of TechForward Inc." },
+            { quote: "Sarah's approach to building high-performance teams is revolutionary. Her workshop gave our managers the tools", author: "Marcus Johnson, VP of Operations at Global Dynamics" },
+            { quote: "An exceptional speaker! Dr. Martinez has the rare ability to connect with audiences on emotional levels.", author: "Lisa Rodriguez, Conference Director" },
+            { quote: "We've engaged Dr. Martinez for multiple leadership events. Her insights are always cutting-edge and immediately applicable.", author: "Robert Kim, Chief People Officer" },
+            { quote: "Her session on resilience and change management was exactly what our organization needed during our transformation.", author: "Amanda Foster, Executive Director" },
+        ];
+        const videoPlaylist = [
+            { src: "https://videos.pexels.com/video-files/8716590/8716590-uhd_2560_1440_25fps.mp4", poster: "https://images.pexels.com/photos/10401268/pexels-photo-10401268.jpeg" },
+            { src: "https://videos.pexels.com/video-files/8244250/8244250-uhd_2560_1440_25fps.mp4", poster: "https://images.pexels.com/photos/10401263/pexels-photo-10401263.jpeg"}
+        ];
+        let currentVideoIndex = 0;
+        const speakerVideo = document.getElementById('speakerVideo');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const progressBar = document.getElementById('progressBar');
+        const progressBarContainer = document.getElementById('progressBarContainer');
+        const currentTimeSpan = document.getElementById('currentTime');
+        const durationSpan = document.getElementById('duration');
+        const muteUnmuteBtn = document.getElementById('muteUnmuteBtn');
+        const volumeLowIcon = document.getElementById('volumeLowIcon');
+        const volumeMediumIcon = document.getElementById('volumeMediumIcon');
+        const volumeHighIcon = document.getElementById('volumeHighIcon');
+        const muteIcon = document.getElementById('muteIcon');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const videoControls = document.getElementById('videoControls');
+        const prevVideoBtn = document.getElementById('prevVideoBtn');
+        const nextVideoBtn = document.getElementById('nextVideoBtn');
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.floor(seconds % 60);
+            return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+        }
+        function updatePlayPauseIcon(isPlaying) {
+            if (isPlaying) {
+                playIcon.style.display = 'none';
+                pauseIcon.style.display = 'block';
+            } else {
+                playIcon.style.display = 'block';
+                pauseIcon.style.display = 'none';
+            }
+        }
+        function updateVolumeIcon(volume, isMuted) {
+            volumeLowIcon.style.display = 'none';
+            volumeMediumIcon.style.display = 'none';
+            volumeHighIcon.style.display = 'none';
+            muteIcon.style.display = 'none';
+            if (isMuted || volume === 0) {
+                muteIcon.style.display = 'block';
+            } else if (volume > 0 && volume <= 0.33) {
+                volumeLowIcon.style.display = 'block';
+            } else if (volume > 0.33 && volume <= 0.66) {
+                volumeMediumIcon.style.display = 'block';
+            } else {
+                volumeHighIcon.style.display = 'block';
+            }
+        }
+        function loadVideo(index) {
+            speakerVideo.src = videoPlaylist[index].src;
+            speakerVideo.poster = videoPlaylist[index].poster;
+            speakerVideo.load();
+            speakerVideo.pause();
+            updatePlayPauseIcon(false);
+            videoControls.classList.remove('active');
+            clearTimeout(controlsTimeout);
+        }
+        speakerVideo.addEventListener('loadedmetadata', () => { durationSpan.textContent = formatTime(speakerVideo.duration); });
+        playPauseBtn.addEventListener('click', () => {
+            const navButtons = document.querySelectorAll('.video-nav-button');
+            if (speakerVideo.paused) { 
+                speakerVideo.play(); 
+                updatePlayPauseIcon(true); 
+                if (isMobileDevice()) {
+                    clearTimeout(controlsTimeout);
+                    controlsTimeout = setTimeout(() => { 
+                        videoControls.classList.remove('active');
+                        navButtons.forEach(btn => btn.classList.remove('show-with-controls'));
+                    }, 4000);
+                }
+            }
+            else { 
+                speakerVideo.pause(); 
+                updatePlayPauseIcon(false); 
+                if (isMobileDevice()) {
+                    videoControls.classList.add('active');
+                    navButtons.forEach(btn => btn.classList.add('show-with-controls'));
+                    clearTimeout(controlsTimeout);
+                }
+            }
+        });
+        speakerVideo.addEventListener('timeupdate', () => {
+            const progress = (speakerVideo.currentTime / speakerVideo.duration) * 100;
+            progressBar.style.width = `${progress}%`;
+            currentTimeSpan.textContent = formatTime(speakerVideo.currentTime);
+        });
+        speakerVideo.addEventListener('ended', () => { 
+            const navButtons = document.querySelectorAll('.video-nav-button');
+            updatePlayPauseIcon(false); 
+            speakerVideo.currentTime = 0; 
+            if (isMobileDevice()) {
+                videoControls.classList.add('active');
+                navButtons.forEach(btn => btn.classList.add('show-with-controls'));
+            }
+            clearTimeout(controlsTimeout);
+        });
+        progressBarContainer.addEventListener('click', (e) => {
+            const clickX = e.offsetX; const width = progressBarContainer.offsetWidth;
+            const newTime = (clickX / width) * speakerVideo.duration; speakerVideo.currentTime = newTime;
+        });
+        muteUnmuteBtn.addEventListener('click', () => {
+            speakerVideo.muted = !speakerVideo.muted;
+            updateVolumeIcon(speakerVideo.volume, speakerVideo.muted);
+            volumeSlider.value = speakerVideo.muted ? 0 : speakerVideo.volume;
+            updateVolumeSliderBackground();
+        });
+        volumeSlider.addEventListener('input', () => {
+            speakerVideo.volume = volumeSlider.value;
+            speakerVideo.muted = speakerVideo.volume === 0;
+            updateVolumeIcon(speakerVideo.volume, speakerVideo.muted);
+            updateVolumeSliderBackground();
+        });
+        function updateVolumeSliderBackground() {
+            const value = (volumeSlider.value - volumeSlider.min) / (volumeSlider.max - volumeSlider.min) * 100;
+            volumeSlider.style.setProperty('--volume-level', `${value}%`);
+        }
+        volumeSlider.value = speakerVideo.volume;
+        updateVolumeSliderBackground();
+        updateVolumeIcon(speakerVideo.volume, speakerVideo.muted);
+        fullscreenBtn.addEventListener('click', () => {
+            if (speakerVideo.requestFullscreen) { speakerVideo.requestFullscreen(); }
+            else if (speakerVideo.mozRequestFullScreen) { speakerVideo.mozRequestFullScreen(); }
+            else if (speakerVideo.webkitRequestFullscreen) { speakerVideo.webkitRequestFullscreen(); }
+            else if (speakerVideo.msRequestFullscreen) { speakerVideo.msRequestFullscreen(); }
+        });
+        let controlsTimeout;
+        let handleVideoClick;
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+        }
+        function setupDesktopControls() {
+            const videoContainer = document.querySelector('.video-container');
+            if (handleVideoClick) {
+                speakerVideo.removeEventListener('click', handleVideoClick);
+                speakerVideo.removeEventListener('touchend', handleVideoClick);
+            }
+            videoContainer.addEventListener('mouseenter', () => {
+                videoControls.classList.add('active');
+                clearTimeout(controlsTimeout);
+            });
+            videoContainer.addEventListener('mouseleave', () => {
+                videoControls.classList.remove('active');
+                clearTimeout(controlsTimeout);
+            });
+            videoControls.addEventListener('mouseenter', () => {
+                videoControls.classList.add('active');
+                clearTimeout(controlsTimeout);
+            });
+            videoControls.addEventListener('mouseleave', () => {
+                videoControls.classList.remove('active');
+                clearTimeout(controlsTimeout);
+            });
+        }
+        function setupMobileControls() {
+            const navButtons = document.querySelectorAll('.video-nav-button');
+            if (handleVideoClick) {
+                speakerVideo.removeEventListener('click', handleVideoClick);
+                speakerVideo.removeEventListener('touchend', handleVideoClick);
+            }
+            handleVideoClick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (videoControls.classList.contains('active')) {
+                    videoControls.classList.remove('active');
+                    navButtons.forEach(btn => btn.classList.remove('show-with-controls'));
+                    clearTimeout(controlsTimeout);
+                } else {
+                    videoControls.classList.add('active');
+                    navButtons.forEach(btn => btn.classList.add('show-with-controls'));
+                    if (!speakerVideo.paused) {
+                        clearTimeout(controlsTimeout);
+                        controlsTimeout = setTimeout(() => {
+                            videoControls.classList.remove('active');
+                            navButtons.forEach(btn => btn.classList.remove('show-with-controls'));
+                        }, 4000);
+                    }
+                }
+            }
+            speakerVideo.addEventListener('click', handleVideoClick);
+            speakerVideo.addEventListener('touchend', handleVideoClick);
+        }
+        const navButtons = document.querySelectorAll('.video-nav-button');
+        if (isMobileDevice()) {
+            navButtons.forEach(btn => btn.classList.remove('show-with-controls'));
+            setupMobileControls();
+        } else {
+            navButtons.forEach(btn => btn.classList.add('show-with-controls'));
+            setupDesktopControls();
+        }
+        let currentDeviceType = isMobileDevice() ? 'mobile' : 'desktop';
+        window.addEventListener('resize', () => {
+            const newDeviceType = isMobileDevice() ? 'mobile' : 'desktop';
+            const navButtons = document.querySelectorAll('.video-nav-button');
+            if (newDeviceType !== currentDeviceType) {
+                currentDeviceType = newDeviceType;
+                clearTimeout(controlsTimeout);
+                videoControls.classList.remove('active');
+                if (isMobileDevice()) {
+                    navButtons.forEach(btn => btn.classList.remove('show-with-controls'));
+                    setupMobileControls();
+                } else {
+                    navButtons.forEach(btn => btn.classList.add('show-with-controls'));
+                    setupDesktopControls();
+                }
+            }
+        });
+        prevVideoBtn.addEventListener('click', () => {
+            currentVideoIndex = (currentVideoIndex - 1 + videoPlaylist.length) % videoPlaylist.length;
+            loadVideo(currentVideoIndex);
+        });
+        nextVideoBtn.addEventListener('click', () => {
+            currentVideoIndex = (currentVideoIndex + 1) % videoPlaylist.length;
+            loadVideo(currentVideoIndex);
+        });
+        loadVideo(currentVideoIndex);
+        function restructureVideoControls() {
+            const videoControls = document.getElementById('videoControls');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const progressBarContainer = document.querySelector('.progress-bar-container');
+            const currentTimeSpan = document.getElementById('currentTime');
+            const durationSpan = document.getElementById('duration');
+            const volumeContainer = document.querySelector('.volume-container');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            function isMobile() {
+                return window.innerWidth <= 767;
+            }
+            function createMobileLayout() {
+                if (!isMobile()) return;
+                videoControls.innerHTML = '';
+                const row1 = document.createElement('div');
+                row1.className = 'video-controls-row-1';
+                row1.appendChild(playPauseBtn);
+                row1.appendChild(progressBarContainer);
+                row1.appendChild(fullscreenBtn);
+                const row2 = document.createElement('div');
+                row2.className = 'video-controls-row-2';
+                const timeDisplay = document.createElement('div');
+                timeDisplay.className = 'video-controls-time-display';
+                timeDisplay.appendChild(currentTimeSpan);
+                const separator = document.createElement('span');
+                separator.textContent = ' / ';
+                separator.style.color = 'rgba(255, 255, 255, 0.8)';
+                timeDisplay.appendChild(separator);
+                timeDisplay.appendChild(durationSpan);
+                row2.appendChild(timeDisplay);
+                row2.appendChild(volumeContainer);
+                videoControls.appendChild(row1);
+                videoControls.appendChild(row2);
+            }
+            function createDesktopLayout() {
+                if (isMobile()) return;
+                videoControls.innerHTML = '';
+                videoControls.appendChild(playPauseBtn);
+                videoControls.appendChild(progressBarContainer);
+                videoControls.appendChild(currentTimeSpan);
+                const separator = document.createElement('span');
+                separator.textContent = ' / ';
+                separator.style.color = 'rgba(255, 255, 255, 0.95)';
+                videoControls.appendChild(separator);
+                videoControls.appendChild(durationSpan);
+                videoControls.appendChild(volumeContainer);
+                videoControls.appendChild(fullscreenBtn);
+            }
+            if (isMobile()) {
+                createMobileLayout();
+            }
+            window.addEventListener('resize', () => {
+                if (isMobile()) {
+                    createMobileLayout();
+                } else {
+                    createDesktopLayout();
+                }
+            });
+        }
+        restructureVideoControls();
+        let currentDate = new Date();
+        let selectedCategory = 'all';
+        const calendarGrid = document.getElementById('calendarGrid');
+        const monthYear = document.getElementById('monthYear');
+        const prevMonth = document.getElementById('prevMonth');
+        const nextMonth = document.getElementById('nextMonth');
+        const eventModal = document.getElementById('eventModal');
+        const eventModalClose = document.getElementById('eventModalClose');
+        const eventModalDateHeader = document.getElementById('eventModalDateHeader');
+        const eventModalEventContent = document.getElementById('eventModalEventContent');
+        const eventModalPlaceholder = document.getElementById('eventModalPlaceholder');
+        const eventModalCategory = document.getElementById('eventModalCategory');
+        const eventModalTitle = document.getElementById('eventModalTitle');
+        const eventModalDetails = document.getElementById('eventModalDetails');
+        const eventModalBuyBtn = document.getElementById('eventModalBuyBtn');
+        const filterButtons = document.querySelectorAll('.filter-button');
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'];
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        function getEventsForDate(date) {
+            return eventsData.filter(event => {
+                const eventDate = new Date(event.date);
+                return eventDate.toDateString() === date.toDateString() && 
+                       (selectedCategory === 'all' || event.category === selectedCategory);
+            });
+        }
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            monthYear.textContent = `${monthNames[month]} ${year}`;
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
+            calendarGrid.innerHTML = '';
+            dayNames.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'calendar-day-header';
+                dayHeader.textContent = day;
+                calendarGrid.appendChild(dayHeader);
+            });
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const dayCell = document.createElement('div');
+                dayCell.className = 'calendar-day other-month';
+                dayCell.innerHTML = `<div class="calendar-day-number">${daysInPrevMonth - i}</div>`;
+                calendarGrid.appendChild(dayCell);
+            }
+            const today = new Date();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayCell = document.createElement('div');
+                const cellDate = new Date(year, month, day);
+                const isToday = cellDate.toDateString() === today.toDateString();
+                dayCell.className = `calendar-day ${isToday ? 'today' : ''}`;
+                dayCell.innerHTML = `<div class="calendar-day-number">${day}</div>`;
+                const dayEvents = getEventsForDate(cellDate);
+                dayCell.addEventListener('click', () => {
+                    showDayModal(cellDate, dayEvents);
+                });
+                const eventsContainer = document.createElement('div');
+                eventsContainer.className = 'calendar-day-events';
+                if (dayEvents.length > 0) {
+                    dayEvents.forEach((event, index) => {
+                        if (index < 3) { 
+                            const eventItem = document.createElement('div');
+                            eventItem.className = 'calendar-event-item';
+                            const eventDot = document.createElement('span');
+                            eventDot.className = `calendar-event-dot ${event.category}`;
+                            const eventTitle = document.createElement('span');
+                            eventTitle.className = 'calendar-event-title';
+                            eventTitle.textContent = event.title.length > 15 ? 
+                                event.title.substring(0, 15) + '...' : event.title;
+                            eventItem.appendChild(eventDot);
+                            eventItem.appendChild(eventTitle);
+                            eventItem.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                showEventModal(event, cellDate);
+                            });
+                            eventsContainer.appendChild(eventItem);
+                        }
+                    });
+                    if (dayEvents.length > 3) {
+                        const moreDiv = document.createElement('div');
+                        moreDiv.className = 'calendar-no-events';
+                        moreDiv.textContent = `+${dayEvents.length - 3} more`;
+                        eventsContainer.appendChild(moreDiv);
+                    }
+                }
+                dayCell.appendChild(eventsContainer);
+                calendarGrid.appendChild(dayCell);
+            }
+            const totalCells = calendarGrid.children.length - 7;
+            const remainingCells = 42 - totalCells;
+            for (let day = 1; day <= remainingCells; day++) {
+                const dayCell = document.createElement('div');
+                dayCell.className = 'calendar-day other-month';
+                dayCell.innerHTML = `<div class="calendar-day-number">${day}</div>`;
+                calendarGrid.appendChild(dayCell);
+            }
+        }
+        function showEventModal(event, date) {
+            const dateStr = date.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            eventModalDateHeader.textContent = dateStr;
+            eventModalEventContent.style.display = 'block';
+            eventModalPlaceholder.style.display = 'none';
+            eventModalCategory.textContent = event.category.charAt(0).toUpperCase() + event.category.slice(1);
+            eventModalTitle.textContent = event.title;
+            eventModalDetails.innerHTML = `
+                <p><strong>Location:</strong> ${event.location}</p>
+                <p><strong>Description:</strong> ${event.description}</p>
+            `;
+            eventModalBuyBtn.onclick = () => {
+                buyTicketModal.classList.add('active');
+                eventModal.classList.remove('active');
+                preventBodyScroll();
+            };
+            eventModal.classList.add('active');
+            preventBodyScroll();
+        }
+        function showDayModal(date, events) {
+            const dateStr = date.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            eventModalDateHeader.textContent = dateStr;
+            if (events.length === 0) {
+                eventModalEventContent.style.display = 'none';
+                eventModalPlaceholder.style.display = 'block';
+            } else if (events.length === 1) {
+                showEventModal(events[0], date);
+                return;
+            } else {
+                eventModalEventContent.style.display = 'block';
+                eventModalPlaceholder.style.display = 'none';
+                eventModalCategory.textContent = `${events.length} Events`;
+                eventModalTitle.textContent = 'Multiple Events Scheduled';
+                let eventsHTML = '';
+                events.forEach((event, index) => {
+                    const categoryColor = {
+                        'keynote': '#8B5CF6',
+                        'workshop': '#EC4899', 
+                        'conference': '#3B82F6',
+                        'webinar': '#10B981'
+                    }[event.category] || '#8B5CF6';
+                    eventsHTML += `
+                        <div style="border-left: 4px solid ${categoryColor}; padding-left: 1rem; margin-bottom: 1rem; cursor: pointer;" 
+                             onclick="showEventModal(eventsData[${eventsData.indexOf(event)}], new Date('${date.toISOString()}'))">
+                            <h4 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.1rem;">${event.title}</h4>
+                            <p style="margin: 0 0 0.25rem 0; font-size: 0.9rem; color: var(--gray-text);">
+                                ${event.category.charAt(0).toUpperCase() + event.category.slice(1)} • ${event.location}
+                            </p>
+                            <p style="margin: 0; font-size: 0.85rem; color: var(--gray-text);">${event.description}</p>
+                        </div>
+                    `;
+                });
+                eventModalDetails.innerHTML = eventsHTML;
+                eventModalBuyBtn.style.display = 'none';
+            }
+            eventModal.classList.add('active');
+            preventBodyScroll();
+        }
+        function hideEventModal() {
+            eventModal.classList.remove('active');
+            allowBodyScroll();
+            eventModalEventContent.style.display = 'block';
+            eventModalPlaceholder.style.display = 'none';
+            eventModalBuyBtn.style.display = 'block';
+        }
+        prevMonth.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+        });
+        nextMonth.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        });
+        eventModalClose.addEventListener('click', hideEventModal);
+        eventModal.addEventListener('click', (e) => {
+            if (e.target === eventModal) {
+                hideEventModal();
+            }
+        });
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                selectedCategory = button.dataset.filterCategory;
+                renderCalendar();
+            });
+        });
+        renderCalendar();
+        let scrollPosition = 0;
+        function preventBodyScroll() {
+            scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+            document.body.style.top = `-${scrollPosition}px`;
+            document.body.classList.add('modal-open');
+        }
+        function allowBodyScroll() {
+            document.body.classList.remove('modal-open');
+            document.body.style.top = '';
+            window.scrollTo(0, scrollPosition);
+        }
+        const testimonialSlide = document.getElementById('testimonialSlide');
+        const testimonialQuote = document.querySelector('.testimonial-quote');
+        const testimonialAuthor = document.querySelector('.testimonial-author');
+        const prevTestimonialBtn = document.getElementById('prevTestimonialBtn');
+        const nextTestimonialBtn = document.getElementById('nextTestimonialBtn');
+        const testimonialDotsContainer = document.getElementById('testimonialDots');
+        let testimonialCurrentIndex = 0;
+        let testimonialAutoSlideInterval;
+        function initTestimonialCarousel() {
+            updateTestimonialContent();
+            createTestimonialDots();
+            startTestimonialAutoSlide();
+        }
+        function updateTestimonialContent() {
+            testimonialSlide.classList.add('prev');
+            setTimeout(() => {
+            const currentTestimonial = testimonialsData[testimonialCurrentIndex];
+            testimonialQuote.textContent = `"${currentTestimonial.quote}"`;
+            testimonialAuthor.textContent = `- ${currentTestimonial.author}`;
+                testimonialSlide.classList.remove('prev');
+                testimonialSlide.classList.add('active');
+            updateTestimonialDots();
+            }, 400);
+        }
+        function createTestimonialDots() {
+            testimonialDotsContainer.innerHTML = '';
+            testimonialsData.forEach((_, index) => {
+                const dot = document.createElement('span');
+                dot.className = 'testimonial-dot';
+                if (index === testimonialCurrentIndex) {
+                    dot.classList.add('active');
+                }
+                dot.addEventListener('click', () => {
+                    testimonialCurrentIndex = index;
+                    updateTestimonialContent();
+                    resetTestimonialAutoSlide();
+                });
+                testimonialDotsContainer.appendChild(dot);
+            });
+        }
+        function updateTestimonialDots() {
+            const dots = testimonialDotsContainer.querySelectorAll('.testimonial-dot');
+            dots.forEach((dot, index) => {
+                if (index === testimonialCurrentIndex) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            });
+        }
+        function nextTestimonialSlide() {
+            testimonialCurrentIndex = (testimonialCurrentIndex + 1) % testimonialsData.length;
+            updateTestimonialContent();
+        }
+        function prevTestimonialSlide() {
+            testimonialCurrentIndex = (testimonialCurrentIndex - 1 + testimonialsData.length) % testimonialsData.length;
+            updateTestimonialContent();
+        }
+        function startTestimonialAutoSlide() {
+            clearInterval(testimonialAutoSlideInterval);
+            testimonialAutoSlideInterval = setInterval(nextTestimonialSlide, 5000);
+        }
+        function resetTestimonialAutoSlide() {
+            clearInterval(testimonialAutoSlideInterval);
+            startTestimonialAutoSlide();
+        }
+        prevTestimonialBtn.addEventListener('click', () => {
+            prevTestimonialSlide();
+            resetTestimonialAutoSlide();
+        });
+        nextTestimonialBtn.addEventListener('click', () => {
+            nextTestimonialSlide();
+            resetTestimonialAutoSlide();
+        });
+        let touchStartX = 0;
+        let touchStartY = 0;
+        testimonialSlide.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            clearInterval(testimonialAutoSlideInterval);
+        });
+        testimonialSlide.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const diffX = touchStartX - touchEndX;
+            const diffY = Math.abs(touchStartY - touchEndY);
+            if (Math.abs(diffX) > diffY && Math.abs(diffX) > 50) {
+                if (diffX > 0) {
+                    nextTestimonialSlide();
+                } else {
+                    prevTestimonialSlide();
+                }
+            }
+            startTestimonialAutoSlide();
+        });
+        initTestimonialCarousel();
+        const downloadAssetsBtn = document.getElementById('downloadAssetsBtn');
+        downloadAssetsBtn.addEventListener('click', async () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(24);
+            doc.text("Dr. Sarah Martinez - Leadership Speaker Bio", 10, 20);
+            doc.setFontSize(12);
+            doc.text("Dr. Sarah Martinez is a world-renowned leadership expert and transformational speaker with over 15 years of experience helping organizations unlock their full potential. With a Ph.D. in Organizational Psychology and extensive C-suite experience, Sarah brings both academic rigor and practical wisdom to her speaking engagements. She has delivered over 500 keynotes across 30+ countries, inspiring more than 1 million professionals worldwide.", 10, 40, { maxWidth: 180 });
+            doc.text("Dr. Martinez specializes in digital leadership, high-performance team building, and organizational resilience. Her research on adaptive leadership has been published in Harvard Business Review and featured in Forbes. She is a sought-after speaker for Fortune 500 companies and international leadership conferences.", 10, 80, { maxWidth: 180 });
+            const images = [
+                { url: "https://cdn.pixabay.com/photo/2024/04/05/05/17/woman-8676532_1280.jpg", alt: "Dr. Sarah Martinez speaking" },
+                { url: "https://cdn.pixabay.com/photo/2024/04/05/05/17/woman-8676532_1280.jpg", alt: "Dr. Sarah Martinez portrait" },
+                { url: "https://cdn.pixabay.com/photo/2024/04/05/05/17/woman-8676532_1280.jpg", alt: "Leadership conference setting" }
+            ];
+            let yOffset = 120;
+            for (const img of images) {
+                try {
+                    const response = await fetch(img.url);
+                    const blob = await response.blob();
+                    const reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    await new Promise(resolve => {
+                        reader.onloadend = () => {
+                            const base64data = reader.result;
+                            const imgWidth = 100;
+                            const imgHeight = (imgWidth / 16) * 9;
+                            if (yOffset + imgHeight > doc.internal.pageSize.height - 20) {
+                                doc.addPage();
+                                yOffset = 20;
+                            }
+                            doc.addImage(base64data, 'JPEG', 10, yOffset, imgWidth, imgHeight);
+                            doc.text(img.alt, 10, yOffset + imgHeight + 5);
+                            yOffset += imgHeight + 15;
+                            resolve();
+                        };
+                    });
+                } catch (error) {
+                    console.error("Error loading image for PDF:", error);
+                    showToast(`Failed to load image: ${img.alt}`);
+                }
+            }
+            doc.save("speaker_assets.pdf");
+            showToast('Downloading speaker assets PDF...');
+        });
+        const buyTicketModal = document.getElementById('buyTicketModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const ticketPurchaseForm = document.getElementById('ticketPurchaseForm');
+        const toastContainer = document.getElementById('toastContainer');
+        const purchaseBtn = ticketPurchaseForm.querySelector('button[type="submit"]');
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('event-buy-btn') || e.target.classList.contains('event-modal-buy-btn')) {
+                buyTicketModal.classList.add('active');
+                preventBodyScroll();
+            }
+        });
+        closeModalBtn.addEventListener('click', () => { buyTicketModal.classList.remove('active'); allowBodyScroll(); });
+        buyTicketModal.addEventListener('click', (e) => { if (e.target === buyTicketModal) { buyTicketModal.classList.remove('active'); allowBodyScroll(); } });
+        ticketPurchaseForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const numTickets = document.getElementById('numTickets').value;
+            purchaseBtn.textContent = 'Processing...';
+            purchaseBtn.disabled = true;
+            setTimeout(() => {
+                showToast(`Success! ${numTickets} tickets will be sent to ${email}.`);
+                buyTicketModal.classList.remove('active');
+                allowBodyScroll();
+                ticketPurchaseForm.reset();
+                purchaseBtn.textContent = 'Purchase';
+                purchaseBtn.disabled = false;
+            }, 1500);
+        });
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast-message';
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            setTimeout(() => { toast.classList.add('show'); }, 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.addEventListener('transitionend', () => toast.remove());
+            }, 5000);
+        }
+        const sections = document.querySelectorAll('section');
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('in-view');
+                } else {
+                    entry.target.classList.remove('in-view');
+                }
+            });
+        }, observerOptions);
+        sections.forEach(section => {
+            observer.observe(section);
+        });
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const mobileMenu = document.getElementById('mobileMenu');
+        const mobileMenuLinks = document.querySelectorAll('.mobile-menu-link');
+        mobileMenuToggle.addEventListener('click', () => {
+            mobileMenu.classList.toggle('active');
+        });
+        mobileMenuLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.remove('active');
+            });
+        });
+        document.addEventListener('click', (e) => {
+            if (!mobileMenuToggle.contains(e.target) && !mobileMenu.contains(e.target)) {
+                mobileMenu.classList.remove('active');
+            }
+        });
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) {
+                mobileMenu.classList.remove('active');
+            }
+        });
+        function updateScrollProgress() {
+            const scrollProgress = document.getElementById('scrollProgress');
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const docHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrollPercent = (scrollTop / docHeight) * 100;
+            scrollProgress.style.width = scrollPercent + '%';
+        }
+        window.addEventListener('scroll', updateScrollProgress);
+        document.addEventListener('DOMContentLoaded', updateScrollProgress);
+    </script>
+</body>
+</html>
