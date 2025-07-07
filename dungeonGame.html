@@ -1,0 +1,3134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Dungeon Adventure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        * {
+            font-family: 'Press Start 2P', cursive;
+        }
+        .pixel-art {
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        .game-container {
+            background: linear-gradient(45deg, #1a1a2e, #16213e);
+            border: 4px solid #0f3460;
+            box-shadow: 0 0 20px rgba(15, 52, 96, 0.5);
+        }
+        .health-bar {
+            background: linear-gradient(90deg, #dc2626, #ef4444, #f87171);
+            box-shadow: 
+                inset 0 1px 2px rgba(255,255,255,0.3),
+                inset 0 -1px 2px rgba(0,0,0,0.3),
+                0 0 8px rgba(239, 68, 68, 0.4);
+        }
+        .stats-container {
+            backdrop-filter: blur(4px);
+            box-shadow: 
+                inset 0 1px 2px rgba(255,255,255,0.1),
+                0 2px 4px rgba(0,0,0,0.2);
+        }
+        .stats-container:hover {
+            box-shadow: 
+                inset 0 1px 2px rgba(255,255,255,0.15),
+                0 4px 8px rgba(0,0,0,0.3);
+        }
+        .minimap {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ffffff;
+        }
+        .game-over-screen {
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+        }
+        .victory-screen {
+            background: rgba(0, 100, 0, 0.9);
+            backdrop-filter: blur(5px);
+        }
+        .pause-screen {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+        }
+        .game-title-container {
+            text-align: center;
+            background: rgba(17, 24, 39, 0.8);
+            border: 2px solid #6b7280;
+            border-radius: 8px;
+            padding: 8px 16px;
+            backdrop-filter: blur(4px);
+            box-shadow: 
+                inset 0 1px 2px rgba(255,255,255,0.1),
+                0 2px 4px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .game-title-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        .game-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #facc15;
+            text-shadow: 
+                2px 2px 0px #1e3a8a,
+                -1px -1px 0px #1e3a8a,
+                1px -1px 0px #1e3a8a,
+                -1px 1px 0px #1e3a8a,
+                0 0 10px rgba(251, 191, 36, 0.8);
+            letter-spacing: 2px;
+            margin-bottom: 2px;
+            position: relative;
+            z-index: 1;
+        }
+        .game-subtitle {
+            font-size: 8px;
+            color: #e5e7eb;
+            text-shadow: 1px 1px 0px #1e3a8a;
+            letter-spacing: 1px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+        .game-logo {
+            animation: logoGlow 3s ease-in-out infinite alternate;
+        }
+        @keyframes logoGlow {
+            0% { 
+                filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.5));
+            }
+            100% { 
+                filter: drop-shadow(0 0 25px rgba(251, 191, 36, 0.8)) drop-shadow(0 0 35px rgba(251, 191, 36, 0.4));
+            }
+        }
+        .start-screen-controls {
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(251, 191, 36, 0.3);
+            box-shadow: 
+                0 0 20px rgba(251, 191, 36, 0.2),
+                inset 0 2px 4px rgba(255, 255, 255, 0.1);
+        }
+        .start-screen-controls:hover {
+            border-color: rgba(251, 191, 36, 0.6);
+            box-shadow: 
+                0 0 30px rgba(251, 191, 36, 0.4),
+                inset 0 2px 4px rgba(255, 255, 255, 0.2);
+        }
+        .game-over-title {
+            animation: gameOverPulse 2s ease-in-out infinite alternate;
+            color: #dc2626;
+        }
+        @keyframes gameOverPulse {
+            0% { 
+                filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.5));
+                transform: scale(1);
+            }
+            100% { 
+                filter: drop-shadow(0 0 25px rgba(239, 68, 68, 0.8)) drop-shadow(0 0 35px rgba(239, 68, 68, 0.4));
+                transform: scale(1.02);
+            }
+        }
+        .game-over-stats {
+            animation: slideInUp 0.8s ease-out 0.3s both;
+        }
+        .game-over-controls {
+            animation: slideInUp 0.8s ease-out 0.6s both;
+        }
+        @keyframes slideInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white overflow-hidden">
+    <div class="flex flex-col h-screen">
+        <div id="gameHeader" class="bg-gray-800 border-b-2 border-gray-600 hidden">
+            <div class="relative flex items-center px-4 py-2">
+                <div class="flex items-center space-x-3 flex-shrink-0">
+                    <div class="stats-container bg-gray-900 bg-opacity-50 px-3 py-2 rounded-lg border border-gray-600">
+                        <div class="text-center">
+                            <div class="text-xs font-semibold text-red-300 mb-1">HEALTH</div>
+                            <div class="flex items-center justify-center space-x-2">
+                                <div class="w-36 h-3 bg-gray-700 border border-red-400 rounded-sm overflow-hidden">
+                                    <div id="healthBar" class="health-bar h-full transition-all duration-300" style="width: 100%"></div>
+                                </div>
+                                <div id="healthText" class="text-xs font-bold text-red-200 min-w-[2.5rem] text-center">100/100</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stats-container bg-gray-900 bg-opacity-50 rounded-lg border border-gray-600">
+                        <button id="soundToggleBtn" class="bg-transparent hover:bg-gray-700 transition-all duration-200 rounded-lg w-full h-full">
+                            <div class="text-center px-6 py-2">
+                                <div class="text-xs text-gray-300 mb-1">SOUND</div>
+                                <div class="flex items-center justify-center space-x-1">
+                                    <svg class="w-3 h-3 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.369 4.369 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/>
+                                    </svg>
+                                    <span id="soundToggleText" class="text-xs font-semibold text-green-400">ON</span>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                    <div class="game-title-container">
+                        <div class="game-title">
+                            PIXEL DUNGEON
+                        </div>
+                        <div class="game-subtitle">
+                            ADVENTURE AWAITS
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3 flex-shrink-0 ml-auto">
+                    <div class="stats-container bg-gray-900 bg-opacity-50 px-3 py-2 rounded-lg border border-gray-600">
+                        <div class="grid grid-cols-3 gap-x-4 text-center">
+                            <div>
+                                <div class="text-xs text-gray-300 mb-1">SCORE</div>
+                                <div id="scoreText" class="text-xs text-yellow-400 font-bold">0</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-300 mb-1">GEMS</div>
+                                <div id="gemText" class="text-xs text-cyan-400 font-bold">0/0</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-300 mb-1">LEVEL</div>
+                                <div class="text-xs text-purple-400 font-bold">
+                                    <span id="currentLevel">1</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stats-container bg-gray-900 bg-opacity-50 rounded-lg border border-gray-600">
+                        <button id="quitBtn" class="bg-transparent hover:bg-gray-700 transition-all duration-200 rounded-lg w-full h-full">
+                            <div class="text-center px-6 py-2">
+                                <div class="text-xs text-gray-300 mb-1">QUIT</div>
+                                <div class="flex items-center justify-center space-x-1">
+                                    <svg class="w-3 h-3 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span class="text-xs font-semibold text-red-400">EXIT</span>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="flex-1 relative overflow-hidden">
+            <canvas id="gameCanvas" class="game-container w-full h-full pixel-art"></canvas>
+            <div class="absolute top-10 right-2 minimap">
+                <canvas id="minimapCanvas" class="pixel-art"></canvas>
+            </div>
+            <div id="gameOverScreen" class="absolute inset-0 game-over-screen hidden flex items-center justify-center">
+                <div class="text-center max-w-2xl mx-4">    
+                    <div class="mb-8">
+                        <div class="text-6xl mb-4 font-bold game-over-title" style="text-shadow: 4px 4px 0px #7f1d1d, -2px -2px 0px #7f1d1d, 2px -2px 0px #7f1d1d, -2px 2px 0px #7f1d1d, 0 0 20px rgba(239, 68, 68, 0.8);">
+                            GAME OVER
+                        </div>
+                        <div class="text-lg text-red-300 mb-2">The dungeon has claimed another soul...</div>
+                        <div class="text-sm text-gray-400">Your adventure ends here, brave knight</div>
+                    </div>
+                    <div class="game-over-stats bg-black bg-opacity-70 p-6 rounded-lg border-2 border-red-600 mb-6" style="backdrop-filter: blur(10px); box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);">
+                        <div class="text-lg mb-4 text-red-300">FINAL STATISTICS</div>
+                        <div class="grid grid-cols-2 gap-6 text-sm">
+                            <div class="text-center">
+                                <div class="text-yellow-400 font-bold text-lg" id="finalScore">0</div>
+                                <div class="text-gray-300">Final Score</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-cyan-400 font-bold text-lg" id="finalGems">0/0</div>
+                                <div class="text-gray-300">Gems Collected</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-purple-400 font-bold text-lg" id="finalLevel">1</div>
+                                <div class="text-gray-300">Level Reached</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-red-400 font-bold text-lg" id="lossCause">Unknown</div>
+                                <div class="text-gray-300">Cause of Loss</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="game-over-controls bg-black bg-opacity-50 p-4 rounded-lg border border-gray-600 mb-4" style="backdrop-filter: blur(5px);">
+                        <div class="text-sm text-gray-300 mb-3">What would you like to do?</div>
+                        <div class="flex justify-center space-x-4">
+                            <button id="restartBtn" class="bg-red-600 hover:bg-red-700 px-6 py-3 border-2 border-red-400 text-sm font-bold rounded transition-all duration-200 hover:shadow-lg hover:shadow-red-600/50">
+                                RESTART LEVEL
+                            </button>
+                            <button id="mainMenuBtn" class="bg-gray-600 hover:bg-gray-700 px-6 py-3 border-2 border-gray-400 text-sm font-bold rounded transition-all duration-200 hover:shadow-lg hover:shadow-gray-600/50">
+                                MAIN MENU
+                            </button>
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        Press <span class="text-purple-400 font-bold">SPACE</span> for quick restart
+                    </div>
+                </div>
+            </div>
+            <div id="startScreen" class="absolute inset-0 flex items-center justify-center" style="background: linear-gradient(135deg, #0f0f23, #1a1a2e, #16213e);">
+                <div class="text-center max-w-2xl mx-4">
+                    <div class="game-logo mb-8">
+                        <div class="text-6xl mb-4 text-yellow-400 font-bold" style="text-shadow: 4px 4px 0px #1e3a8a, -2px -2px 0px #1e3a8a, 2px -2px 0px #1e3a8a, -2px 2px 0px #1e3a8a, 0 0 20px rgba(251, 191, 36, 0.8);">
+                            PIXEL DUNGEON
+                        </div>
+                        <div class="text-lg text-gray-300 mb-2">ADVENTURE AWAITS</div>
+                        <div class="text-sm text-gray-400">A retro platformer experience</div>
+                    </div>
+                    <div class="mb-8">
+                        <div id="startPrompt" class="text-2xl text-white mb-4 animate-pulse">
+                            Press any key to start!
+                        </div>
+                        <div class="text-sm text-gray-400">
+                            Navigate treacherous dungeons, collect gems, and survive!
+                        </div>
+                    </div> 
+                    <div class="start-screen-controls bg-black bg-opacity-50 p-6 rounded-lg transition-all duration-300">
+                        <div class="text-lg mb-4 text-yellow-300">QUICK CONTROLS</div>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="text-cyan-400">
+                                <span class="font-bold">W/A/S/D</span> - Move
+                            </div>
+                            <div class="text-cyan-400">
+                                <span class="font-bold">SPACE</span> - Jump
+                            </div>
+                            <div class="text-purple-400">
+                                <span class="font-bold">SPACE×2</span> - Double Jump
+                            </div>
+                            <div class="text-blue-400">
+                                <span class="font-bold">M</span> - Mute/Unmute
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-gray-400">
+                            Collect gems, avoid spikes and enemies, reach the exit!
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="victoryScreen" class="absolute inset-0 victory-screen hidden flex items-center justify-center">
+                <div class="text-center">
+                    <div class="text-2xl mb-4 text-yellow-400">VICTORY!</div>
+                    <div class="text-sm mb-4">You passed. all dungeons!</div>
+                    <button id="playAgainBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 border-2 border-white text-sm">
+                        PLAY AGAIN
+                    </button>
+                </div>
+            </div>
+            <div id="pauseScreen" class="absolute inset-0 pause-screen hidden flex items-center justify-center">
+                <div class="bg-gray-900 bg-opacity-95 border-4 border-yellow-400 p-6 max-w-4xl w-full mx-4">
+                    <div class="text-center mb-4">
+                        <div class="text-3xl mb-2 text-yellow-400">PAUSED</div>
+                        <div class="text-sm text-gray-300">Game is paused - Press ENTER to resume</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-8 mb-4">
+                        <div class="text-center">
+                            <div class="text-lg mb-3 text-yellow-300">CONTROLS</div>
+                                                        <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-gray-800 p-2 border border-gray-600">
+                                    <div class="text-cyan-400 font-bold">W/A/S/D</div>
+                                    <div class="text-gray-300">Move</div>
+                                </div>
+                                <div class="bg-gray-800 p-2 border border-gray-600">
+                                    <div class="text-cyan-400 font-bold">SPACE</div>
+                                    <div class="text-gray-300">Jump</div>
+                                </div>
+                                <div class="bg-gray-800 p-2 border border-gray-600">
+                                    <div class="text-purple-400 font-bold">SPACE×2</div>
+                                    <div class="text-gray-300">Double Jump</div>
+                                </div>
+                                <div class="bg-gray-800 p-2 border border-gray-600">
+                                    <div class="text-yellow-400 font-bold">ENTER</div>
+                                    <div class="text-gray-300">Pause/Resume</div>
+                                </div>
+                                <div class="bg-gray-800 p-2 border border-gray-600 col-span-2">
+                                    <div class="text-blue-400 font-bold">M</div>
+                                    <div class="text-gray-300">Sound On/Off</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-lg mb-3 text-green-300">OBJECTIVES</div>
+                            <div class="text-xs space-y-2">
+                                <div class="bg-gray-800 p-2 border border-gray-600 rounded">
+                                    <div class="text-cyan-400">Collect gems for points</div>
+                                </div>
+                                <div class="bg-gray-800 p-2 border border-gray-600 rounded">
+                                    <div class="text-red-400">Avoid spikes and enemies</div>
+                                </div>
+                                <div class="bg-gray-800 p-2 border border-gray-600 rounded">
+                                    <div class="text-yellow-400">Reach the dungeon door</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <button id="resumeBtn" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 border-2 border-white text-sm mr-2">
+                            RESUME
+                        </button>
+                        <button id="restartGameBtn" class="bg-red-600 hover:bg-red-700 px-6 py-2 border-2 border-white text-sm">
+                            RESTART
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="gameFooter" class="bg-gray-800 border-t-2 border-gray-600 p-2 text-xs">
+            <div class="flex justify-center space-x-8">
+                <span class="text-cyan-300">W/A/S/D: Move</span>
+                <span class="text-purple-300">SPACE: Jump / Restart</span>
+                <span class="text-yellow-300">ENTER: Pause</span>
+                <span class="text-blue-300">M: Mute/Unmute</span>
+                <span class="text-red-300">QUIT: Return to Menu</span>
+                <span class="text-green-300">Collect Gems</span>
+            </div>
+        </div>
+    </div>
+    <script>    
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.minimapCanvas = document.getElementById('minimapCanvas');
+                this.minimapCtx = this.minimapCanvas.getContext('2d');
+                this.setupCanvas();
+                this.currentLevel = 1;
+                this.maxLevel = 3;
+                this.gameState = 'startScreen';
+                this.audioContext = null;
+                this.musicEnabled = true;
+                this.currentMusic = null;
+                this.initAudio();
+                this.score = 0;
+                this.totalScore = 0;
+                this.gemsCollected = 0;
+                this.totalGems = 0;
+                this.keys = {};
+                this.setupEventListeners();
+                this.gravity = 0.5;
+                this.player = {
+                    x: 64,
+                    y: 300,
+                    width: 32,
+                    height: 40,
+                    vx: 0,
+                    vy: 0,
+                    speed: 6,
+                    jumpPower: this.calculateJumpPower(),
+                    doubleJumpPower: this.calculateJumpPower() * 0.83,
+                    onGround: false,
+                    canDoubleJump: false,
+                    hasDoubleJumped: false,
+                    health: 100,
+                    maxHealth: 100,
+                    invulnerable: false,
+                    invulnerabilityTime: 0
+                };
+                this.deathCause = 'Unknown';
+                this.camera = {
+                    x: 0,
+                    y: 0
+                };
+                this.levels = this.createLevels();
+                this.updateSoundButton();
+                this.hideGameHeader();
+                this.gameLoop();
+            }
+            setupCanvas() {
+                this.canvas.width = window.innerWidth;
+                const headerHeight = 80;
+                const footerHeight = 40;
+                const availableHeight = window.innerHeight - headerHeight - footerHeight;
+                this.tileSize = 32;
+                const tilesVertical = Math.floor(availableHeight / this.tileSize);
+                this.canvas.height = tilesVertical * this.tileSize;
+                if (this.player) {
+                    this.player.jumpPower = this.calculateJumpPower();
+                    this.player.doubleJumpPower = this.calculateJumpPower() * 0.83;
+                }
+                this.calculateOptimalTileSize();
+                this.setupMinimap();
+                this.ctx.imageSmoothingEnabled = false;
+                this.minimapCtx.imageSmoothingEnabled = false;
+            }
+            setupMinimap() {
+                const levelAspectRatio = this.tilesX / this.tilesY;
+                const maxMinimapWidth = 240;
+                const maxMinimapHeight = 140;
+                let minimapWidth, minimapHeight;
+                if (levelAspectRatio > (maxMinimapWidth / maxMinimapHeight)) {
+                    minimapWidth = maxMinimapWidth;
+                    minimapHeight = maxMinimapWidth / levelAspectRatio;
+                } else {
+                    minimapHeight = maxMinimapHeight;
+                    minimapWidth = maxMinimapHeight * levelAspectRatio;
+                }
+                if (levelAspectRatio > 3) {
+                    minimapHeight = Math.max(minimapHeight, 80);
+                    minimapWidth = minimapHeight * levelAspectRatio;
+                    if (minimapWidth > maxMinimapWidth) {
+                        minimapWidth = maxMinimapWidth;
+                        minimapHeight = maxMinimapWidth / levelAspectRatio;
+                    }
+                }
+                minimapWidth = Math.max(minimapWidth, 160);
+                minimapHeight = Math.max(minimapHeight, 70);
+                this.minimapCanvas.width = Math.floor(minimapWidth);
+                this.minimapCanvas.height = Math.floor(minimapHeight);
+            }
+            calculateOptimalTileSize() {
+                const viewportTilesX = Math.floor(this.canvas.width / this.tileSize);
+                const viewportTilesY = Math.floor(this.canvas.height / this.tileSize);
+                this.tilesX = viewportTilesX * 4;
+                this.tilesY = Math.max(viewportTilesY, 15);
+                this.viewportTilesX = viewportTilesX;
+                this.viewportTilesY = viewportTilesY;
+                if (this.levels) {
+                    this.levels = this.createDynamicLevels();
+                    if (this.minimapCanvas) {
+                        this.setupMinimap();
+                    }
+                    if (this.currentLevelData) {
+                        this.loadLevel(this.currentLevel);
+                    }
+                }
+            }
+            calculateJumpPower() {
+                const baseJumpPower = 12;
+                const baseScreenHeight = 650;
+                const heightRatio = this.canvas ? (this.canvas.height / baseScreenHeight) : 1;
+                const scaledJumpPower = baseJumpPower * Math.pow(heightRatio, 0.6);
+                return Math.max(10, Math.min(18, scaledJumpPower));
+            }
+            setupEventListeners() {
+                window.addEventListener('keydown', (e) => {
+                    if (this.gameState === 'startScreen') {
+                        this.startGame();
+                        return;
+                    }
+                    if (this.gameState === 'gameOver') {
+                        if (e.key === ' ') {
+                            e.preventDefault();
+                            this.restartLevel();
+                            return;
+                        }
+                    }
+                    this.keys[e.key.toLowerCase()] = true;
+                    if (e.key === ' ') e.preventDefault();
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.togglePause();
+                    }
+                    if (e.key.toLowerCase() === 'm') {
+                        e.preventDefault();
+                        this.toggleMusic();
+                    }
+                });
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+                window.addEventListener('resize', () => {
+                    this.setupCanvas();
+                });
+                document.getElementById('restartBtn').addEventListener('click', () => {
+                    this.restartLevel();
+                });
+                document.getElementById('playAgainBtn').addEventListener('click', () => {
+                    this.resetGame();
+                });
+                document.getElementById('resumeBtn').addEventListener('click', () => {
+                    this.resumeGame();
+                });
+                document.getElementById('restartGameBtn').addEventListener('click', () => {
+                    this.resetGame();
+                });
+                document.getElementById('soundToggleBtn').addEventListener('click', () => {
+                    this.toggleMusic();
+                });
+                document.getElementById('quitBtn').addEventListener('click', () => {
+                    this.returnToStartScreen();
+                });
+                document.getElementById('mainMenuBtn').addEventListener('click', () => {
+                    this.returnToStartScreen();
+                });
+            }
+            createLevels() {
+                return this.createDynamicLevels();
+            }
+            createDynamicLevels() {
+                const levels = [];
+                if (!this.tilesX || !this.tilesY) {
+                    this.calculateOptimalTileSize();
+                }
+                levels.push(this.generateLevel(1, {
+                    platformDensity: 0.1,
+                    spikeDensity: 0.06,
+                    enemyCount: 4,
+                    pitFrequency: 14,
+                    theme: 'basic'
+                }));
+                levels.push(this.generateLevel(2, {
+                    platformDensity: 0.15,
+                    spikeDensity: 0.09,
+                    enemyCount: 6,
+                    pitFrequency: 12,
+                    theme: 'intermediate'
+                }));
+                levels.push(this.generateLevel(3, {
+                    platformDensity: 0.2,
+                    spikeDensity: 0.12,
+                    enemyCount: 8,
+                    pitFrequency: 10,
+                    theme: 'advanced'
+                }));
+                return levels;
+            }
+            generateLevel(levelNum, config) {
+                const width = this.tilesX;
+                const height = this.tilesY;
+                const tiles = Array(height).fill().map(() => Array(width).fill('0'));
+                for (let x = 0; x < width; x++) {
+                    tiles[0][x] = '1';
+                    tiles[height - 1][x] = '1';
+                    tiles[height - 2][x] = '1';
+                }
+                for (let y = 0; y < height; y++) {
+                    tiles[y][0] = '1';
+                    tiles[y][width - 1] = '1';
+                }
+                this.generatePlatforms(tiles, width, height, config);
+                const tileStrings = tiles.map(row => row.join(''));
+                const spikes = this.generateSpikes(tiles, width, height, config);
+                const enemies = this.generateEnemies(tiles, width, height, config);
+                const gems = this.generateGems(tiles, width, height, config, spikes);
+                const exit = this.generateExit(tiles, width, height);
+                return {
+                    width,
+                    height,
+                    tiles: tileStrings,
+                    spikes,
+                    enemies,
+                    gems,
+                    exit,
+                    pits: this.currentLevelPits || []
+                };
+            }
+            generatePlatforms(tiles, width, height, config) {
+                const groundLevel = height - 3;
+                const midLevel = Math.floor(height * 0.6);
+                const topLevel = Math.floor(height * 0.3);
+                const startSafeZone = 6;
+                const endSafeZone = 6;
+                let pitLocations = [];
+                for (let x = 1; x < width - 1; x++) {
+                    tiles[groundLevel][x] = '1';
+                }
+                const pitFrequency = config.pitFrequency || 15;
+                const numPits = Math.floor(width / pitFrequency);
+                for (let p = 0; p < numPits; p++) {
+                    const sectionWidth = Math.floor((width - startSafeZone - endSafeZone) / (numPits + 1));
+                    const pitStart = startSafeZone + (sectionWidth * (p + 1)) - Math.floor(Math.random() * 3) - 1;
+                    const pitWidth = 3 + Math.floor(Math.random() * 2);
+                    const pitEnd = pitStart + pitWidth;
+                    if (pitStart > startSafeZone && pitEnd < width - endSafeZone) {
+                        for (let x = pitStart; x < pitEnd; x++) {
+                            for (let y = groundLevel; y < height; y++) {
+                                tiles[y][x] = '0';
+                            }
+                        }
+                        pitLocations.push({start: pitStart, end: pitEnd - 1});
+                    }
+                }
+                this.currentLevelPits = pitLocations;
+                let numMidPlatforms;
+                if (config.theme === 'basic') {
+                    numMidPlatforms = Math.floor(width / 25);
+                } else if (config.theme === 'intermediate') {
+                    numMidPlatforms = Math.floor(width / 20);
+                } else {
+                    numMidPlatforms = Math.floor(width / 18);
+                }
+                for (let p = 0; p < numMidPlatforms; p++) {
+                    const sectionWidth = Math.floor(width / (numMidPlatforms + 1));
+                    const platformStart = sectionWidth * (p + 1) - 8 + Math.floor(Math.random() * 6);
+                    const platformEnd = platformStart + 8 + Math.floor(Math.random() * 6);
+                    if (platformStart > startSafeZone && platformEnd < width - endSafeZone) {
+                        for (let x = platformStart; x < platformEnd; x++) {
+                            tiles[midLevel][x] = '1';
+                        }
+                    }
+                }
+                if (config.theme === 'intermediate' || config.theme === 'advanced') {
+                    let numTopPlatforms;
+                    if (config.theme === 'intermediate') {
+                        numTopPlatforms = Math.floor(width / 35);
+                    } else {
+                        numTopPlatforms = Math.floor(width / 25);
+                    }
+                    for (let p = 0; p < numTopPlatforms; p++) {
+                        const sectionWidth = Math.floor(width / (numTopPlatforms + 1));
+                        const platformStart = sectionWidth * (p + 1) - 6 + Math.floor(Math.random() * 4);
+                        const platformEnd = platformStart + 6 + Math.floor(Math.random() * 4);
+                        if (platformStart > startSafeZone && platformEnd < width - endSafeZone) {
+                            for (let x = platformStart; x < platformEnd; x++) {
+                                tiles[topLevel][x] = '1';
+                            }
+                        }
+                    }
+                }
+                if (config.theme === 'advanced') {
+                    const stepLevel = Math.floor(height * 0.75);
+                    const numSteps = Math.floor(width / 30);
+                    for (let s = 0; s < numSteps; s++) {
+                        const sectionWidth = Math.floor(width / (numSteps + 1));
+                        const stepStart = sectionWidth * (s + 1) - 3;
+                        const stepEnd = stepStart + 4;
+                        if (stepStart > startSafeZone && stepEnd < width - endSafeZone) {
+                            for (let x = stepStart; x < stepEnd; x++) {
+                                tiles[stepLevel][x] = '1';
+                            }
+                        }
+                    }
+                }
+            }
+            generateSpikes(tiles, width, height, config) {
+                const spikes = [];
+                const groundLevel = height - 3;
+                const midLevel = Math.floor(height * 0.6);
+                const topLevel = Math.floor(height * 0.3);
+                const startSafeZone = 6;
+                const endSafeZone = 6;
+                for (let x = startSafeZone; x < width - endSafeZone; x++) {
+                    if (tiles[groundLevel][x] === '1' && Math.random() < config.spikeDensity) {
+                        if (tiles[groundLevel - 1][x] === '0') {
+                            spikes.push({
+                                x: x * this.tileSize,
+                                y: (groundLevel - 1) * this.tileSize
+                            });
+                        }
+                    }
+                }
+                let floatingSpikeDensity;
+                if (config.theme === 'basic') {
+                    floatingSpikeDensity = config.spikeDensity * 0.3;
+                } else if (config.theme === 'intermediate') {
+                    floatingSpikeDensity = config.spikeDensity * 0.5;
+                } else {
+                    floatingSpikeDensity = config.spikeDensity * 0.7;
+                }
+                for (let x = startSafeZone; x < width - endSafeZone; x++) {
+                    if (tiles[midLevel][x] === '1' && Math.random() < floatingSpikeDensity) {
+                        if (tiles[midLevel - 1][x] === '0') {
+                            spikes.push({
+                                x: x * this.tileSize,
+                                y: (midLevel - 1) * this.tileSize
+                            });
+                        }
+                    }
+                }
+                if (config.theme === 'intermediate' || config.theme === 'advanced') {
+                    for (let x = startSafeZone; x < width - endSafeZone; x++) {
+                        if (tiles[topLevel][x] === '1' && Math.random() < floatingSpikeDensity * 0.8) {
+                            if (tiles[topLevel - 1][x] === '0') {
+                                spikes.push({
+                                    x: x * this.tileSize,
+                                    y: (topLevel - 1) * this.tileSize
+                                });
+                            }
+                        }
+                    }
+                }
+                if (config.theme === 'advanced') {
+                    const stepLevel = Math.floor(height * 0.75);
+                    for (let x = startSafeZone; x < width - endSafeZone; x++) {
+                        if (tiles[stepLevel][x] === '1' && Math.random() < floatingSpikeDensity * 0.6) {
+                            if (tiles[stepLevel - 1][x] === '0') {
+                                spikes.push({
+                                    x: x * this.tileSize,
+                                    y: (stepLevel - 1) * this.tileSize
+                                });
+                            }
+                        }
+                    }
+                }
+                return spikes;
+            }
+            generateEnemies(tiles, width, height, config) {
+                const enemies = [];
+                const groundLevel = height - 3;
+                const midLevel = Math.floor(height * 0.6);
+                const topLevel = Math.floor(height * 0.3);
+                const enemyHeight = 40;
+                const startSafeZone = 6;
+                const endSafeZone = 6;
+                const findPatrolAreas = (level) => {
+                    let patrolAreas = [];
+                    let currentStart = -1;
+                    for (let x = startSafeZone; x < width - endSafeZone; x++) {
+                        if (tiles[level][x] === '1') {
+                            if (currentStart === -1) currentStart = x;
+                        } else {
+                            if (currentStart !== -1 && x - currentStart > 3) {
+                                patrolAreas.push({start: currentStart, end: x - 1, y: level});
+                            }
+                            currentStart = -1;
+                        }
+                    }
+                    if (currentStart !== -1 && width - endSafeZone - currentStart > 3) {
+                        patrolAreas.push({start: currentStart, end: width - endSafeZone - 1, y: level});
+                    }
+                    return patrolAreas.filter(area => {
+                        return area.start >= startSafeZone + 2 && area.end <= width - endSafeZone - 2;
+                    });
+                };
+                let allPatrolAreas = [];
+                allPatrolAreas = allPatrolAreas.concat(findPatrolAreas(groundLevel));
+                allPatrolAreas = allPatrolAreas.concat(findPatrolAreas(midLevel));
+                if (config.theme === 'intermediate' || config.theme === 'advanced') {
+                    allPatrolAreas = allPatrolAreas.concat(findPatrolAreas(topLevel));
+                }
+                if (config.theme === 'advanced') {
+                    const stepLevel = Math.floor(height * 0.75);
+                    allPatrolAreas = allPatrolAreas.concat(findPatrolAreas(stepLevel));
+                }
+                const enemiesToPlace = Math.min(config.enemyCount, allPatrolAreas.length);
+                for (let i = allPatrolAreas.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [allPatrolAreas[i], allPatrolAreas[j]] = [allPatrolAreas[j], allPatrolAreas[i]];
+                }
+                for (let i = 0; i < enemiesToPlace; i++) {
+                    const area = allPatrolAreas[i];
+                    const startX = area.start * this.tileSize;
+                    const endX = area.end * this.tileSize;
+                    const y = area.y * this.tileSize - enemyHeight;
+                    enemies.push({
+                        x: startX + 32,
+                        y: y,
+                        type: 'patrol',
+                        path: [
+                            {x: startX + 32, y: y},
+                            {x: endX - 32, y: y}
+                        ]
+                    });
+                }
+                return enemies;
+            }
+            generateGems(tiles, width, height, config, spikes) {
+                const gems = [];
+                const groundLevel = height - 3;
+                const midLevel = Math.floor(height * 0.6);
+                const topLevel = Math.floor(height * 0.3);
+                const startSafeZone = 6;
+                const endSafeZone = 6;
+                let gemCount;
+                if (config.theme === 'basic') {
+                    gemCount = Math.floor(width / 20);
+                } else if (config.theme === 'intermediate') {
+                    gemCount = Math.floor(width / 15);
+                } else {
+                    gemCount = Math.floor(width / 12);
+                }
+                const isSafeForGem = (x, y, spikes) => {
+                    if (tiles[y + 1] && tiles[y + 1][x] === '1') {
+                        if (tiles[y] && tiles[y][x] === '0') {
+                            if (x >= startSafeZone + 2 && x <= width - endSafeZone - 2) {
+                                const gemX = x * this.tileSize;
+                                const gemY = y * this.tileSize;
+                                for (const spike of spikes) {
+                                    const distance = Math.sqrt(
+                                        Math.pow(gemX - spike.x, 2) + 
+                                        Math.pow(gemY - spike.y, 2)
+                                    );
+                                    if (distance < this.tileSize * 1.5) {
+                                        return false;
+                                    }
+                                }
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+                let gemsPlaced = 0;
+                const maxAttempts = gemCount * 10;
+                let attempts = 0;
+                while (gemsPlaced < gemCount && attempts < maxAttempts) {
+                    attempts++;
+                    let platformLevel;
+                    const levelChoice = Math.random();
+                    if (config.theme === 'basic') {
+                        platformLevel = levelChoice < 0.7 ? groundLevel : midLevel;
+                    } else if (config.theme === 'intermediate') {
+                        if (levelChoice < 0.5) platformLevel = groundLevel;
+                        else if (levelChoice < 0.85) platformLevel = midLevel;
+                        else platformLevel = topLevel;
+                    } else {
+                        if (levelChoice < 0.4) platformLevel = groundLevel;
+                        else if (levelChoice < 0.7) platformLevel = midLevel;
+                        else if (levelChoice < 0.9) platformLevel = topLevel;
+                        else platformLevel = Math.floor(height * 0.75);
+                    }
+                    const x = Math.floor(Math.random() * (width - startSafeZone - endSafeZone)) + startSafeZone;
+                    const y = platformLevel - 1;
+                    if (isSafeForGem(x, y, spikes)) {
+                        const gemX = x * this.tileSize;
+                        const gemY = y * this.tileSize;
+                        let tooClose = false;
+                        for (const existingGem of gems) {
+                            const distance = Math.sqrt(
+                                Math.pow(gemX - existingGem.x, 2) + 
+                                Math.pow(gemY - existingGem.y, 2)
+                            );
+                            if (distance < this.tileSize * 2) {
+                                tooClose = true;
+                                break;
+                            }
+                        }
+                        if (!tooClose) {
+                            gems.push({
+                                x: gemX,
+                                y: gemY,
+                                type: this.getRandomGemType(),
+                                collected: false,
+                                animationOffset: Math.random() * Math.PI * 2
+                            });
+                            gemsPlaced++;
+                        }
+                    }
+                }
+                return gems;
+            }
+            getRandomGemType() {
+                const gemTypes = ['ruby', 'emerald', 'sapphire', 'diamond', 'amethyst'];
+                return gemTypes[Math.floor(Math.random() * gemTypes.length)];
+            }
+            generateExit(tiles, width, height) {    
+                const groundLevel = height - 3;
+                const exitX = width - 3;
+                for (let x = exitX - 1; x <= exitX + 1; x++) {
+                    if (x >= 1 && x < width - 1) {
+                        tiles[groundLevel][x] = '1';
+                    }
+                }
+                return {
+                    x: exitX * this.tileSize,
+                    y: (groundLevel - 1) * this.tileSize
+                };
+            }
+            loadLevel(levelNum) {
+                const level = this.levels[levelNum - 1];
+                this.currentLevelData = level;
+                this.currentLevelPits = level.pits || [];
+                this.player.x = this.tileSize * 2;
+                this.player.y = (level.height - 4) * this.tileSize - this.player.height;
+                this.player.vx = 0;
+                this.player.vy = 0;
+                this.player.health = this.player.maxHealth;
+                this.player.invulnerable = false;
+                this.player.invulnerabilityTime = 0;
+                this.player.onGround = true;
+                this.player.canDoubleJump = false;
+                this.player.hasDoubleJumped = false;
+                this.player.jumpKeyPressed = false;
+                this.enemies = level.enemies.map(enemy => ({
+                    ...enemy,
+                    width: 32,
+                    height: 40,
+                    vx: 1,
+                    currentTarget: 0,
+                    direction: 1
+                }));
+                this.gems = level.gems.map(gem => ({...gem}));
+                this.totalGems = this.gems.length;
+                this.gemsCollected = 0;
+                document.getElementById('currentLevel').textContent = levelNum;
+                this.updateHealthBar();
+                this.updateScoreDisplay();
+            }
+            startGame() {
+                this.gameState = 'playing';
+                document.getElementById('startScreen').classList.add('hidden');
+                this.showGameHeader();
+                this.stopBackgroundMusic();
+                this.startBackgroundMusic();
+                this.loadLevel(this.currentLevel);
+            }
+            update() {
+                if (this.gameState !== 'playing') return;
+                this.updatePlayer();
+                this.updateEnemies();
+                this.updateCamera();
+                this.checkCollisions();
+                if (this.player.invulnerable) {
+                    this.player.invulnerabilityTime--;
+                    if (this.player.invulnerabilityTime <= 0) {
+                        this.player.invulnerable = false;
+                    }
+                }
+            }
+            updatePlayer() {    
+                if (this.keys['a'] || this.keys['arrowleft']) {
+                    this.player.vx = -this.player.speed;
+                } else if (this.keys['d'] || this.keys['arrowright']) {
+                    this.player.vx = this.player.speed;
+                } else {
+                    this.player.vx *= 0.9;
+                }
+                if (this.keys[' '] || this.keys['w'] || this.keys['arrowup']) {
+                    if (this.player.onGround) {
+                        this.player.vy = -this.player.jumpPower;
+                        this.player.onGround = false;
+                        this.player.canDoubleJump = true;
+                        this.player.hasDoubleJumped = false;
+                        this.player.jumpKeyPressed = true;
+                    } else if (this.player.canDoubleJump && !this.player.hasDoubleJumped && !this.player.jumpKeyPressed) {
+                        this.player.vy = -this.player.doubleJumpPower;
+                        this.player.hasDoubleJumped = true;
+                        this.player.canDoubleJump = false;
+                        this.player.jumpKeyPressed = true;
+                    }
+                } else {
+                    this.player.jumpKeyPressed = false;
+                }
+                this.player.vy += this.gravity;
+                this.player.x += this.player.vx;
+                this.checkWallCollisions();
+                this.player.y += this.player.vy;
+                this.checkGroundCollision();
+                this.player.x = Math.max(0, Math.min(this.player.x, this.currentLevelData.width * this.tileSize - this.player.width));
+            }
+            updateEnemies() {
+                this.enemies.forEach(enemy => {
+                    const target = enemy.path[enemy.currentTarget];
+                    const dx = target.x - enemy.x;
+                    if (Math.abs(dx) < 2) {
+                        enemy.currentTarget = (enemy.currentTarget + 1) % enemy.path.length;
+                    } else {
+                        enemy.vx = dx > 0 ? 1 : -1;
+                        enemy.x += enemy.vx;
+                    }
+                });
+            }
+            updateCamera() {
+                if (this.currentLevelData.width * this.tileSize > this.canvas.width) {
+                    const targetX = this.player.x - this.canvas.width / 2;
+                    this.camera.x = Math.max(0, Math.min(targetX, this.currentLevelData.width * this.tileSize - this.canvas.width));
+                } else {
+                    this.camera.x = 0;
+                }
+                if (this.currentLevelData.height * this.tileSize > this.canvas.height) {
+                    const targetY = this.player.y - this.canvas.height / 2;
+                    this.camera.y = Math.max(0, Math.min(targetY, this.currentLevelData.height * this.tileSize - this.canvas.height));
+                } else {
+                    this.camera.y = 0;
+                }
+            }
+            checkWallCollisions() {
+                const tileX = Math.floor(this.player.x / this.tileSize);
+                const tileY = Math.floor(this.player.y / this.tileSize);
+                if (this.player.vx > 0) {
+                    const rightTileX = Math.floor((this.player.x + this.player.width) / this.tileSize);
+                    const topRightTile = this.getTile(rightTileX, tileY);
+                    const bottomRightTile = this.getTile(rightTileX, Math.floor((this.player.y + this.player.height - 1) / this.tileSize));
+                    if (topRightTile === '1' || bottomRightTile === '1') {
+                        this.player.x = rightTileX * this.tileSize - this.player.width - 1;
+                        this.player.vx = 0;
+                    }
+                } else if (this.player.vx < 0) {
+                    const leftTileX = Math.floor(this.player.x / this.tileSize);
+                    const topLeftTile = this.getTile(leftTileX, tileY);
+                    const bottomLeftTile = this.getTile(leftTileX, Math.floor((this.player.y + this.player.height - 1) / this.tileSize));
+                    if (topLeftTile === '1' || bottomLeftTile === '1') {
+                        this.player.x = (leftTileX + 1) * this.tileSize + 1;
+                        this.player.vx = 0;
+                    }
+                }
+            }
+            checkGroundCollision() {
+                const tileX = Math.floor(this.player.x / this.tileSize);
+                const tileXRight = Math.floor((this.player.x + this.player.width - 1) / this.tileSize);
+                const tileY = Math.floor((this.player.y + this.player.height) / this.tileSize);
+                this.player.onGround = false;
+                if (this.player.vy >= 0) {
+                    const bottomLeftTile = this.getTile(tileX, tileY);
+                    const bottomRightTile = this.getTile(tileXRight, tileY);
+                    if (bottomLeftTile === '1' || bottomRightTile === '1') {
+                        this.player.y = tileY * this.tileSize - this.player.height;
+                        this.player.vy = 0;
+                        this.player.onGround = true;
+                        this.player.canDoubleJump = false;
+                        this.player.hasDoubleJumped = false;
+                    }
+                } else {
+                    const topTileY = Math.floor(this.player.y / this.tileSize);
+                    const topLeftTile = this.getTile(tileX, topTileY);
+                    const topRightTile = this.getTile(tileXRight, topTileY);
+                    if (topLeftTile === '1' || topRightTile === '1') {
+                        this.player.y = (topTileY + 1) * this.tileSize;
+                        this.player.vy = 0;
+                    }
+                }
+            }
+            checkCollisions() {
+                this.currentLevelData.spikes.forEach(spike => {
+                    if (this.checkRectCollision(this.player, {x: spike.x, y: spike.y, width: 32, height: 32})) {
+                        this.deathCause = 'Striked Spikes';
+                        this.instantDeath();
+                    }
+                });
+                this.enemies.forEach(enemy => {
+                    if (this.checkRectCollision(this.player, enemy)) {
+                        this.deathCause = 'Slain by Orc';
+                        this.takeDamage(25);
+                    }
+                });
+                this.checkPitDeath();
+                this.gems.forEach(gem => {
+                    if (!gem.collected && this.checkRectCollision(this.player, {x: gem.x, y: gem.y, width: 24, height: 24})) {
+                        this.collectGem(gem);
+                    }
+                });
+                if (this.checkRectCollision(this.player, {x: this.currentLevelData.exit.x, y: this.currentLevelData.exit.y, width: 32, height: 32})) {
+                    this.nextLevel();
+                }
+            }
+            checkPitDeath() {
+                const groundLevel = (this.currentLevelData.height - 3) * this.tileSize;
+                const playerTileX = Math.floor(this.player.x / this.tileSize);
+                const playerTileY = Math.floor(this.player.y / this.tileSize);
+                const groundTileY = this.currentLevelData.height - 3;
+                const fallDeathThreshold = groundLevel + this.tileSize;
+                if (this.player.y > fallDeathThreshold) {
+                    this.pitDeath();
+                    return;
+                }
+                if (playerTileY > groundTileY) {
+                    const currentTile = this.getTile(playerTileX, playerTileY);
+                    const belowTile = this.getTile(playerTileX, playerTileY + 1);
+                    if (currentTile === '0') {
+                        this.pitDeath();
+                        return;
+                    }
+                }
+                const levelBottom = this.currentLevelData.height * this.tileSize;
+                if (this.player.y > levelBottom - this.tileSize) {
+                    this.pitDeath();
+                    return;
+                }
+            }
+            pitDeath() {
+                this.deathCause = 'Fell into Pit';
+                this.instantDeath();
+            }
+            instantDeath() {
+                this.player.health = 0;
+                this.playDeathSound();
+                this.gameOver();
+            }
+            checkRectCollision(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+            takeDamage(amount) {
+                if (this.player.invulnerable) return;
+                this.player.health -= amount;
+                this.player.invulnerable = true;
+                this.player.invulnerabilityTime = 60;
+                this.playDamageSound();
+                this.updateHealthBar();
+                if (this.player.health <= 0) {
+                    if (this.deathCause === 'Unknown') {
+                        this.deathCause = 'Health Depleted';
+                    }
+                    this.gameOver();
+                }
+            }
+            collectGem(gem) {
+                gem.collected = true;
+                this.gemsCollected++;
+                let gemScore;
+                switch (gem.type) {
+                    case 'diamond': gemScore = 100; break;
+                    case 'ruby': gemScore = 75; break;
+                    case 'emerald': gemScore = 60; break;
+                    case 'sapphire': gemScore = 50; break;
+                    case 'amethyst': gemScore = 40; break;
+                    default: gemScore = 50;
+                }
+                this.playGemSound(gem.type);
+                this.score += gemScore;
+                this.totalScore += gemScore;
+                this.updateScoreDisplay();
+            }
+            updateScoreDisplay() {
+                document.getElementById('scoreText').textContent = this.totalScore;
+                document.getElementById('gemText').textContent = `${this.gemsCollected}/${this.totalGems}`;
+            }
+            updateHealthBar() {
+                const healthPercent = (this.player.health / this.player.maxHealth) * 100;
+                document.getElementById('healthBar').style.width = healthPercent + '%';
+                document.getElementById('healthText').textContent = `${Math.max(0, this.player.health)}/${this.player.maxHealth}`;
+            }
+            nextLevel() {
+                this.playLevelCompleteSound();
+                const levelBonus = 500;
+                const allGemsBonus = this.gemsCollected === this.totalGems ? 1000 : 0;
+                this.totalScore += levelBonus + allGemsBonus;
+                this.updateScoreDisplay();
+                if (this.currentLevel < this.maxLevel) {
+                    this.currentLevel++;
+                    this.loadLevel(this.currentLevel);
+                } else {
+                    this.victory();
+                }
+            }
+            gameOver() {
+                this.gameState = 'gameOver';
+                if (this.player.health <= 0) {
+                    this.playDeathSound();
+                }
+                this.showGameHeader();
+                this.updateGameOverStats();
+                document.getElementById('gameOverScreen').classList.remove('hidden');
+            }
+            updateGameOverStats() {
+                document.getElementById('finalScore').textContent = this.totalScore;
+                document.getElementById('finalGems').textContent = `${this.gemsCollected}/${this.totalGems}`;
+                document.getElementById('finalLevel').textContent = this.currentLevel;
+                document.getElementById('lossCause').textContent = this.deathCause;
+            }
+            victory() {
+                this.gameState = 'victory';
+                this.showGameHeader();
+                document.getElementById('victoryScreen').classList.remove('hidden');
+            }
+            restartLevel() {
+                this.gameState = 'playing';
+                document.getElementById('gameOverScreen').classList.add('hidden');
+                this.showGameHeader();
+                this.deathCause = 'Unknown';
+                this.loadLevel(this.currentLevel);
+            }
+            resetGame() {
+                this.gameState = 'playing';
+                document.getElementById('victoryScreen').classList.add('hidden');
+                document.getElementById('pauseScreen').classList.add('hidden');
+                document.getElementById('startScreen').classList.add('hidden');
+                document.getElementById('gameOverScreen').classList.add('hidden');
+                this.showGameHeader();
+                this.currentLevel = 1;
+                this.score = 0;
+                this.totalScore = 0;
+                this.gemsCollected = 0;
+                this.totalGems = 0;
+                this.deathCause = 'Unknown';
+                this.loadLevel(this.currentLevel);
+            }
+            togglePause() {
+                if (this.gameState === 'playing') {
+                    this.pauseGame();
+                } else if (this.gameState === 'paused') {
+                    this.resumeGame();
+                }
+            }
+            pauseGame() {
+                if (this.gameState === 'playing') {
+                    this.gameState = 'paused';
+                    document.getElementById('pauseScreen').classList.remove('hidden');
+                }
+            }
+            resumeGame() {
+                if (this.gameState === 'paused') {
+                    this.gameState = 'playing';
+                    document.getElementById('pauseScreen').classList.add('hidden');
+                }
+            }
+            returnToStartScreen() {
+                this.gameState = 'startScreen';
+                document.getElementById('gameOverScreen').classList.add('hidden');
+                document.getElementById('victoryScreen').classList.add('hidden');
+                document.getElementById('pauseScreen').classList.add('hidden');
+                document.getElementById('startScreen').classList.remove('hidden');
+                this.hideGameHeader();
+                this.stopBackgroundMusic();
+                this.startWelcomeMusic();
+                this.deathCause = 'Unknown';
+                this.currentLevel = 1;
+                this.score = 0;
+                this.totalScore = 0;
+                this.gemsCollected = 0;
+                this.totalGems = 0;
+                this.updateScoreDisplay();
+            }
+            showGameHeader() {
+                document.getElementById('gameHeader').classList.remove('hidden');
+                document.getElementById('gameFooter').classList.remove('hidden');
+            }
+            hideGameHeader() {
+                document.getElementById('gameHeader').classList.add('hidden');
+                document.getElementById('gameFooter').classList.add('hidden');
+            }
+            getTile(x, y) {
+                if (x < 0 || x >= this.currentLevelData.width || y < 0 || y >= this.currentLevelData.height) {
+                    return '1';
+                }
+                return this.currentLevelData.tiles[y][x];
+            }
+            render() {
+                if (this.gameState === 'startScreen') {
+                    this.renderStartScreenBackground();
+                    return;
+                }
+                this.renderBackground();
+                this.renderLevel();
+                this.renderSpikes();
+                this.renderEnemies();
+                this.renderGems();
+                this.renderPlayer();
+                this.renderExit();
+                this.renderMinimap();
+            }
+            renderLevel() {
+                const startX = Math.floor(this.camera.x / this.tileSize);
+                const startY = Math.floor(this.camera.y / this.tileSize);
+                const endX = Math.min(startX + Math.ceil(this.canvas.width / this.tileSize) + 1, this.currentLevelData.width);
+                const endY = Math.min(startY + Math.ceil(this.canvas.height / this.tileSize) + 1, this.currentLevelData.height);
+                for (let y = startY; y < endY; y++) {
+                    for (let x = startX; x < endX; x++) {
+                        const tile = this.getTile(x, y);
+                        if (tile === '1') {
+                            this.drawStoneTile(
+                                x * this.tileSize - this.camera.x,
+                                y * this.tileSize - this.camera.y,
+                                this.tileSize,
+                                x,
+                                y
+                            );
+                        }
+                    }
+                }
+            }
+            drawStoneTile(x, y, size, tileX, tileY) {
+                const ctx = this.ctx;
+                const variation = (tileX * 7 + tileY * 13) % 4;
+                let baseColor, lightColor, darkColor, accentColor;
+                switch (variation) {
+                    case 0:
+                        baseColor = '#6b7280';
+                        lightColor = '#9ca3af';
+                        darkColor = '#374151';
+                        accentColor = '#4b5563';
+                        break;
+                    case 1:
+                        baseColor = '#64748b';
+                        lightColor = '#94a3b8';
+                        darkColor = '#334155';
+                        accentColor = '#475569';
+                        break;
+                    case 2:
+                        baseColor = '#71717a';
+                        lightColor = '#a1a1aa';
+                        darkColor = '#3f3f46';
+                        accentColor = '#52525b';
+                        break;
+                    default:
+                        baseColor = '#737373';
+                        lightColor = '#a3a3a3';
+                        darkColor = '#404040';
+                        accentColor = '#525252';
+                }
+                ctx.fillStyle = baseColor;
+                ctx.fillRect(x, y, size, size);
+                ctx.fillStyle = lightColor;
+                ctx.fillRect(x, y, size, 3);
+                ctx.fillRect(x, y, 3, size);
+                ctx.fillRect(x + 3, y + 3, size - 6, 1);
+                ctx.fillRect(x + 3, y + 3, 1, size - 6);
+                ctx.fillStyle = darkColor;
+                ctx.fillRect(x, y + size - 3, size, 3);
+                ctx.fillRect(x + size - 3, y, 3, size);
+                ctx.fillRect(x + 3, y + size - 4, size - 6, 1);
+                ctx.fillRect(x + size - 4, y + 3, 1, size - 6);
+                ctx.fillStyle = darkColor;
+                ctx.fillRect(x + size - 1, y + size - 1, 1, 1);
+                ctx.fillStyle = lightColor;
+                ctx.fillRect(x, y, 1, 1);
+                this.addStoneTexture(x, y, size, tileX, tileY, accentColor, darkColor);
+                if (tileX % 3 === 0 || tileY % 2 === 0) {
+                    this.addMortarLines(x, y, size, tileX, tileY);
+                }
+            }
+            addStoneTexture(x, y, size, tileX, tileY, accentColor, darkColor) {
+                const ctx = this.ctx;
+                const seed = tileX * 31 + tileY * 17;
+                for (let i = 0; i < 8; i++) {
+                    const px = x + 4 + ((seed + i * 7) % (size - 8));
+                    const py = y + 4 + ((seed + i * 11) % (size - 8));
+                    if ((seed + i) % 3 === 0) {
+                        ctx.fillStyle = darkColor;
+                        ctx.fillRect(px, py, 1, 1);
+                        if ((seed + i) % 5 === 0) {
+                            ctx.fillRect(px + 1, py, 1, 1);
+                        }
+                        if ((seed + i) % 7 === 0) {
+                            ctx.fillRect(px, py + 1, 1, 1);
+                        }
+                    } else if ((seed + i) % 4 === 0) {
+                        ctx.fillStyle = accentColor;
+                        ctx.fillRect(px, py, 1, 1);
+                    }
+                }
+                if (seed % 8 === 0) {
+                    ctx.fillStyle = accentColor;
+                    ctx.fillRect(x + size/2 - 1, y + size/2 - 1, 3, 3);
+                    ctx.fillStyle = darkColor;
+                    ctx.fillRect(x + size/2 + 1, y + size/2 + 1, 1, 1);
+                }
+                if (seed % 12 === 0) {
+                                    ctx.fillStyle = darkColor;
+                ctx.fillRect(x + size/4, y + size/4, 2, 2);
+                }
+            }
+            addMortarLines(x, y, size, tileX, tileY) {
+                const ctx = this.ctx;
+                const mortarColor = '#2d3748';
+                ctx.fillStyle = mortarColor;
+                if (tileX % 3 === 0) {
+                    ctx.fillRect(x, y, 1, size);
+                }
+                if (tileY % 2 === 0) {
+                    ctx.fillRect(x, y, size, 1);
+                }
+                if (tileX % 3 === 0 && tileY % 2 === 0) {
+                    ctx.fillRect(x, y, 2, 2);
+                }
+            }
+            renderSpikes() {
+                this.currentLevelData.spikes.forEach(spike => {
+                    const x = spike.x - this.camera.x;
+                    const y = spike.y - this.camera.y;
+                    const tileSize = this.tileSize;
+                    this.drawSpikeTrap(x, y, tileSize);
+                });
+            }
+            drawSpikeTrap(x, y, size) {
+                const ctx = this.ctx;
+                ctx.fillStyle = '#4b5563';
+                ctx.fillRect(x, y + size - 8, size, 8);
+                ctx.fillStyle = '#6b7280';
+                ctx.fillRect(x, y + size - 8, size, 2);
+                ctx.fillRect(x, y + size - 8, 2, 8);
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(x, y + size - 2, size, 2);
+                ctx.fillRect(x + size - 2, y + size - 8, 2, 8);
+                ctx.fillStyle = '#52525b';
+                ctx.fillRect(x + 4, y + size - 6, 1, 1);
+                ctx.fillRect(x + 8, y + size - 5, 1, 1);
+                ctx.fillRect(x + 12, y + size - 7, 1, 1);
+                ctx.fillRect(x + 20, y + size - 6, 1, 1);
+                ctx.fillRect(x + 24, y + size - 5, 1, 1);
+                const numSpikes = 4;
+                const spikeSpacing = size / numSpikes;
+                for (let i = 0; i < numSpikes; i++) {
+                    const spikeX = x + (i * spikeSpacing) + 2;
+                    const spikeBaseWidth = 6;
+                    const spikeHeight = 16 + (i % 2) * 2;
+                    const spikeY = y + size - 8 - spikeHeight;
+                    this.drawIndividualSpike(spikeX, spikeY, spikeBaseWidth, spikeHeight, i);
+                }
+                this.addWarningSymbols(x, y, size);
+                this.addDangerDetails(x, y, size);
+            }
+            drawIndividualSpike(x, y, baseWidth, height, index) {
+                const ctx = this.ctx;
+                ctx.fillStyle = '#71717a';
+                ctx.fillRect(x, y + height - 4, baseWidth, 4);
+                ctx.fillStyle = '#52525b';
+                for (let h = 0; h < height - 4; h++) {
+                    const widthAtHeight = Math.max(1, baseWidth - Math.floor((h / (height - 4)) * (baseWidth - 1)));
+                    const centerOffset = Math.floor((baseWidth - widthAtHeight) / 2);
+                    ctx.fillRect(x + centerOffset, y + height - 4 - h - 1, widthAtHeight, 1);
+                }
+                ctx.fillStyle = '#e5e7eb';
+                ctx.fillRect(x + Math.floor(baseWidth/2), y, 1, 1);
+                ctx.fillStyle = '#9ca3af';
+                for (let h = 2; h < height - 2; h++) {
+                    const widthAtHeight = Math.max(1, baseWidth - Math.floor((h / (height - 4)) * (baseWidth - 1)));
+                    const centerOffset = Math.floor((baseWidth - widthAtHeight) / 2);
+                    if (widthAtHeight > 1) {
+                        ctx.fillRect(x + centerOffset, y + height - 4 - h - 1, 1, 1);
+                    }
+                }
+                ctx.fillStyle = '#374151';
+                for (let h = 2; h < height - 2; h++) {
+                    const widthAtHeight = Math.max(1, baseWidth - Math.floor((h / (height - 4)) * (baseWidth - 1)));
+                    const centerOffset = Math.floor((baseWidth - widthAtHeight) / 2);
+                    if (widthAtHeight > 2) {
+                        ctx.fillRect(x + centerOffset + widthAtHeight - 1, y + height - 4 - h - 1, 1, 1);
+                    }
+                }
+                if (index % 3 === 0) {
+                    ctx.fillStyle = '#7f1d1d';
+                    ctx.fillRect(x + 1, y + height - 8, 1, 2);
+                    ctx.fillRect(x + 2, y + height - 6, 1, 1);
+                    ctx.fillStyle = '#450a0a';
+                    ctx.fillRect(x + 1, y + height - 6, 1, 1);
+                }
+                if (index % 4 === 1) {
+                    ctx.fillStyle = '#92400e';
+                    ctx.fillRect(x + Math.floor(baseWidth/2), y + height - 10, 1, 1);
+                    ctx.fillRect(x + Math.floor(baseWidth/2) - 1, y + height - 12, 1, 1);
+                }
+                ctx.fillStyle = '#6b7280';
+                if (index % 2 === 0) {
+                    ctx.fillRect(x + 1, y + height - 8, 1, 1);
+                    ctx.fillRect(x + 2, y + height - 12, 1, 1);
+                }
+            }
+            addWarningSymbols(x, y, size) {
+                const ctx = this.ctx;
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(x + 2, y + size - 6, 3, 3);
+                ctx.fillStyle = '#1f2937';
+                ctx.fillRect(x + 2, y + size - 5, 1, 1);
+                ctx.fillRect(x + 4, y + size - 5, 1, 1);
+                ctx.fillRect(x + 3, y + size - 4, 1, 1);
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(x + size - 4, y + size - 6, 1, 3);
+                ctx.fillRect(x + size - 3, y + size - 5, 2, 1);
+                ctx.fillRect(x + size - 2, y + size - 4, 1, 1);
+            }
+            addDangerDetails(x, y, size) {
+                const ctx = this.ctx;
+                ctx.fillStyle = '#f3f4f6';
+                ctx.fillRect(x + 6, y + size - 3, 2, 1);
+                ctx.fillRect(x + 14, y + size - 2, 1, 1);
+                ctx.fillRect(x + 22, y + size - 3, 1, 2);
+                ctx.fillStyle = '#7f1d1d';
+                ctx.fillRect(x + 8, y + size - 4, 2, 1);
+                ctx.fillRect(x + 16, y + size - 3, 1, 2);
+                ctx.fillRect(x + 26, y + size - 4, 1, 1);
+                ctx.fillStyle = '#450a0a';
+                ctx.fillRect(x + 9, y + size - 3, 1, 1);
+                ctx.fillRect(x + 17, y + size - 2, 1, 1);
+                ctx.fillStyle = '#1f2937';
+                ctx.fillRect(x + 12, y + size - 6, 1, 1);
+                ctx.fillRect(x + 13, y + size - 5, 1, 1);
+                ctx.fillRect(x + 14, y + size - 4, 1, 1);
+                ctx.fillStyle = '#4b5563';
+                ctx.fillRect(x + 4, y + size - 2, 1, 1);
+                ctx.fillRect(x + 18, y + size - 2, 1, 1);
+                ctx.fillRect(x + 28, y + size - 2, 1, 1);
+            }
+            renderEnemies() {
+                this.enemies.forEach(enemy => {
+                    const x = enemy.x - this.camera.x;
+                    const y = enemy.y - this.camera.y;
+                    const w = enemy.width;
+                    const h = enemy.height;
+                    const facingRight = enemy.vx > 0;
+                    this.drawOrcWarrior(x, y, w, h, facingRight);
+                });
+            }
+            drawOrcWarrior(x, y, w, h, facingRight) {
+                const ctx = this.ctx;
+                const isWalking = true;
+                const walkCycle = Math.floor(Date.now() / 250) % 2;
+                const walkBob = Math.sin(Date.now() / 120) * 1.5;
+                y += walkBob;
+                ctx.fillStyle = '#ff4500';
+                ctx.fillRect(x + 6, y + 10, w - 12, h - 16);
+                ctx.fillStyle = '#ff6347';
+                ctx.fillRect(x + 6, y + 10, 2, h - 16);
+                ctx.fillRect(x + 8, y + 10, w - 16, 2);
+                ctx.fillStyle = '#dc143c';
+                ctx.fillRect(x + w - 8, y + 10, 2, h - 16);
+                ctx.fillRect(x + 6, y + h - 8, w - 12, 2);
+                ctx.fillStyle = '#ff6347';
+                ctx.fillRect(x + 4, y + 2, w - 8, 10);
+                ctx.fillStyle = '#ff7f50';
+                ctx.fillRect(x + 4, y + 2, 2, 10);
+                ctx.fillRect(x + 4, y + 2, w - 8, 2);
+                ctx.fillStyle = '#ff4500';
+                ctx.fillRect(x + w - 6, y + 2, 2, 10);
+                ctx.fillRect(x + 4, y + 10, w - 8, 2);
+                ctx.fillStyle = '#1f2937';
+                ctx.fillRect(x + 6, y, 2, 4);
+                ctx.fillRect(x + w - 8, y, 2, 4);
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(x + 6, y, 1, 4);
+                ctx.fillRect(x + w - 8, y, 1, 4);
+                ctx.fillStyle = '#6b7280';
+                ctx.fillRect(x + 6, y, 1, 1);
+                ctx.fillRect(x + w - 8, y, 1, 1);
+                ctx.fillStyle = '#dc2626';
+                if (facingRight) {
+                    ctx.fillRect(x + 10, y + 5, 2, 2);
+                    ctx.fillRect(x + 16, y + 5, 2, 2);
+                } else {
+                    ctx.fillRect(x + 8, y + 5, 2, 2);
+                    ctx.fillRect(x + 14, y + 5, 2, 2);
+                }
+                ctx.fillStyle = '#fca5a5';
+                if (facingRight) {
+                    ctx.fillRect(x + 11, y + 6, 1, 1);
+                    ctx.fillRect(x + 17, y + 6, 1, 1);
+                } else {
+                    ctx.fillRect(x + 9, y + 6, 1, 1);
+                    ctx.fillRect(x + 15, y + 6, 1, 1);
+                }
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillRect(x + 9, y + 9, 1, 2);
+                ctx.fillRect(x + w - 10, y + 9, 1, 2);
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(x + 8, y + 8, w - 16, 2);
+                ctx.fillStyle = '#e5e7eb';
+                ctx.fillRect(x + 10, y + 9, 1, 1);
+                ctx.fillRect(x + 12, y + 9, 1, 1);
+                ctx.fillRect(x + w - 13, y + 9, 1, 1);
+                ctx.fillRect(x + w - 11, y + 9, 1, 1);
+                const leftArmY = y + 11 + (walkCycle ? 2 : -1);
+                const rightArmY = y + 11 + (walkCycle ? -1 : 2);
+                ctx.fillStyle = '#ff4500';
+                ctx.fillRect(x + 1, leftArmY, 4, 8);
+                ctx.fillStyle = '#ff6347';
+                ctx.fillRect(x + 1, leftArmY, 1, 8);
+                ctx.fillStyle = '#ff4500';
+                ctx.fillRect(x + w - 5, rightArmY, 4, 8);
+                ctx.fillStyle = '#ff6347';
+                ctx.fillRect(x + w - 5, rightArmY, 1, 8);
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(x + 7, y + 12, w - 14, 4);
+                ctx.fillStyle = '#4b5563';
+                ctx.fillRect(x + 7, y + 12, w - 14, 1);
+                ctx.fillStyle = '#1f2937';
+                ctx.fillRect(x + 7, y + 15, w - 14, 1);
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(x + 3, y + 11, 3, 3);
+                ctx.fillRect(x + w - 6, y + 11, 3, 3);
+                ctx.fillStyle = '#6b7280';
+                ctx.fillRect(x + 4, y + 10, 1, 2);
+                ctx.fillRect(x + w - 5, y + 10, 1, 2);
+                const leftLegOffset = walkCycle ? 3 : -1;
+                const rightLegOffset = walkCycle ? -1 : 3;
+                ctx.fillStyle = '#ff4500';
+                ctx.fillRect(x + 7, y + 18 + leftLegOffset, 5, h - 20 - leftLegOffset);
+                ctx.fillStyle = '#ff6347';
+                ctx.fillRect(x + 7, y + 18 + leftLegOffset, 1, h - 20 - leftLegOffset);
+                ctx.fillStyle = '#ff4500';
+                ctx.fillRect(x + 15, y + 18 + rightLegOffset, 5, h - 20 - rightLegOffset);
+                ctx.fillStyle = '#ff6347';
+                ctx.fillRect(x + 15, y + 18 + rightLegOffset, 1, h - 20 - rightLegOffset);
+                ctx.fillStyle = '#451a03';
+                ctx.fillRect(x + 6, y + h - 5 + leftLegOffset, 6, 5 - leftLegOffset);
+                ctx.fillRect(x + 14, y + h - 5 + rightLegOffset, 6, 5 - rightLegOffset);
+                ctx.fillStyle = '#92400e';
+                ctx.fillRect(x + 7, y + h - 3 + leftLegOffset, 4, 1);
+                ctx.fillRect(x + 15, y + h - 3 + rightLegOffset, 4, 1);
+                this.drawOrcWeapon(x, y, w, h, facingRight);
+                ctx.fillStyle = '#450a0a';
+                ctx.fillRect(x + 5, y + 6, 1, 2);
+                ctx.fillRect(x + 8, y + 13, 1, 3);
+                ctx.fillRect(x + w - 9, y + 8, 1, 2);
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(x + 7, y + 4, 2, 1);
+                ctx.fillRect(x + w - 9, y + 4, 2, 1);
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillRect(x + 5, y + 13, 1, 1);
+                ctx.fillRect(x + w - 6, y + 13, 1, 1);
+            }
+            drawOrcWeapon(x, y, w, h, facingRight) {
+                const ctx = this.ctx;
+                const weaponX = facingRight ? x + w - 3 : x;
+                const weaponY = y + 8;
+                ctx.fillStyle = '#92400e';
+                ctx.fillRect(weaponX + 1, weaponY, 2, 12);
+                ctx.fillStyle = '#451a03';
+                ctx.fillRect(weaponX + 1, weaponY + 2, 2, 1);
+                ctx.fillRect(weaponX + 1, weaponY + 5, 2, 1);
+                ctx.fillRect(weaponX + 1, weaponY + 8, 2, 1);
+                ctx.fillStyle = '#4b5563';
+                if (facingRight) {
+                    ctx.fillRect(weaponX - 1, weaponY + 2, 4, 4);
+                } else {
+                    ctx.fillRect(weaponX, weaponY + 2, 4, 4);
+                }
+                ctx.fillStyle = '#6b7280';
+                if (facingRight) {
+                    ctx.fillRect(weaponX - 1, weaponY + 2, 1, 4);
+                } else {
+                    ctx.fillRect(weaponX + 3, weaponY + 2, 1, 4);
+                }
+                ctx.fillStyle = '#7f1d1d';
+                if (facingRight) {
+                    ctx.fillRect(weaponX, weaponY + 3, 1, 1);
+                } else {
+                    ctx.fillRect(weaponX + 2, weaponY + 3, 1, 1);
+                }
+                ctx.fillStyle = '#1f2937';
+                ctx.fillRect(weaponX + 1, weaponY + 1, 1, 1);
+                ctx.fillRect(weaponX + 2, weaponY + 6, 1, 1);
+            }
+            renderGems() {
+                this.gems.forEach(gem => {
+                    if (gem.collected) return;
+                    const x = gem.x - this.camera.x;
+                    const y = gem.y - this.camera.y;
+                    if (x < -32 || x > this.canvas.width || y < -32 || y > this.canvas.height) {
+                        return;
+                    }
+                    const time = Date.now() / 1000;
+                    const floatOffset = Math.sin(time * 3 + gem.animationOffset) * 3;
+                    const gemY = y + floatOffset;
+                    const rotation = (time * 2 + gem.animationOffset) % (Math.PI * 2);
+                    this.drawGemGlow(x + 12, gemY + 12, gem.type, time);
+                    this.drawGem(x + 4, gemY + 4, 16, gem.type, rotation);
+                    this.drawGemSparkles(x, gemY, gem.type, time);
+                });
+            }
+            drawGem(x, y, size, type, rotation) {
+                const ctx = this.ctx;
+                const centerX = x + size / 2;
+                const centerY = y + size / 2;
+                const colors = this.getGemColors(type);
+                this.drawPixelGem(x, y, size, colors, type);
+            }
+            drawPixelGem(x, y, size, colors, type) {
+                const ctx = this.ctx;
+                switch (type) {
+                    case 'diamond':
+                        this.drawDiamond(x, y, size, colors);
+                        break;
+                    case 'ruby':
+                        this.drawRuby(x, y, size, colors);
+                        break;
+                    case 'emerald':
+                        this.drawEmerald(x, y, size, colors);
+                        break;
+                    case 'sapphire':
+                        this.drawSapphire(x, y, size, colors);
+                        break;
+                    case 'amethyst':
+                        this.drawAmethyst(x, y, size, colors);
+                        break;
+                    default:
+                        this.drawDiamond(x, y, size, colors);
+                }
+            }
+            drawDiamond(x, y, size, colors) {
+                const ctx = this.ctx;
+                ctx.fillStyle = colors.shine;
+                ctx.fillRect(x + 7, y + 2, 2, 2);
+                ctx.fillRect(x + 6, y + 3, 4, 1);
+                ctx.fillStyle = colors.highlight;
+                ctx.fillRect(x + 5, y + 4, 6, 2);
+                ctx.fillRect(x + 4, y + 6, 8, 1);
+                ctx.fillStyle = colors.main;
+                ctx.fillRect(x + 3, y + 7, 10, 3);
+                ctx.fillRect(x + 4, y + 10, 8, 2);
+                ctx.fillStyle = colors.shadow;
+                ctx.fillRect(x + 5, y + 12, 6, 2);
+                ctx.fillRect(x + 6, y + 14, 4, 1);
+                ctx.fillStyle = colors.dark;
+                ctx.fillRect(x + 7, y + 15, 2, 1);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(x + 6, y + 5, 1, 1);
+                ctx.fillStyle = colors.sparkle;
+                ctx.fillRect(x + 9, y + 8, 1, 1);
+                ctx.fillRect(x + 5, y + 9, 1, 1);
+            }
+            drawRuby(x, y, size, colors) {
+                const ctx = this.ctx;
+                ctx.fillStyle = colors.shine;
+                ctx.fillRect(x + 6, y + 3, 4, 2);
+                ctx.fillStyle = colors.highlight;
+                ctx.fillRect(x + 4, y + 5, 8, 2);
+                ctx.fillRect(x + 3, y + 7, 10, 1);
+                ctx.fillStyle = colors.main;
+                ctx.fillRect(x + 2, y + 8, 12, 4);
+                ctx.fillRect(x + 3, y + 12, 10, 2);
+                ctx.fillStyle = colors.shadow;
+                ctx.fillRect(x + 4, y + 14, 8, 1);
+                ctx.fillRect(x + 5, y + 15, 6, 1);
+                ctx.fillStyle = '#ff6b6b';
+                ctx.fillRect(x + 5, y + 9, 1, 1);
+                ctx.fillRect(x + 10, y + 10, 1, 1);
+                ctx.fillRect(x + 7, y + 11, 2, 1);
+                ctx.fillStyle = '#ffcccb';
+                ctx.fillRect(x + 8, y + 6, 1, 1);
+                ctx.fillRect(x + 11, y + 9, 1, 1);
+            }
+            drawEmerald(x, y, size, colors) {
+                const ctx = this.ctx;
+                ctx.fillStyle = colors.shine;
+                ctx.fillRect(x + 5, y + 3, 6, 2);
+                ctx.fillStyle = colors.highlight;
+                ctx.fillRect(x + 4, y + 5, 8, 1);
+                ctx.fillRect(x + 3, y + 6, 10, 1);
+                ctx.fillStyle = colors.main;
+                ctx.fillRect(x + 2, y + 7, 12, 6);
+                ctx.fillStyle = colors.shadow;
+                ctx.fillRect(x + 3, y + 13, 10, 1);
+                ctx.fillRect(x + 4, y + 14, 8, 1);
+                ctx.fillRect(x + 5, y + 15, 6, 1);
+                ctx.fillStyle = colors.dark;
+                ctx.fillRect(x + 6, y + 9, 1, 1);
+                ctx.fillRect(x + 9, y + 11, 1, 1);
+                ctx.fillStyle = '#86efac';
+                ctx.fillRect(x + 7, y + 8, 1, 1);
+                ctx.fillRect(x + 10, y + 10, 1, 1);
+            }
+            drawSapphire(x, y, size, colors) {
+                const ctx = this.ctx;
+                ctx.fillStyle = colors.shine;
+                ctx.fillRect(x + 6, y + 2, 4, 3);
+                ctx.fillStyle = colors.highlight;
+                ctx.fillRect(x + 4, y + 5, 8, 2);
+                ctx.fillRect(x + 3, y + 7, 10, 1);
+                ctx.fillStyle = colors.main;
+                ctx.fillRect(x + 2, y + 8, 12, 1);
+                ctx.fillStyle = colors.main;
+                ctx.fillRect(x + 3, y + 9, 10, 3);
+                ctx.fillRect(x + 4, y + 12, 8, 2);
+                ctx.fillStyle = colors.shadow;
+                ctx.fillRect(x + 5, y + 14, 6, 1);
+                ctx.fillRect(x + 6, y + 15, 4, 1);
+                ctx.fillStyle = colors.dark;
+                ctx.fillRect(x + 7, y + 16, 2, 1);
+                ctx.fillStyle = '#93c5fd';
+                ctx.fillRect(x + 6, y + 6, 1, 1);
+                ctx.fillRect(x + 9, y + 9, 1, 1);
+                ctx.fillRect(x + 8, y + 11, 1, 1);
+            }
+            drawAmethyst(x, y, size, colors) {
+                const ctx = this.ctx;
+                ctx.fillStyle = colors.main;
+                ctx.fillRect(x + 4, y + 4, 6, 8);
+                ctx.fillRect(x + 5, y + 3, 4, 1);
+                ctx.fillRect(x + 6, y + 2, 2, 1);
+                ctx.fillStyle = colors.shadow;
+                ctx.fillRect(x + 2, y + 6, 2, 6);
+                ctx.fillRect(x + 12, y + 7, 2, 5);
+                ctx.fillStyle = colors.highlight;
+                ctx.fillRect(x + 4, y + 4, 1, 8);
+                ctx.fillRect(x + 2, y + 6, 1, 6);
+                ctx.fillRect(x + 12, y + 7, 1, 5);
+                ctx.fillStyle = colors.shine;
+                ctx.fillRect(x + 6, y + 2, 2, 1);
+                ctx.fillRect(x + 5, y + 3, 1, 1);
+                ctx.fillRect(x + 8, y + 3, 1, 1);
+                ctx.fillStyle = '#c4b5fd';
+                ctx.fillRect(x + 7, y + 6, 1, 1);
+                ctx.fillRect(x + 6, y + 9, 1, 1);
+                ctx.fillRect(x + 8, y + 11, 1, 1);
+                ctx.fillStyle = colors.dark;
+                ctx.fillRect(x + 2, y + 12, 12, 2);
+            }
+            drawGemGlow(centerX, centerY, gemType, time) {
+                const ctx = this.ctx;
+                const glowColors = this.getGemGlowColors(gemType);
+                const baseIntensity = 0.4;
+                const pulseIntensity = 0.2 * Math.sin(time * 4);
+                const glowIntensity = baseIntensity + pulseIntensity;
+                const glowSizes = [20, 16, 12, 8];
+                const glowAlphas = [0.1, 0.15, 0.2, 0.3];
+                glowSizes.forEach((size, index) => {
+                    const alpha = glowAlphas[index] * glowIntensity;
+                    const gradient = ctx.createRadialGradient(
+                        centerX, centerY, 0,
+                        centerX, centerY, size
+                    );
+                    gradient.addColorStop(0, `${glowColors.inner}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`);
+                    gradient.addColorStop(0.5, `${glowColors.middle}${Math.floor(alpha * 0.7 * 255).toString(16).padStart(2, '0')}`);
+                    gradient.addColorStop(1, `${glowColors.outer}${Math.floor(alpha * 0.3 * 255).toString(16).padStart(2, '0')}`);
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(
+                        centerX - size, centerY - size,
+                        size * 2, size * 2
+                    );
+                });
+            }
+            drawGemSparkles(x, y, gemType, time) {
+                const ctx = this.ctx;
+                const sparkleColors = this.getGemGlowColors(gemType);
+                for (let i = 0; i < 6; i++) {
+                    const sparkleTime = time * 3 + i * 1.5;
+                    const sparkleLife = (Math.sin(sparkleTime) + 1) / 2;
+                    if (sparkleLife > 0.3) {
+                        const sparkleX = x + 12 + Math.cos(sparkleTime * 0.7 + i) * 15;
+                        const sparkleY = y + 12 + Math.sin(sparkleTime * 0.8 + i) * 15;
+                        const sparkleSize = 1 + sparkleLife * 2;
+                        const sparkleAlpha = sparkleLife * 0.8;
+                        ctx.globalAlpha = sparkleAlpha;
+                        ctx.fillStyle = sparkleColors.sparkle;
+                        ctx.fillRect(sparkleX - sparkleSize/2, sparkleY - sparkleSize/2, sparkleSize, sparkleSize);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(sparkleX, sparkleY, 1, 1);
+                        if (sparkleLife > 0.7) {
+                            ctx.fillRect(sparkleX - 2, sparkleY, 4, 1);
+                            ctx.fillRect(sparkleX, sparkleY - 2, 1, 4);
+                        }
+                    }
+                }
+                ctx.globalAlpha = 1.0;
+            }
+            getGemGlowColors(type) {
+                switch (type) {
+                    case 'diamond':
+                        return {
+                            inner: '#ffffff',
+                            middle: '#e0e7ff',
+                            outer: '#cbd5e1',
+                            sparkle: '#f8fafc'
+                        };
+                    case 'ruby':
+                        return {
+                            inner: '#fecaca',
+                            middle: '#f87171',
+                            outer: '#dc2626',
+                            sparkle: '#ff9999'
+                        };
+                    case 'emerald':
+                        return {
+                            inner: '#a7f3d0',
+                            middle: '#34d399',
+                            outer: '#059669',
+                            sparkle: '#6ee7b7'
+                        };
+                    case 'sapphire':
+                        return {
+                            inner: '#dbeafe',
+                            middle: '#60a5fa',
+                            outer: '#2563eb',
+                            sparkle: '#93c5fd'
+                        };
+                    case 'amethyst':
+                        return {
+                            inner: '#e9d5ff',
+                            middle: '#a78bfa',
+                            outer: '#7c3aed',
+                            sparkle: '#c4b5fd'
+                        };
+                    default:
+                        return {
+                            inner: '#f3f4f6',
+                            middle: '#9ca3af',
+                            outer: '#6b7280',
+                            sparkle: '#d1d5db'
+                        };
+                }
+            }
+            getGemColors(type) {
+                switch (type) {
+                    case 'diamond':
+                        return {
+                            main: '#e0e7ff',
+                            highlight: '#f1f5f9',
+                            shine: '#ffffff',
+                            shadow: '#cbd5e1',
+                            dark: '#94a3b8',
+                            sparkle: '#f8fafc'
+                        };
+                    case 'ruby':
+                        return {
+                            main: '#dc2626',
+                            highlight: '#f87171',
+                            shine: '#fecaca',
+                            shadow: '#b91c1c',
+                            dark: '#7f1d1d',
+                            sparkle: '#ff9999'
+                        };
+                    case 'emerald':
+                        return {
+                            main: '#059669',
+                            highlight: '#34d399',
+                            shine: '#a7f3d0',
+                            shadow: '#047857',
+                            dark: '#064e3b',
+                            sparkle: '#6ee7b7'
+                        };
+                    case 'sapphire':
+                        return {
+                            main: '#2563eb',
+                            highlight: '#60a5fa',
+                            shine: '#dbeafe',
+                            shadow: '#1d4ed8',
+                            dark: '#1e3a8a',
+                            sparkle: '#93c5fd'
+                        };
+                    case 'amethyst':
+                        return {
+                            main: '#7c3aed',
+                            highlight: '#a78bfa',
+                            shine: '#e9d5ff',
+                            shadow: '#6d28d9',
+                            dark: '#581c87',
+                            sparkle: '#c4b5fd'
+                        };
+                    default:
+                        return {
+                            main: '#6b7280',
+                            highlight: '#9ca3af',
+                            shine: '#f3f4f6',
+                            shadow: '#4b5563',
+                            dark: '#374151',
+                            sparkle: '#d1d5db'
+                        };
+                }
+            }
+            renderPlayer() {
+                if (this.player.invulnerable && Math.floor(this.player.invulnerabilityTime / 5) % 2) {
+                    return;
+                }
+                const x = this.player.x - this.camera.x;
+                const y = this.player.y - this.camera.y;
+                const w = this.player.width;
+                const h = this.player.height;
+                const facingRight = this.player.vx >= 0;
+                this.drawKnight(x, y, w, h, facingRight);
+            }
+            drawKnight(x, y, w, h, facingRight) {
+                const ctx = this.ctx;
+                const isWalking = this.player.onGround && Math.abs(this.player.vx) > 0;
+                const walkCycle = isWalking ? Math.floor(Date.now() / 150) % 2 : 0;
+                const walkBob = isWalking ? Math.sin(Date.now() / 100) * 1 : 0;
+                y += walkBob;
+                ctx.fillStyle = '#ffd700';
+                ctx.fillRect(x + 6, y + 8, w - 12, h - 12);
+                ctx.fillStyle = '#ffff99';
+                            ctx.fillRect(x + 6, y + 8, w - 12, 2);
+            ctx.fillRect(x + 6, y + 8, 2, h - 12);
+                ctx.fillStyle = '#daa520';
+                ctx.fillRect(x + 6, y + h - 6, w - 12, 2);
+                ctx.fillRect(x + w - 8, y + 8, 2, h - 12);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(x + 8, y + 10, w - 16, 1);
+                ctx.fillRect(x + 10, y + 11, w - 20, 3);
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(x + 4, y + 2, w - 8, 8);
+                ctx.fillStyle = '#6b7280';
+                ctx.fillRect(x + 4, y + 2, w - 8, 2);
+                ctx.fillRect(x + 4, y + 2, 2, 8);
+                ctx.fillStyle = '#1f2937';
+                ctx.fillRect(x + 4, y + 8, w - 8, 2);
+                ctx.fillRect(x + w - 6, y + 2, 2, 8);
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(x + 7, y + 4, w - 14, 1);
+                ctx.fillRect(x + w/2 - 1, y + 5, 2, 2);
+                ctx.fillStyle = '#06b6d4';
+                if (facingRight) {
+                    ctx.fillRect(x + 11, y + 4, 1, 1);
+                    ctx.fillRect(x + 17, y + 4, 1, 1);
+                } else {
+                    ctx.fillRect(x + 8, y + 4, 1, 1);
+                    ctx.fillRect(x + 14, y + 4, 1, 1);
+                }
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(x + w/2 - 1, y, 2, 2);
+                ctx.fillRect(x + w/2, y - 1, 1, 1);
+                const armSwing = isWalking ? (walkCycle ? 1 : -1) : 0;
+                const leftArmY = y + 9 + (walkCycle && isWalking ? 1 : 0);
+                const rightArmY = y + 9 + (walkCycle && isWalking ? -1 : 0);
+                ctx.fillStyle = '#ffd700';
+                ctx.fillRect(facingRight ? x + 2 : x + w - 5, leftArmY, 3, 6);
+                ctx.fillStyle = '#ffff99';
+                ctx.fillRect(facingRight ? x + 2 : x + w - 5, leftArmY, 1, 6);
+                ctx.fillStyle = '#ffd700';
+                ctx
+                ctx.fillRect(facingRight ? x + w - 5 : x + 2, rightArmY, 1, 6);
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(facingRight ? x + 2 : x + w - 5, leftArmY + 4, 3, 3);
+                ctx.fillRect(facingRight ? x + w - 5 : x + 2, rightArmY + 4, 3, 3);
+                ctx.fillStyle = '#6b7280';
+                ctx.fillRect(facingRight ? x + 2 : x + w - 5, leftArmY + 4, 1, 1);
+                ctx.fillRect(facingRight ? x + w - 5 : x + 2, rightArmY + 4, 1, 1);
+                ctx.fillStyle = '#9ca3af';
+                ctx.fillRect(x + 3, y + 8, 3, 3);
+                ctx.fillRect(x + w - 6, y + 8, 3, 3);
+                ctx.fillStyle = '#e5e7eb';
+                ctx.fillRect(x + 3, y + 8, 1, 1);
+                ctx.fillRect(x + w - 6, y + 8, 1, 1);
+                ctx.fillStyle = '#4b5563';
+                ctx.fillRect(x + 5, y + 10, 1, 1);
+                ctx.fillRect(x + w - 4, y + 10, 1, 1);
+                ctx.fillStyle = '#92400e';
+                ctx.fillRect(x + 6, y + 14, w - 12, 2);
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillRect(x + w/2 - 2, y + 14, 4, 2);
+                ctx.fillStyle = '#d97706';
+                ctx.fillRect(x + w/2 - 1, y + 15, 2, 1);
+                const leftLegOffset = isWalking ? (walkCycle ? 2 : -1) : 0;
+                const rightLegOffset = isWalking ? (walkCycle ? -1 : 2) : 0;
+                ctx.fillStyle = '#ffd700';
+                ctx.fillRect(x + 7, y + 16 + leftLegOffset, 4, h - 18 - leftLegOffset);
+                ctx.fillStyle = '#ffff99';
+                ctx.fillRect(x + 7, y + 16 + leftLegOffset, 1, h - 18 - leftLegOffset);
+                ctx.fillStyle = '#ffd700';
+                ctx.fillRect(x + 13, y + 16 + rightLegOffset, 4, h - 18 - rightLegOffset);
+                ctx.fillStyle = '#ffff99';
+                ctx.fillRect(x + 13, y + 16 + rightLegOffset, 1, h - 18 - rightLegOffset);
+                ctx.fillStyle = '#6b7280';
+                ctx.fillRect(x + 8, y + 18 + leftLegOffset, 2, 2);
+                ctx.fillRect(x + 14, y + 18 + rightLegOffset, 2, 2);
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(x + 6, y + h - 4 + leftLegOffset, 5, 4 - leftLegOffset);
+                ctx.fillRect(x + 13, y + h - 4 + rightLegOffset, 5, 4 - rightLegOffset);
+                ctx.fillStyle = '#6b7280';
+                ctx.fillRect(x + 6, y + h - 4 + leftLegOffset, 5, 1);
+                ctx.fillRect(x + 13, y + h - 4 + rightLegOffset, 5, 1);
+                ctx.fillRect(x + 8, y + h - 2 + leftLegOffset, 1, 2 - leftLegOffset);
+                ctx.fillRect(x + 15, y + h - 2 + rightLegOffset, 1, 2 - rightLegOffset);
+                if (Math.abs(this.player.vx) > 0 || !this.player.onGround) {
+                    this.drawSword(x, y, w, h, facingRight);
+                }
+                if (!this.player.onGround || Math.abs(this.player.vx) > 3) {
+                    this.drawCape(x, y, w, h, facingRight);
+                }
+                if (this.player.hasDoubleJumped && this.player.vy < -5) {
+                    this.drawDoubleJumpEffect(x, y, w, h);
+                }
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(x + 9, y + 12, w - 18, 6);
+                ctx.fillStyle = '#fbbf24';
+                ctx.fillRect(x + w/2 - 1, y + 13, 2, 4);
+                ctx.fillRect(x + w/2 - 2, y + 14, 4, 2);
+            }
+            drawSword(x, y, w, h, facingRight) {
+                const ctx = this.ctx;
+                const swordX = facingRight ? x + w - 2 : x + 1;
+                const swordY = y + 6;
+                ctx.fillStyle = '#e5e7eb';
+                ctx.fillRect(swordX, swordY, 1, 8);
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillRect(swordX, swordY, 1, 1);
+                ctx.fillRect(swordX, swordY + 2, 1, 1);
+                ctx.fillStyle = '#6b7280';
+                ctx.fillRect(swordX - 1, swordY + 7, 3, 1);
+                ctx.fillStyle = '#92400e';
+                ctx.fillRect(swordX, swordY + 8, 1, 3);
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillRect(swordX, swordY + 11, 1, 1);
+            }
+            drawCape(x, y, w, h, facingRight) {
+                const ctx = this.ctx;
+                const capeColor = (this.player.hasDoubleJumped && this.player.vy < 0) ? 
+                                 '#8b5cf6' : '#dc2626';
+                const isWalking = this.player.onGround && Math.abs(this.player.vx) > 0;
+                const capeFlutter = isWalking ? Math.sin(Date.now() / 80) * 1 : 0;
+                ctx.fillStyle = capeColor;
+                if (facingRight) {
+                    ctx.fillRect(x - 2, y + 8, 2, 6);
+                    ctx.fillRect(x - 1 + capeFlutter, y + 12, 1, 3);
+                    if (isWalking) {
+                        ctx.fillRect(x - 3 + capeFlutter, y + 14, 1, 1);
+                    }
+                    ctx.fillStyle = capeColor === '#8b5cf6' ? '#a78bfa' : '#f87171';
+                    ctx.fillRect(x - 2, y + 8, 1, 1);
+                } else {
+                    ctx.fillRect(x + w, y + 8, 2, 6);
+                    ctx.fillRect(x + w - capeFlutter, y + 12, 1, 3);
+                    if (isWalking) {
+                        ctx.fillRect(x + w + 1 - capeFlutter, y + 14, 1, 1);
+                    }
+                    ctx.fillStyle = capeColor === '#8b5cf6' ? '#a78bfa' : '#f87171';
+                    ctx.fillRect(x + w, y + 8, 1, 1);
+                }
+            }
+            drawDoubleJumpEffect(x, y, w, h) {
+                const ctx = this.ctx;
+                for (let i = 0; i < 6; i++) {
+                    const particleX = x + w/2 + (Math.random() - 0.5) * w;
+                    const particleY = y + h + Math.random() * 8;
+                    ctx.fillStyle = '#8b5cf6';
+                    ctx.fillRect(particleX, particleY, 2, 2);
+                    ctx.fillStyle = '#c4b5fd';
+                    ctx.fillRect(particleX, particleY, 1, 1);
+                    if (Math.random() < 0.5) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(particleX + 1, particleY + 1, 1, 1);
+                    }
+                }
+            }
+            renderExit() {
+                const exit = this.currentLevelData.exit;
+                const x = exit.x - this.camera.x;
+                const y = exit.y - this.camera.y;
+                const size = this.tileSize;
+                this.drawDungeonDoor(x, y, size);
+            }
+            drawDungeonDoor(x, y, size) {
+                const ctx = this.ctx;
+                ctx.fillStyle = '#4b5563';
+                ctx.fillRect(x, y, size, size);
+                ctx.fillStyle = '#6b7280';
+                ctx.fillRect(x, y, size, 2);
+                ctx.fillRect(x, y, 2, size);
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(x, y + size - 2, size, 2);
+                ctx.fillRect(x + size - 2, y, 2, size);
+                const doorX = x + 3;
+                const doorY = y + 2;
+                const doorWidth = size - 6;
+                const doorHeight = size - 4;
+                ctx.fillStyle = '#92400e';
+                ctx.fillRect(doorX, doorY, doorWidth, doorHeight);
+                ctx.fillStyle = '#a16207';
+                ctx.fillRect(doorX + 1, doorY + 1, doorWidth - 2, 1);
+                ctx.fillRect(doorX + 1, doorY + 4, doorWidth - 2, 1);
+                ctx.fillRect(doorX + 1, doorY + 7, doorWidth - 2, 1);
+                ctx.fillRect(doorX + 1, doorY + 10, doorWidth - 2, 1);
+                ctx.fillRect(doorX + 1, doorY + 13, doorWidth - 2, 1);
+                ctx.fillRect(doorX + 1, doorY + 16, doorWidth - 2, 1);
+                ctx.fillRect(doorX + 1, doorY + 19, doorWidth - 2, 1);
+                ctx.fillRect(doorX + 1, doorY + 22, doorWidth - 2, 1);
+                ctx.fillRect(doorX + 1, doorY + 25, doorWidth - 2, 1);
+                ctx.fillStyle = '#d97706';
+                ctx.fillRect(doorX, doorY, doorWidth, 1);
+                ctx.fillRect(doorX, doorY, 1, doorHeight);
+                ctx.fillStyle = '#78350f';
+                ctx.fillRect(doorX, doorY + doorHeight - 1, doorWidth, 1);
+                ctx.fillRect(doorX + doorWidth - 1, doorY, 1, doorHeight);
+                ctx.fillStyle = '#78350f';
+                for (let i = 1; i < 4; i++) {
+                    const plankX = doorX + (doorWidth / 4) * i;
+                    ctx.fillRect(plankX, doorY + 1, 1, doorHeight - 2);
+                }
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(doorX + 1, doorY + 3, doorWidth - 2, 3);
+                ctx.fillRect(doorX + 1, doorY + doorHeight/2 - 1, doorWidth - 2, 3);
+                ctx.fillRect(doorX + 1, doorY + doorHeight - 6, doorWidth - 2, 3);
+                ctx.fillStyle = '#6b7280';
+                ctx.fillRect(doorX + 1, doorY + 3, doorWidth - 2, 1);
+                ctx.fillRect(doorX + 1, doorY + doorHeight/2 - 1, doorWidth - 2, 1);
+                ctx.fillRect(doorX + 1, doorY + doorHeight - 6, doorWidth - 2, 1);
+                ctx.fillStyle = '#4b5563';
+                const studPositions = [
+                    {x: doorX + 3, y: doorY + 4},
+                    {x: doorX + doorWidth - 5, y: doorY + 4},
+                    {x: doorX + 3, y: doorY + doorHeight/2},
+                    {x: doorX + doorWidth - 5, y: doorY + doorHeight/2},
+                    {x: doorX + 3, y: doorY + doorHeight - 5},
+                    {x: doorX + doorWidth - 5, y: doorY + doorHeight - 5}
+                ];
+                studPositions.forEach(stud => {
+                    ctx.fillRect(stud.x, stud.y, 2, 2);
+                    ctx.fillStyle = '#9ca3af';
+                    ctx.fillRect(stud.x, stud.y, 1, 1);
+                    ctx.fillStyle = '#4b5563';
+                });
+                const handleX = doorX + doorWidth - 6;
+                const handleY = doorY + doorHeight/2 - 2;
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(handleX, handleY, 3, 4);
+                ctx.fillStyle = '#6b7280';
+                ctx.fillRect(handleX, handleY, 1, 1);
+                ctx.fillRect(handleX, handleY, 3, 1);
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(handleX + 3, handleY + 1, 2, 1);
+                ctx.fillRect(handleX + 3, handleY + 2, 2, 1);
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(doorX - 1, doorY + 4, 3, 4);
+                ctx.fillRect(doorX - 1, doorY + doorHeight - 8, 3, 4);
+                ctx.fillStyle = '#6b7280';
+                ctx.fillRect(doorX - 1, doorY + 4, 1, 1);
+                ctx.fillRect(doorX - 1, doorY + doorHeight - 8, 1, 1);
+                ctx.fillStyle = '#9ca3af';
+                ctx.fillRect(doorX, doorY + 6, 1, 1);
+                ctx.fillRect(doorX, doorY + doorHeight - 6, 1, 1);
+                const keyholeX = doorX + doorWidth/2 - 1;
+                const keyholeY = doorY + doorHeight/2 + 3;
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(keyholeX, keyholeY, 2, 3);
+                ctx.fillRect(keyholeX, keyholeY + 3, 2, 1);
+                if (Math.floor(Date.now() / 1000) % 3 === 0) {
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.fillRect(doorX - 1, doorY - 1, 1, 1);
+                    ctx.fillRect(doorX + doorWidth, doorY - 1, 1, 1);
+                    ctx.fillRect(doorX - 1, doorY + doorHeight, 1, 1);
+                    ctx.fillRect(doorX + doorWidth, doorY + doorHeight, 1, 1);
+                }
+            }
+            renderBackground() {
+                const ctx = this.ctx;
+                const time = Date.now() / 1000;
+                const gradient = ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+                gradient.addColorStop(0, '#2d1810');
+                gradient.addColorStop(0.2, '#1a1a2e');
+                gradient.addColorStop(0.4, '#16213e');
+                gradient.addColorStop(0.7, '#0f1419');
+                gradient.addColorStop(1, '#0a0a0a');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                this.drawDungeonRuins();
+                this.drawDungeonWalls();
+                this.drawTorchLight();
+                this.drawMistyFog();
+                this.drawFloatingParticles();
+                this.drawAmbientGlow();
+            }
+            renderStartScreenBackground() {
+                const ctx = this.ctx;
+                const time = Date.now() / 1000;
+                const gradient = ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+                gradient.addColorStop(0, '#2d1810');
+                gradient.addColorStop(0.2, '#1a1a2e');
+                gradient.addColorStop(0.4, '#16213e');
+                gradient.addColorStop(0.7, '#0f1419');
+                gradient.addColorStop(1, '#0a0a0a');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                this.drawStaticDungeonWalls();
+                this.drawStaticTorchEffects(time);
+                for (let i = 0; i < 50; i++) {
+                    const x = (i * 67 + Math.sin(time * 0.5 + i) * 30) % (this.canvas.width + 100);
+                    const y = (i * 43 + Math.sin(time * 0.3 + i * 0.7) * 40) % this.canvas.height;
+                    const size = 1 + Math.sin(time + i) * 0.5;
+                    const alpha = 0.2 + Math.sin(time * 0.8 + i * 1.2) * 0.15;
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = '#9ca3af';
+                    ctx.fillRect(x, y, size, size);
+                }
+                for (let i = 0; i < 20; i++) {
+                    const x = (i * 97 + Math.sin(time * 0.7 + i * 1.5) * 50) % (this.canvas.width + 100);
+                    const y = (i * 73 + Math.sin(time * 0.4 + i * 0.9) * 60) % this.canvas.height;
+                    const size = 2 + Math.sin(time * 1.2 + i) * 1;
+                    const alpha = 0.3 + Math.sin(time * 1.5 + i * 2) * 0.2;
+                    ctx.globalAlpha = alpha;
+                    const colors = ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b'];
+                    ctx.fillStyle = colors[i % colors.length];
+                    ctx.fillRect(x - size/2, y - size/2, size, size);
+                    ctx.globalAlpha = alpha * 0.3;
+                    ctx.fillRect(x - size, y - size, size * 2, size * 2);
+                }
+                ctx.globalAlpha = 1.0;
+            }
+            drawDungeonRuins() {
+                const ctx = this.ctx;
+                const cameraOffset = this.camera.x * 0.1;
+                ctx.globalAlpha = 0.4;
+                ctx.fillStyle = '#2d2d2d';
+                const ruinPoints = [
+                    {x: -200 - cameraOffset, y: this.canvas.height * 0.6},
+                    {x: 100 - cameraOffset, y: this.canvas.height * 0.4},
+                    {x: 300 - cameraOffset, y: this.canvas.height * 0.5},
+                    {x: 600 - cameraOffset, y: this.canvas.height * 0.3},
+                    {x: 900 - cameraOffset, y: this.canvas.height * 0.45},
+                    {x: 1200 - cameraOffset, y: this.canvas.height * 0.35},
+                    {x: 1500 - cameraOffset, y: this.canvas.height * 0.6}
+                ];
+                ctx.beginPath();
+                ctx.moveTo(-100, this.canvas.height);
+                ruinPoints.forEach(point => {
+                    ctx.lineTo(point.x, point.y);
+                });
+                ctx.lineTo(this.canvas.width + 100, this.canvas.height);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#404040';
+                const closerRuins = [
+                    {x: -100 - cameraOffset * 0.15, y: this.canvas.height * 0.7},
+                    {x: 200 - cameraOffset * 0.15, y: this.canvas.height * 0.55},
+                    {x: 500 - cameraOffset * 0.15, y: this.canvas.height * 0.65},
+                    {x: 800 - cameraOffset * 0.15, y: this.canvas.height * 0.5},
+                    {x: 1100 - cameraOffset * 0.15, y: this.canvas.height * 0.7}
+                ];
+                ctx.beginPath();
+                ctx.moveTo(-100, this.canvas.height);
+                closerRuins.forEach(point => {
+                    ctx.lineTo(point.x, point.y);
+                });
+                ctx.lineTo(this.canvas.width + 100, this.canvas.height);
+                ctx.closePath();
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+            drawMistyFog() {
+                const ctx = this.ctx;
+                const time = Date.now() / 1000;
+                const cameraOffset = this.camera.x * 0.05;
+                for (let layer = 0; layer < 4; layer++) {
+                    const fogY = this.canvas.height * (0.5 + layer * 0.12);
+                    const fogAlpha = 0.15 - layer * 0.03;
+                    const waveOffset = time * (0.4 + layer * 0.15) - cameraOffset * (0.25 + layer * 0.08);
+                    ctx.globalAlpha = fogAlpha;
+                    const fogColors = ['#6b5b73', '#64748b', '#5d6b6d', '#4a4a4a'];
+                    ctx.fillStyle = fogColors[layer % fogColors.length];
+                    ctx.beginPath();
+                    ctx.moveTo(-50, fogY);
+                    for (let x = -50; x < this.canvas.width + 50; x += 15) {
+                        const waveHeight = Math.sin((x / 80) + waveOffset) * 20 + 
+                                         Math.sin((x / 40) + waveOffset * 1.3) * 8;
+                        ctx.lineTo(x, fogY + waveHeight);
+                    }
+                    ctx.lineTo(this.canvas.width + 50, this.canvas.height);
+                    ctx.lineTo(-50, this.canvas.height);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                for (let i = 0; i < 6; i++) {
+                    const wispX = (i * 200 + Math.sin(time * 0.8 + i) * 60 - cameraOffset * 0.3) % (this.canvas.width + 100);
+                    const wispY = this.canvas.height * 0.7 + Math.sin(time * 0.6 + i * 1.5) * 40;
+                    const wispSize = 15 + Math.sin(time * 1.2 + i) * 5;
+                    const wispAlpha = 0.1 + Math.sin(time * 0.9 + i * 2) * 0.05;
+                    ctx.globalAlpha = wispAlpha;
+                    ctx.fillStyle = '#8b7d8b';
+                    ctx.fillRect(wispX - wispSize/2, wispY - wispSize/2, wispSize, wispSize);
+                    ctx.globalAlpha = wispAlpha * 0.5;
+                    ctx.fillStyle = '#a199a1';
+                    ctx.fillRect(wispX - wispSize, wispY - wispSize, wispSize * 2, wispSize * 2);
+                }
+                ctx.globalAlpha = 1.0;
+            }
+            drawFloatingParticles() {
+                const ctx = this.ctx;
+                const time = Date.now() / 1000;
+                const cameraOffset = this.camera.x * 0.02;
+                for (let i = 0; i < 40; i++) {
+                    const x = (i * 67 + Math.sin(time * 0.5 + i) * 20 - cameraOffset) % (this.canvas.width + 100);
+                    const y = (i * 43 + Math.sin(time * 0.3 + i * 0.7) * 30) % this.canvas.height;
+                    const size = 1 + Math.sin(time + i) * 0.5;
+                    const alpha = 0.2 + Math.sin(time * 0.8 + i * 1.2) * 0.15;
+                    ctx.globalAlpha = alpha;
+                    const dustColors = ['#8b7355', '#9ca3af', '#6b7280', '#a3a3a3', '#737373'];
+                    ctx.fillStyle = dustColors[i % dustColors.length];
+                    ctx.fillRect(x, y, size, size);
+                }
+                for (let i = 0; i < 20; i++) {
+                    const x = (i * 97 + Math.sin(time * 0.7 + i * 1.5) * 40 - cameraOffset * 0.5) % (this.canvas.width + 100);
+                    const y = (i * 73 + Math.sin(time * 0.4 + i * 0.9) * 50) % this.canvas.height;
+                    const size = 2 + Math.sin(time * 1.2 + i) * 1;
+                    const alpha = 0.3 + Math.sin(time * 1.5 + i * 2) * 0.2;
+                    ctx.globalAlpha = alpha;
+                    const colors = ['#ff9f43', '#8b5cf6', '#ffd700', '#40e0d0', '#ff6b6b'];
+                    ctx.fillStyle = colors[i % colors.length];
+                    ctx.fillRect(x - size/2, y - size/2, size, size);
+                    ctx.globalAlpha = alpha * 0.4;
+                    ctx.fillRect(x - size * 1.5, y - size * 1.5, size * 3, size * 3);
+                }
+                for (let i = 0; i < 8; i++) {
+                    const x = (i * 150 + Math.sin(time * 1.2 + i) * 10 - cameraOffset * 0.3) % (this.canvas.width + 50);
+                    const y = this.canvas.height - (time * 30 + i * 40) % this.canvas.height;
+                    const size = 1.5 + Math.sin(time * 2 + i) * 0.5;
+                    const alpha = 0.6 * (1 - (time * 30 + i * 40) % this.canvas.height / this.canvas.height);
+                    if (alpha > 0.1) {
+                        ctx.globalAlpha = alpha;
+                        ctx.fillStyle = '#ff6b35';
+                        ctx.fillRect(x, y, size, size);
+                        ctx.globalAlpha = alpha * 0.3;
+                        ctx.fillStyle = '#ffab00';
+                        ctx.fillRect(x - 1, y - 1, size + 2, size + 2);
+                    }
+                }
+                ctx.globalAlpha = 1.0;
+            }
+            drawDungeonWalls() {
+                const ctx = this.ctx;
+                const cameraOffset = this.camera.x * 0.08;
+                this.drawStoneBrickWall(cameraOffset);
+                const pillarPositions = [150, 400, 750, 1100, 1450];
+                pillarPositions.forEach((baseX, index) => {
+                    const x = baseX - cameraOffset;
+                    if (x > -100 && x < this.canvas.width + 100) {
+                        this.drawBackgroundPillar(x, this.canvas.height * 0.3, index);
+                    }
+                });
+                const archwayPositions = [300, 600, 1000, 1300];
+                archwayPositions.forEach((baseX, index) => {
+                    const x = baseX - cameraOffset * 0.6;
+                    if (x > -150 && x < this.canvas.width + 150) {
+                        this.drawBackgroundArchway(x, this.canvas.height * 0.4, index);
+                    }
+                });
+            }
+            drawStoneBrickWall(cameraOffset) {
+                const ctx = this.ctx;
+                const brickWidth = 60;
+                const brickHeight = 30;
+                const rowOffset = brickWidth / 2;
+                for (let row = 0; row < Math.ceil(this.canvas.height / brickHeight) + 1; row++) {
+                    for (let col = -2; col < Math.ceil(this.canvas.width / brickWidth) + 3; col++) {
+                        const x = col * brickWidth + (row % 2) * rowOffset - (cameraOffset * 0.05);
+                        const y = row * brickHeight + this.canvas.height * 0.4;
+                        if (y > this.canvas.height * 0.4 && y < this.canvas.height) {
+                            this.drawBackgroundBrick(x, y, brickWidth, brickHeight, row, col);
+                        }
+                    }
+                }
+            }
+            drawBackgroundBrick(x, y, width, height, row, col) {
+                const ctx = this.ctx;
+                const variation = (row * 7 + col * 13) % 4;
+                let brickColor, lightColor, darkColor;
+                switch (variation) {
+                    case 0:
+                        brickColor = '#4a4a4a';
+                        lightColor = '#6a6a6a';
+                        darkColor = '#2a2a2a';
+                        break;
+                    case 1:
+                        brickColor = '#3a3a3a';
+                        lightColor = '#5a5a5a';
+                        darkColor = '#1a1a1a';
+                        break;
+                    case 2:
+                        brickColor = '#454545';
+                        lightColor = '#656565';
+                        darkColor = '#252525';
+                        break;
+                    default:
+                        brickColor = '#404040';
+                        lightColor = '#606060';
+                        darkColor = '#202020';
+                }
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = brickColor;
+                ctx.fillRect(x, y, width - 2, height - 2);
+                ctx.fillStyle = lightColor;
+                ctx.fillRect(x, y, width - 2, 2);
+                ctx.fillRect(x, y, 2, height - 2);
+                ctx.fillStyle = darkColor;
+                ctx.fillRect(x, y + height - 4, width - 2, 2);
+                ctx.fillRect(x + width - 4, y, 2, height - 2);
+                ctx.globalAlpha = 1.0;
+            }
+            drawStaticDungeonWalls() {
+                const ctx = this.ctx;
+                this.drawStaticStoneBrickWall();
+                const pillarPositions = [150, 400, 750, 1100, 1450];
+                pillarPositions.forEach((x, index) => {
+                    if (x > -100 && x < this.canvas.width + 100) {
+                        this.drawBackgroundPillar(x, this.canvas.height * 0.3, index);
+                    }
+                });
+                const archwayPositions = [300, 600, 1000, 1300];
+                archwayPositions.forEach((x, index) => {
+                    if (x > -150 && x < this.canvas.width + 150) {
+                        this.drawBackgroundArchway(x, this.canvas.height * 0.4, index);
+                    }
+                });
+            }
+            drawStaticStoneBrickWall() {
+                const ctx = this.ctx;
+                const brickWidth = 60;
+                const brickHeight = 30;
+                const rowOffset = brickWidth / 2;
+                for (let row = 0; row < Math.ceil(this.canvas.height / brickHeight) + 1; row++) {
+                    for (let col = -2; col < Math.ceil(this.canvas.width / brickWidth) + 3; col++) {
+                        const x = col * brickWidth + (row % 2) * rowOffset;
+                        const y = row * brickHeight + this.canvas.height * 0.4;
+                        if (y > this.canvas.height * 0.4 && y < this.canvas.height) {
+                            this.drawBackgroundBrick(x, y, brickWidth, brickHeight, row, col);
+                        }
+                    }
+                }
+            }
+            drawStaticTorchEffects(time) {
+                const ctx = this.ctx;
+                const torchPositions = [
+                    {x: this.canvas.width * 0.15, y: this.canvas.height * 0.3},
+                    {x: this.canvas.width * 0.85, y: this.canvas.height * 0.3},
+                    {x: this.canvas.width * 0.5, y: this.canvas.height * 0.25}
+                ];
+                torchPositions.forEach((torch, index) => {
+                    const flicker = 0.8 + Math.sin(time * 8 + index * 2) * 0.2;
+                    const lightRadius = 120 * flicker;
+                    const gradient = ctx.createRadialGradient(
+                        torch.x, torch.y, 0,
+                        torch.x, torch.y, lightRadius
+                    );
+                    gradient.addColorStop(0, `rgba(255, 147, 41, ${0.25 * flicker})`);
+                    gradient.addColorStop(0.3, `rgba(255, 147, 41, ${0.15 * flicker})`);
+                    gradient.addColorStop(0.6, `rgba(255, 100, 20, ${0.1 * flicker})`);
+                    gradient.addColorStop(1, 'rgba(255, 147, 41, 0)');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(
+                        torch.x - lightRadius, 
+                        torch.y - lightRadius, 
+                        lightRadius * 2, 
+                        lightRadius * 2
+                    );
+                    const flameHeight = 16 + Math.sin(time * 12 + index * 3) * 4;
+                    ctx.fillStyle = '#ff6b35';
+                    ctx.fillRect(torch.x - 3, torch.y - flameHeight, 6, flameHeight);
+                    ctx.fillStyle = '#ffab00';
+                    ctx.fillRect(torch.x - 2, torch.y - flameHeight + 3, 4, flameHeight - 6);
+                    ctx.fillStyle = '#fff3a0';
+                    ctx.fillRect(torch.x - 1, torch.y - flameHeight + 5, 2, flameHeight - 10);
+                });
+            }
+            drawBackgroundPillar(x, y, index) {
+                const ctx = this.ctx;
+                const height = 200 + (index % 3) * 50;
+                const width = 40;
+                ctx.fillStyle = '#475569';
+                ctx.fillRect(x, y, width, height);
+                ctx.fillStyle = '#64748b';
+                ctx.fillRect(x, y, 4, height);
+                ctx.fillRect(x, y, width, 4);
+                ctx.fillStyle = '#334155';
+                ctx.fillRect(x + width - 4, y, 4, height);
+                ctx.fillRect(x, y + height - 4, width, 4);
+                ctx.fillStyle = '#1e293b';
+                for (let i = 0; i < 3; i++) {
+                    const carveY = y + 30 + i * 60;
+                    ctx.fillRect(x + 8, carveY, width - 16, 2);
+                    ctx.fillRect(x + 12, carveY + 10, width - 24, 8);
+                }
+                ctx.fillStyle = '#64748b';
+                ctx.fillRect(x - 8, y - 16, width + 16, 16);
+                ctx.fillStyle = '#475569';
+                ctx.fillRect(x - 4, y - 12, width + 8, 8);
+            }
+            drawBackgroundArchway(x, y, index) {
+                const ctx = this.ctx;
+                const archWidth = 120;
+                const archHeight = 180;
+                ctx.fillStyle = '#475569';
+                ctx.fillRect(x, y, 20, archHeight);
+                ctx.fillRect(x + archWidth - 20, y, 20, archHeight);
+                ctx.fillStyle = '#64748b';
+                ctx.fillRect(x + 20, y, archWidth - 40, 20);
+                ctx.fillRect(x + 10, y + 20, 20, 20);
+                ctx.fillRect(x + archWidth - 30, y + 20, 20, 20);
+                ctx.fillStyle = '#334155';
+                ctx.fillRect(x + 25, y + 25, archWidth - 50, archHeight - 50);
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(x + 5, y + 40, 10, 2);
+                ctx.fillRect(x + archWidth - 15, y + 40, 10, 2);
+                ctx.fillRect(x + archWidth/2 - 10, y + 10, 20, 3);
+            }
+            drawTorchLight() {
+                const ctx = this.ctx;
+                const time = Date.now() / 1000;
+                const torchPositions = [
+                    {x: 200, y: this.canvas.height * 0.4},
+                    {x: 500, y: this.canvas.height * 0.35},
+                    {x: 850, y: this.canvas.height * 0.45},
+                    {x: 1200, y: this.canvas.height * 0.3},
+                    {x: 1600, y: this.canvas.height * 0.4}
+                ];
+                torchPositions.forEach((torch, index) => {
+                    const screenX = torch.x - this.camera.x;
+                    const screenY = torch.y;
+                    if (screenX > -200 && screenX < this.canvas.width + 200) {
+                        const flicker = 0.8 + Math.sin(time * 8 + index * 2) * 0.2;
+                        const lightRadius = 80 * flicker;
+                        const gradient = ctx.createRadialGradient(
+                            screenX, screenY, 0,
+                            screenX, screenY, lightRadius
+                        );
+                        gradient.addColorStop(0, `rgba(255, 147, 41, ${0.3 * flicker})`);
+                        gradient.addColorStop(0.3, `rgba(255, 147, 41, ${0.2 * flicker})`);
+                        gradient.addColorStop(0.6, `rgba(255, 147, 41, ${0.1 * flicker})`);
+                        gradient.addColorStop(1, 'rgba(255, 147, 41, 0)');
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(
+                            screenX - lightRadius, 
+                            screenY - lightRadius, 
+                            lightRadius * 2, 
+                            lightRadius * 2
+                        );
+                        const flameHeight = 12 + Math.sin(time * 10 + index * 3) * 3;
+                        ctx.fillStyle = '#ff6b35';
+                        ctx.fillRect(screenX - 2, screenY - flameHeight, 4, flameHeight);
+                        ctx.fillStyle = '#ffab00';
+                        ctx.fillRect(screenX - 1, screenY - flameHeight + 2, 2, flameHeight - 4);
+                        ctx.fillStyle = '#fff3a0';
+                        ctx.fillRect(screenX, screenY - flameHeight + 4, 1, flameHeight - 6);
+                    }
+                });
+            }
+            drawAmbientGlow() {
+                const ctx = this.ctx;
+                const time = Date.now() / 1000;
+                const glowIntensity = 0.08 + Math.sin(time * 0.5) * 0.03;
+                const topGradient = ctx.createLinearGradient(0, 0, 0, this.canvas.height * 0.4);
+                topGradient.addColorStop(0, `rgba(255, 147, 41, ${glowIntensity * 0.6})`);
+                topGradient.addColorStop(0.5, `rgba(255, 100, 20, ${glowIntensity * 0.3})`);
+                topGradient.addColorStop(1, 'rgba(255, 147, 41, 0)');
+                ctx.fillStyle = topGradient;
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height * 0.4);
+                const bottomGradient = ctx.createLinearGradient(0, this.canvas.height * 0.6, 0, this.canvas.height);
+                bottomGradient.addColorStop(0, 'rgba(139, 92, 246, 0)');
+                bottomGradient.addColorStop(0.5, `rgba(79, 70, 229, ${glowIntensity * 0.4})`);
+                bottomGradient.addColorStop(1, `rgba(139, 92, 246, ${glowIntensity * 0.7})`);
+                ctx.fillStyle = bottomGradient;
+                ctx.fillRect(0, this.canvas.height * 0.6, this.canvas.width, this.canvas.height * 0.4);
+                const leftGradient = ctx.createRadialGradient(0, this.canvas.height * 0.4, 0, 0, this.canvas.height * 0.4, this.canvas.width * 0.3);
+                leftGradient.addColorStop(0, `rgba(255, 147, 41, ${glowIntensity * 0.2})`);
+                leftGradient.addColorStop(1, 'rgba(255, 147, 41, 0)');
+                ctx.fillStyle = leftGradient;
+                ctx.fillRect(0, 0, this.canvas.width * 0.3, this.canvas.height);
+                const rightGradient = ctx.createRadialGradient(this.canvas.width, this.canvas.height * 0.4, 0, this.canvas.width, this.canvas.height * 0.4, this.canvas.width * 0.3);
+                rightGradient.addColorStop(0, `rgba(255, 147, 41, ${glowIntensity * 0.2})`);
+                rightGradient.addColorStop(1, 'rgba(255, 147, 41, 0)');
+                ctx.fillStyle = rightGradient;
+                ctx.fillRect(this.canvas.width * 0.7, 0, this.canvas.width * 0.3, this.canvas.height);
+            }
+            renderMinimap() {
+                const scaleX = this.minimapCanvas.width / this.currentLevelData.width;
+                const scaleY = this.minimapCanvas.height / this.currentLevelData.height;
+                const minimapScale = Math.min(scaleX, scaleY);
+                const levelWidth = this.currentLevelData.width * minimapScale;
+                const levelHeight = this.currentLevelData.height * minimapScale;
+                const offsetX = (this.minimapCanvas.width - levelWidth) / 2;
+                const offsetY = (this.minimapCanvas.height - levelHeight) / 2;
+                this.minimapCtx.fillStyle = '#1e293b';
+                this.minimapCtx.fillRect(0, 0, this.minimapCanvas.width, this.minimapCanvas.height);
+                this.minimapCtx.fillStyle = '#1a1a2e';
+                this.minimapCtx.fillRect(offsetX, offsetY, levelWidth, levelHeight);
+                this.minimapCtx.fillStyle = '#4a5568';
+                const sampleRate = Math.max(1, Math.floor(1 / minimapScale));
+                for (let y = 0; y < this.currentLevelData.height; y += sampleRate) {
+                    for (let x = 0; x < this.currentLevelData.width; x += sampleRate) {
+                        if (this.getTile(x, y) === '1') {
+                            this.minimapCtx.fillRect(
+                                offsetX + x * minimapScale, 
+                                offsetY + y * minimapScale, 
+                                Math.max(1, minimapScale * sampleRate), 
+                                Math.max(1, minimapScale * sampleRate)
+                            );
+                        }
+                    }
+                }
+                this.minimapCtx.fillStyle = '#0f0f23';
+                this.currentLevelPits.forEach(pit => {
+                    const pitWidth = (pit.end - pit.start + 1) * minimapScale;
+                    const pitHeight = 3 * minimapScale;
+                    this.minimapCtx.fillRect(
+                        offsetX + pit.start * minimapScale,
+                        offsetY + (this.currentLevelData.height - 3) * minimapScale,
+                        pitWidth,
+                        pitHeight
+                    );
+                });
+                this.minimapCtx.fillStyle = '#3b82f6';
+                const playerSize = Math.max(3, minimapScale * 2);
+                this.minimapCtx.fillRect(
+                    offsetX + Math.floor(this.player.x / this.tileSize) * minimapScale - playerSize/2,
+                    offsetY + Math.floor(this.player.y / this.tileSize) * minimapScale - playerSize/2,
+                    playerSize,
+                    playerSize
+                );
+                this.minimapCtx.fillStyle = '#ef4444';
+                const enemySize = Math.max(2, minimapScale * 1.5);
+                this.enemies.forEach(enemy => {
+                    this.minimapCtx.fillRect(
+                        offsetX + Math.floor(enemy.x / this.tileSize) * minimapScale - enemySize/2,
+                        offsetY + Math.floor(enemy.y / this.tileSize) * minimapScale - enemySize/2,
+                        enemySize,
+                        enemySize
+                    );
+                });
+                this.gems.forEach(gem => {
+                    if (!gem.collected) {
+                        switch (gem.type) {
+                            case 'diamond': this.minimapCtx.fillStyle = '#e0e7ff'; break;
+                            case 'ruby': this.minimapCtx.fillStyle = '#dc2626'; break;
+                            case 'emerald': this.minimapCtx.fillStyle = '#059669'; break;
+                            case 'sapphire': this.minimapCtx.fillStyle = '#2563eb'; break;
+                            case 'amethyst': this.minimapCtx.fillStyle = '#7c3aed'; break;
+                            default: this.minimapCtx.fillStyle = '#6b7280';
+                        }
+                        const gemSize = Math.max(2, minimapScale * 1);
+                        this.minimapCtx.fillRect(
+                            offsetX + Math.floor(gem.x / this.tileSize) * minimapScale - gemSize/2,
+                            offsetY + Math.floor(gem.y / this.tileSize) * minimapScale - gemSize/2,
+                            gemSize,
+                            gemSize
+                        );
+                    }
+                });
+                this.minimapCtx.fillStyle = '#fbbf24';
+                const exitSize = Math.max(3, minimapScale * 2.5);
+                this.minimapCtx.fillRect(
+                    offsetX + Math.floor(this.currentLevelData.exit.x / this.tileSize) * minimapScale - exitSize/2,
+                    offsetY + Math.floor(this.currentLevelData.exit.y / this.tileSize) * minimapScale - exitSize/2,
+                    exitSize,
+                    exitSize
+                );
+                this.minimapCtx.strokeStyle = '#ffffff';
+                this.minimapCtx.lineWidth = 2;
+                const viewportWidth = (this.canvas.width / this.tileSize) * minimapScale;
+                const viewportHeight = (this.canvas.height / this.tileSize) * minimapScale;
+                const viewportX = offsetX + (this.camera.x / this.tileSize) * minimapScale;
+                const viewportY = offsetY + (this.camera.y / this.tileSize) * minimapScale;
+                this.minimapCtx.strokeRect(viewportX, viewportY, viewportWidth, viewportHeight);
+                this.minimapCtx.strokeStyle = '#6b7280';
+                this.minimapCtx.lineWidth = 1;
+                this.minimapCtx.strokeRect(0, 0, this.minimapCanvas.width, this.minimapCanvas.height);
+            }
+            initAudio() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    if (this.audioContext.state === 'suspended') {
+                        const resumeAudio = () => {
+                            if (this.audioContext.state === 'suspended') {
+                                this.audioContext.resume().then(() => {
+                                    console.log('Audio context resumed');
+                                    const audioStatus = document.getElementById('audioStatus');
+                                    if (audioStatus) {
+                                        audioStatus.style.display = 'none';
+                                    }
+                                    if (this.gameState === 'startScreen') {
+                                        this.startWelcomeMusic();
+                                    }
+                                });
+                            }
+                            document.removeEventListener('click', resumeAudio);
+                            document.removeEventListener('keydown', resumeAudio);
+                            document.removeEventListener('touchstart', resumeAudio);
+                        };
+                        document.addEventListener('click', resumeAudio);
+                        document.addEventListener('keydown', resumeAudio);
+                        document.addEventListener('touchstart', resumeAudio);
+                    } else {
+                        const audioStatus = document.getElementById('audioStatus');
+                        if (audioStatus) {
+                            audioStatus.style.display = 'none';
+                        }
+                        this.startWelcomeMusic();
+                    }
+                } catch (e) {
+                    console.log('Web Audio API not supported');
+                    this.musicEnabled = false;
+                }
+            }
+            toggleMusic() {
+                this.musicEnabled = !this.musicEnabled;
+                if (this.musicEnabled) {
+                    this.startBackgroundMusic();
+                } else {
+                    this.stopBackgroundMusic();
+                }
+                this.updateSoundButton();
+            }
+            updateSoundButton() {
+                const soundToggleText = document.getElementById('soundToggleText');
+                if (this.musicEnabled) {
+                    soundToggleText.textContent = 'ON';
+                    soundToggleText.className = 'text-xs font-semibold text-green-400';
+                } else {
+                    soundToggleText.textContent = 'OFF';
+                    soundToggleText.className = 'text-xs font-semibold text-red-400';
+                }
+            }
+            startBackgroundMusic() {
+                if (!this.audioContext || !this.musicEnabled) return;
+                if (this.audioContext.state === 'suspended') {
+                    console.log('Audio context suspended, waiting for user interaction');
+                    return;
+                }
+                this.stopBackgroundMusic();
+                this.currentMusic = this.createDungeonTheme();
+            }
+            startWelcomeMusic() {
+                if (!this.audioContext || !this.musicEnabled) return;
+                if (this.audioContext.state === 'suspended') {
+                    console.log('Audio context suspended, waiting for user interaction');
+                    return;
+                }
+                this.stopBackgroundMusic();
+                this.currentMusic = this.createWelcomeTheme();
+            }
+            stopBackgroundMusic() {
+                if (this.currentMusic) {
+                    this.currentMusic.forEach(source => {
+                        try {
+                            source.stop();
+                        } catch (e) {
+                        }
+                    });
+                    this.currentMusic = null;
+                }
+            }
+            createDungeonTheme() {
+                if (!this.audioContext) return null;
+                const sources = [];
+                const gainNode = this.audioContext.createGain();
+                gainNode.gain.value = 0.1;
+                gainNode.connect(this.audioContext.destination);
+                const melody = [
+                    {freq: 220, duration: 0.5}, 
+                    {freq: 261.63, duration: 0.5},
+                    {freq: 329.63, duration: 0.5},
+                    {freq: 293.66, duration: 0.5},
+                    {freq: 246.94, duration: 0.5},
+                    {freq: 220, duration: 0.5},
+                    {freq: 196, duration: 1.0},
+                    {freq: 220, duration: 0.5},
+                ];
+                const bassLine = [
+                    {freq: 110, duration: 1.0},
+                    {freq: 130.81, duration: 1.0},
+                    {freq: 146.83, duration: 1.0},
+                    {freq: 123.47, duration: 1.0},
+                ];
+                let currentTime = this.audioContext.currentTime;
+                const playMelodyLoop = () => {
+                    melody.forEach((note, index) => {
+                        const oscillator = this.audioContext.createOscillator();
+                        const noteGain = this.audioContext.createGain();
+                        oscillator.type = 'square';
+                        oscillator.frequency.setValueAtTime(note.freq, currentTime + index * 0.5);
+                        noteGain.gain.setValueAtTime(0, currentTime + index * 0.5);
+                        noteGain.gain.linearRampToValueAtTime(0.3, currentTime + index * 0.5 + 0.01);
+                        noteGain.gain.exponentialRampToValueAtTime(0.01, currentTime + index * 0.5 + note.duration);
+                        oscillator.connect(noteGain);
+                        noteGain.connect(gainNode);
+                        oscillator.start(currentTime + index * 0.5);
+                        oscillator.stop(currentTime + index * 0.5 + note.duration);
+                        sources.push(oscillator);
+                    });
+                };
+                const playBassLoop = () => {
+                    bassLine.forEach((note, index) => {
+                        const oscillator = this.audioContext.createOscillator();
+                        const noteGain = this.audioContext.createGain();
+                        oscillator.type = 'sawtooth';
+                        oscillator.frequency.setValueAtTime(note.freq, currentTime + index * 1.0);
+                        noteGain.gain.setValueAtTime(0, currentTime + index * 1.0);
+                        noteGain.gain.linearRampToValueAtTime(0.2, currentTime + index * 1.0 + 0.01);
+                        noteGain.gain.exponentialRampToValueAtTime(0.01, currentTime + index * 1.0 + note.duration);
+                        oscillator.connect(noteGain);
+                        noteGain.connect(gainNode);
+                        oscillator.start(currentTime + index * 1.0);
+                        oscillator.stop(currentTime + index * 1.0 + note.duration);
+                        sources.push(oscillator);
+                    });
+                };
+                playMelodyLoop();
+                playBassLoop();
+                setTimeout(() => {
+                    if (this.musicEnabled && this.currentMusic) {
+                        this.startBackgroundMusic();
+                    }
+                }, 4000);
+                return sources;
+            }
+            createWelcomeTheme() {
+                if (!this.audioContext) return null;
+                const sources = [];
+                const gainNode = this.audioContext.createGain();
+                gainNode.gain.value = 0.08;
+                gainNode.connect(this.audioContext.destination);
+                const welcomeMelody = [
+                    {freq: 174.61, duration: 1.0}, 
+                    {freq: 196.00, duration: 1.0}, 
+                    {freq: 220.00, duration: 0.5}, 
+                    {freq: 246.94, duration: 0.5}, 
+                    {freq: 261.63, duration: 1.0}, 
+                    {freq: 220.00, duration: 1.0}, 
+                    {freq: 196.00, duration: 1.0}, 
+                    {freq: 174.61, duration: 1.0}, 
+                ];
+                const welcomeBass = [
+                    {freq: 87.31, duration: 2.0}, 
+                    {freq: 98.00, duration: 2.0}, 
+                    {freq: 110.00, duration: 2.0}, 
+                    {freq: 87.31, duration: 2.0}, 
+                ];
+                const atmosphericNotes = [
+                    {freq: 349.23, duration: 8.0}, 
+                    {freq: 392.00, duration: 8.0}, 
+                    {freq: 440.00, duration: 8.0}, 
+                ];
+                let currentTime = this.audioContext.currentTime;
+                const playWelcomeMelodyLoop = () => {
+                    welcomeMelody.forEach((note, index) => {
+                        const oscillator = this.audioContext.createOscillator();
+                        const noteGain = this.audioContext.createGain();
+                        oscillator.type = 'triangle';
+                        oscillator.frequency.setValueAtTime(note.freq, currentTime + index * 1.0);
+                        noteGain.gain.setValueAtTime(0, currentTime + index * 1.0);
+                        noteGain.gain.linearRampToValueAtTime(0.25, currentTime + index * 1.0 + 0.1);
+                        noteGain.gain.exponentialRampToValueAtTime(0.01, currentTime + index * 1.0 + note.duration);
+                        oscillator.connect(noteGain);
+                        noteGain.connect(gainNode);
+                        oscillator.start(currentTime + index * 1.0);
+                        oscillator.stop(currentTime + index * 1.0 + note.duration);
+                        sources.push(oscillator);
+                    });
+                };
+                const playWelcomeBassLoop = () => {
+                    welcomeBass.forEach((note, index) => {
+                        const oscillator = this.audioContext.createOscillator();
+                        const noteGain = this.audioContext.createGain();
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(note.freq, currentTime + index * 2.0);
+                        noteGain.gain.setValueAtTime(0, currentTime + index * 2.0);
+                        noteGain.gain.linearRampToValueAtTime(0.15, currentTime + index * 2.0 + 0.1);
+                        noteGain.gain.exponentialRampToValueAtTime(0.01, currentTime + index * 2.0 + note.duration);
+                        oscillator.connect(noteGain);
+                        noteGain.connect(gainNode);
+                        oscillator.start(currentTime + index * 2.0);
+                        oscillator.stop(currentTime + index * 2.0 + note.duration);
+                        sources.push(oscillator);
+                    });
+                };
+                const playAtmosphericPad = () => {
+                    atmosphericNotes.forEach((note, index) => {
+                        const oscillator = this.audioContext.createOscillator();
+                        const noteGain = this.audioContext.createGain();
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(note.freq, currentTime);
+                        noteGain.gain.setValueAtTime(0, currentTime);
+                        noteGain.gain.linearRampToValueAtTime(0.05, currentTime + 1.0);
+                        noteGain.gain.setValueAtTime(0.05, currentTime + note.duration - 1.0);
+                        noteGain.gain.exponentialRampToValueAtTime(0.01, currentTime + note.duration);
+                        oscillator.connect(noteGain);
+                        noteGain.connect(gainNode);
+                        oscillator.start(currentTime);
+                        oscillator.stop(currentTime + note.duration);
+                        sources.push(oscillator);
+                    });
+                };
+                playWelcomeMelodyLoop();
+                playWelcomeBassLoop();
+                playAtmosphericPad();
+                setTimeout(() => {
+                    if (this.musicEnabled && this.currentMusic && this.gameState === 'startScreen') {
+                        this.startWelcomeMusic();
+                    }
+                }, 8000);
+                return sources;
+            }
+            playDamageSound() {
+                if (!this.audioContext || !this.musicEnabled) return;
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(200, this.audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(50, this.audioContext.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, this.audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + 0.3);
+            }
+            playGemSound(gemType) {
+                if (!this.audioContext || !this.musicEnabled) return;
+                const gemFrequencies = {
+                    'diamond': 800,
+                    'ruby': 600,
+                    'emerald': 500,
+                    'sapphire': 450,
+                    'amethyst': 400
+                };
+                const baseFreq = gemFrequencies[gemType] || 500;
+                const oscillator1 = this.audioContext.createOscillator();
+                const oscillator2 = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                oscillator1.type = 'sine';
+                oscillator2.type = 'triangle';
+                oscillator1.frequency.setValueAtTime(baseFreq, this.audioContext.currentTime);
+                oscillator2.frequency.setValueAtTime(baseFreq * 1.5, this.audioContext.currentTime);
+                oscillator1.frequency.linearRampToValueAtTime(baseFreq * 1.25, this.audioContext.currentTime + 0.1);
+                oscillator2.frequency.linearRampToValueAtTime(baseFreq * 2, this.audioContext.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.2, this.audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+                oscillator1.connect(gainNode);
+                oscillator2.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                oscillator1.start(this.audioContext.currentTime);
+                oscillator2.start(this.audioContext.currentTime);
+                oscillator1.stop(this.audioContext.currentTime + 0.2);
+                oscillator2.stop(this.audioContext.currentTime + 0.2);
+            }
+            playLevelCompleteSound() {
+                if (!this.audioContext || !this.musicEnabled) return;
+                const oscillator1 = this.audioContext.createOscillator();
+                const oscillator2 = this.audioContext.createOscillator();
+                const oscillator3 = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                oscillator1.type = 'square';
+                oscillator2.type = 'triangle';
+                oscillator3.type = 'sine';
+                                    oscillator1.frequency.setValueAtTime(523.25, this.audioContext.currentTime);
+                    oscillator2.frequency.setValueAtTime(659.25, this.audioContext.currentTime);
+                    oscillator3.frequency.setValueAtTime(783.99, this.audioContext.currentTime);
+                    oscillator1.frequency.linearRampToValueAtTime(698.46, this.audioContext.currentTime + 0.3);
+                    oscillator2.frequency.linearRampToValueAtTime(880.00, this.audioContext.currentTime + 0.3);
+                    oscillator3.frequency.linearRampToValueAtTime(1046.50, this.audioContext.currentTime + 0.3);
+                    oscillator1.frequency.linearRampToValueAtTime(783.99, this.audioContext.currentTime + 0.6);
+                    oscillator2.frequency.linearRampToValueAtTime(987.77, this.audioContext.currentTime + 0.6);
+                    oscillator3.frequency.linearRampToValueAtTime(1174.66, this.audioContext.currentTime + 0.6);
+                    oscillator1.frequency.linearRampToValueAtTime(1046.50, this.audioContext.currentTime + 0.9);
+                    oscillator2.frequency.linearRampToValueAtTime(1318.51, this.audioContext.currentTime + 0.9);
+                    oscillator3.frequency.linearRampToValueAtTime(1567.98, this.audioContext.currentTime + 0.9);
+                gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, this.audioContext.currentTime + 0.02);
+                gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime + 0.3);
+                gainNode.gain.linearRampToValueAtTime(0.25, this.audioContext.currentTime + 0.6);
+                gainNode.gain.linearRampToValueAtTime(0.35, this.audioContext.currentTime + 0.9);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 1.5);
+                oscillator1.connect(gainNode);
+                oscillator2.connect(gainNode);
+                oscillator3.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                oscillator1.start(this.audioContext.currentTime);
+                oscillator2.start(this.audioContext.currentTime);
+                oscillator3.start(this.audioContext.currentTime);
+                oscillator1.stop(this.audioContext.currentTime + 1.5);
+                oscillator2.stop(this.audioContext.currentTime + 1.5);
+                oscillator3.stop(this.audioContext.currentTime + 1.5);
+            }
+            playDeathSound() {
+                if (!this.audioContext || !this.musicEnabled) return;
+                const oscillator1 = this.audioContext.createOscillator();
+                const oscillator2 = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                oscillator1.type = 'square';
+                oscillator2.type = 'sawtooth';
+                oscillator1.frequency.setValueAtTime(300, this.audioContext.currentTime);
+                oscillator1.frequency.exponentialRampToValueAtTime(80, this.audioContext.currentTime + 1.0);
+                oscillator2.frequency.setValueAtTime(150, this.audioContext.currentTime);
+                oscillator2.frequency.exponentialRampToValueAtTime(40, this.audioContext.currentTime + 1.0);
+                gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.4, this.audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 1.0);
+                oscillator1.connect(gainNode);
+                oscillator2.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                oscillator1.start(this.audioContext.currentTime);
+                oscillator2.start(this.audioContext.currentTime);
+                oscillator1.stop(this.audioContext.currentTime + 1.0);
+                oscillator2.stop(this.audioContext.currentTime + 1.0);
+            }
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+        window.addEventListener('load', () => {
+            new Game();
+        });
+    </script>
+</body>
+</html> 
