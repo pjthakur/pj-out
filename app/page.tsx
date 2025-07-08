@@ -1,1676 +1,1654 @@
 "use client";
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-} from "react";
+import { useState, useEffect, useRef } from "react";
 import {
-  HiMagnifyingGlass,
-  HiPlus,
-  HiClock,
-  HiClipboard,
-  HiPencil,
-  HiCheck,
-  HiXMark,
-  HiTrash,
-  HiArrowDownTray,
-  HiArrowUpTray,
-  HiFolder,
-  HiTag,
-  HiChevronLeft,
-  HiChevronRight,
-  HiDocumentText,
-  HiSquares2X2
-} from "react-icons/hi2";
-interface Clip {
-  id: string;
-  content: string;
-  categoryId: string;
-  timestamp: number;
-  tags: string[];
-  title?: string;
-}
-interface Category {
-  id: string;
-  name: string;
-  color: string;
-  createdAt: number;
-}
-const DEFAULT_CATEGORIES: Category[] = [
-  { id: "general", name: "General", color: "#3B82F6", createdAt: Date.now() },
+  FaUser,
+  FaComment,
+  FaBookmark,
+  FaReply,
+  FaRegBookmark,
+  FaSearch,
+  FaCrown,
+  FaStar,
+  FaHeart,
+  FaRegHeart,
+  FaSmile,
+  FaBold,
+  FaItalic,
+  FaLink,
+  FaChevronLeft,
+  FaChevronRight,
+  FaArrowLeft,
+  FaCode,
+  FaCss3Alt,
+  FaReact,
+  FaRocket,
+  FaComments,
+  FaPaperPlane,
+  FaTimes,
+} from "react-icons/fa";
+import toast, { Toaster } from "react-hot-toast";
+const trendingTopics = [
   {
-    id: "code",
-    name: "Code Snippets",
-    color: "#10B981",
-    createdAt: Date.now(),
+    id: 1,
+    title: "React Tips",
+    icon: <FaReact className="text-[#A55EEA]" />,
   },
-  { id: "personal", name: "Personal", color: "#F59E0B", createdAt: Date.now() },
+  {
+    id: 2,
+    title: "TypeScript",
+    icon: <FaCode className="text-[#A55EEA]" />,
+  },
+  {
+    id: 3,
+    title: "Tailwind CSS",
+    icon: <FaCss3Alt className="text-[#A55EEA]" />,
+  },
+  {
+    id: 4,
+    title: "State Manage",
+    icon: <FaStar className="text-[#A55EEA]" />,
+  },
+  {
+    id: 5,
+    title: "Deployment",
+    icon: <FaRocket className="text-[#A55EEA]" />,
+  },
 ];
-const PREDEFINED_COLORS = [
-  "#3B82F6",
-  "#10B981",
-  "#F59E0B",
-  "#EF4444",
-  "#8B5CF6",
-  "#F97316",
-  "#06B6D4",
-  "#84CC16",
-  "#EC4899",
-  "#6B7280",
-];
-const ClipboardManager: React.FC = () => {
-  const [showLandingPage, setShowLandingPage] = useState(true);
-  const [clips, setClips] = useState<Clip[]>([]);
-  const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
-  const [selectedClip, setSelectedClip] = useState<Clip | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState("");
-  const [draggedClip, setDraggedClip] = useState<Clip | null>(null);
-  const [showQuickSave, setShowQuickSave] = useState(false);
-  const [copiedText, setCopiedText] = useState("");
-  const [notification, setNotification] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
-  const [categoryDraft, setCategoryDraft] = useState("");
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showQuickSaveModal, setShowQuickSaveModal] = useState(false);
-  const [selectedColor, setSelectedColor] = useState("#3B82F6");
-  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
-  const [countdown, setCountdown] = useState(0);
-  const [isEditingCategory, setIsEditingCategory] = useState(false);
-  const [editingCategoryData, setEditingCategoryData] = useState<Category | null>(null);
-  const [quickSaveClicked, setQuickSaveClicked] = useState(false);
-  const [quickSaveSelectedCategory, setQuickSaveSelectedCategory] = useState("general");
-  const [showNewClipModal, setShowNewClipModal] = useState(false);
-  const [newClipSelectedCategory, setNewClipSelectedCategory] = useState("general");
-  const [categoryBeforeSearch, setCategoryBeforeSearch] = useState<string>("all");
-  const isModalOpenRef = useRef(false);
-  const [isLeftOpen, setIsLeftOpen] = useState(false);
-  const [isRightOpen, setIsRightOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const toggleLeft = () => setIsLeftOpen((v) => !v);
-  const toggleRight = () => setIsRightOpen((v) => !v);
-  const handleAddCategory = () => {
-    if (!categoryDraft.trim()) return;
-    if (isEditingCategory && editingCategoryData) {
-      const updated = categories.map((c) =>
-        c.id === editingCategoryData.id
-          ? { ...c, name: categoryDraft.trim(), color: selectedColor }
-          : c
-      );
-      setCategories(updated);
-      saveToIndexedDB(clips, updated);
-    } else {
-      const newCat: Category = {
-        id: Date.now().toString(),
-        name: categoryDraft.trim(),
-        color: selectedColor,
-        createdAt: Date.now(),
-      };
-      const updated = [...categories, newCat];
-      setCategories(updated);
-      saveToIndexedDB(clips, updated);
-    }
-    setCategoryDraft("");
-    setSelectedColor("#3B82F6");
-    setShowCategoryModal(false);
-    setIsEditingCategory(false);
-    setEditingCategoryData(null);
-  };
-  const handleOpenCategoryModal = () => {
-    setCategoryDraft("");
-    setSelectedColor("#3B82F6");
-    setIsEditingCategory(false);
-    setEditingCategoryData(null);
-    setShowCategoryModal(true);
-  };
-  const handleEditCategory = (category: Category) => {
-    setCategoryDraft(category.name);
-    setSelectedColor(category.color);
-    setIsEditingCategory(true);
-    setEditingCategoryData(category);
-    setShowCategoryModal(true);
-  };
-  const handleCloseCategoryModal = () => {
-    setShowCategoryModal(false);
-    setCategoryDraft("");
-    setSelectedColor("#3B82F6");
-    setIsEditingCategory(false);
-    setEditingCategoryData(null);
-  };
-  const handleStartEditCategory = (id: string, currentName: string) => {
-    const category = categories.find(c => c.id === id);
-    if (category) {
-      handleEditCategory(category);
-    }
-  };
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const dbRef = useRef<IDBDatabase | null>(null);
-  useEffect(() => {
-    if (showLandingPage) return;
-    const initDB = async () => {
-      const request = indexedDB.open("ClipboardManagerDB", 1);
-      request.onerror = () => {
-        console.error("Failed to open IndexedDB");
-      };
-      request.onsuccess = () => {
-        dbRef.current = request.result;
-        loadData();
-      };
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains("clips")) {
-          db.createObjectStore("clips", { keyPath: "id" });
-        }
-        if (!db.objectStoreNames.contains("categories")) {
-          db.createObjectStore("categories", { keyPath: "id" });
-        }
-      };
-    };
-    initDB();
-  }, [showLandingPage]);
-  const loadData = async () => {
-    if (!dbRef.current) return;
-    const transaction = dbRef.current.transaction(
-      ["clips", "categories"],
-      "readonly"
-    );
-    const clipsStore = transaction.objectStore("clips");
-    const categoriesStore = transaction.objectStore("categories");
-    const clipsRequest = clipsStore.getAll();
-    const categoriesRequest = categoriesStore.getAll();
-    clipsRequest.onsuccess = () => {
-      setClips(clipsRequest.result || []);
-    };
-    categoriesRequest.onsuccess = () => {
-      const loadedCategories = categoriesRequest.result;
-      if (loadedCategories && loadedCategories.length > 0) {
-        setCategories(loadedCategories);
-      }
-    };
-  };
-  const saveToIndexedDB = useCallback(
-    (clips: Clip[], categories: Category[]) => {
-      if (!dbRef.current) return;
-      const transaction = dbRef.current.transaction(
-        ["clips", "categories"],
-        "readwrite"
-      );
-      const clipsStore = transaction.objectStore("clips");
-      const categoriesStore = transaction.objectStore("categories");
-      clipsStore.clear();
-      categoriesStore.clear();
-      clips.forEach((clip) => clipsStore.add(clip));
-      categories.forEach((category) => categoriesStore.add(category));
+const mockDiscussions: { [key: number]: Discussion[] } = {
+  1: [
+    {
+      id: "d1",
+      author: "alice",
+      content: "What are some essential tips you follow when using React?",
+      replies: [
+        {
+          id: "r1",
+          author: "bob",
+          content: "I always use React.memo for performance optimization!",
+          timestamp: new Date(Date.now() - 2 * 60 * 1000),
+        },
+        {
+          id: "r2",
+          author: "charlie",
+          content: "Component composition over inheritance is key.",
+          timestamp: new Date(Date.now() - 5 * 60 * 1000),
+        },
+      ],
+      timestamp: new Date(Date.now() - 5 * 60 * 1000),
+      answered: true,
+      likes: 12,
+      bookmarked: false,
+      reactions: {
+        "👍": { count: 5, users: ["bob", "charlie", "dana", "ed", "fiona"] },
+        "❤️": { count: 3, users: ["alice", "bob", "charlie"] },
+        "🔥": { count: 2, users: ["dana", "greg"] },
+      },
+      topic: "React Tips",
     },
-    []
+    {
+      id: "d2",
+      author: "bob",
+      content: "How do you organize components in a large project?",
+      replies: [
+        {
+          id: "r3",
+          author: "dana",
+          content: "I use atomic design methodology.",
+          timestamp: new Date(Date.now() - 1 * 60 * 1000),
+        },
+      ],
+      timestamp: new Date(Date.now() - 10 * 60 * 1000),
+      answered: true,
+      likes: 8,
+      bookmarked: true,
+      reactions: {},
+      topic: "React Tips",
+    },
+    {
+      id: "d3",
+      author: "charlie",
+      content: "Do you use React Context or Redux more often?",
+      replies: [],
+      timestamp: new Date(Date.now() - 20 * 60 * 1000),
+      answered: false,
+      likes: 15,
+      bookmarked: false,
+      reactions: {},
+      topic: "React Tips",
+    },
+  ],
+  2: [
+    {
+      id: "d4",
+      author: "dana",
+      content: "How do you type API responses in TypeScript?",
+      replies: [
+        {
+          id: "r4",
+          author: "ed",
+          content: "I create interfaces for each API response.",
+          timestamp: new Date(Date.now() - 3 * 60 * 1000),
+        },
+        {
+          id: "r5",
+          author: "fiona",
+          content: "Generics are useful for reusable types.",
+          timestamp: new Date(Date.now() - 7 * 60 * 1000),
+        },
+      ],
+      timestamp: new Date(Date.now() - 2 * 60 * 1000),
+      answered: true,
+      likes: 21,
+      bookmarked: true,
+      reactions: {
+        "💯": { count: 4, users: ["alice", "bob", "charlie", "greg"] },
+        "🚀": { count: 2, users: ["dana", "fiona"] },
+      },
+      topic: "TypeScript",
+    },
+    {
+      id: "d5",
+      author: "ed",
+      content: "Tips for beginners learning TS?",
+      replies: [],
+      timestamp: new Date(Date.now() - 35 * 60 * 1000),
+      answered: true,
+      likes: 17,
+      bookmarked: false,
+      reactions: {},
+      topic: "TypeScript",
+    },
+  ],
+  3: [
+    {
+      id: "d6",
+      author: "fiona",
+      content: "How to create responsive layouts quickly?",
+      replies: [],
+      timestamp: new Date(Date.now() - 1 * 60 * 1000),
+      answered: true,
+      likes: 9,
+      bookmarked: false,
+      reactions: {},
+      topic: "Tailwind CSS",
+    },
+  ],
+  4: [],
+  5: [
+    {
+      id: "d7",
+      author: "greg",
+      content: "Netlify vs Vercel for React apps?",
+      replies: [
+        {
+          id: "r6",
+          author: "alice",
+          content: "Vercel has better Next.js integration.",
+          timestamp: new Date(Date.now() - 15 * 60 * 1000),
+        },
+      ],
+      timestamp: new Date(Date.now() - 50 * 60 * 1000),
+      answered: true,
+      likes: 14,
+      bookmarked: false,
+      reactions: {
+        "👍": { count: 6, users: ["alice", "bob", "charlie", "dana", "ed", "fiona"] },
+        "🎉": { count: 1, users: ["greg"] },
+      },
+      topic: "Deployment",
+    },
+  ],
+};
+const moderators = [
+  { name: "Alice", role: "Lead Moderator" },
+  { name: "Bob", role: "Community Manager" },
+  { name: "Fiona", role: "Technical Expert" },
+];
+const activeUsers = [
+  { name: "Charlie", activity: "Posting" },
+  { name: "Dana", activity: "Commenting" },
+  { name: "Ed", activity: "Browsing" },
+  { name: "Greg", activity: "Reacting" },
+];
+type FilterType = "Most recent" | "Most replied" | "Unanswered";
+const filters: FilterType[] = [
+  "Most recent",
+  "Most replied",
+  "Unanswered",
+];
+interface Reply {
+  id: string;
+  author: string;
+  content: string;
+  timestamp: Date;
+}
+interface Discussion {
+  id: string;
+  author: string;
+  content: string;
+  replies: Reply[];
+  timestamp: Date;
+  answered: boolean;
+  likes: number;
+  bookmarked: boolean;
+  likedByUser?: boolean;
+  reactions?: { [emoji: string]: { count: number; users: string[] } };
+  topic: string;
+}
+const formatRelativeTime = (date: Date): string => {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (diffInSeconds < 60) {
+    return "Just now";
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  } else if (diffInSeconds < 2592000) {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days} ${days === 1 ? "day" : "days"} ago`;
+  } else {
+    const months = Math.floor(diffInSeconds / 2592000);
+    return `${months} ${months === 1 ? "month" : "months"} ago`;
+  }
+};
+const calculateDynamicTrendingTopics = (discussions: { [key: number]: Discussion[] }) => {
+  const topicCounts: { [topic: string]: number } = {};
+  // Count posts for all topics, including those with 0 posts
+  trendingTopics.forEach(topic => {
+    const topicPosts = discussions[topic.id] || [];
+    topicCounts[topic.title] = topicPosts.length;
+  });
+  const topicScores = Object.keys(topicCounts).map(topic => {
+    const count = topicCounts[topic] || 0;
+    return {
+      topic,
+      count,
+      activity: 0,
+      score: count
+    };
+  });
+  const topicStats = topicScores
+    .sort((a, b) => {
+      if (b.count === a.count) {
+        return a.topic.localeCompare(b.topic);
+      }
+      return b.count - a.count;
+    })
+    .slice(0, 5);
+  return { 
+    topicStats
+  };
+};
+const CommunityDashboard: React.FC = () => {
+  const [selectedTopic, setSelectedTopic] = useState<number | null>(null);
+  const [activeFilter, setActiveFilter] = useState<FilterType>("Most recent");
+  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+  const [newPostContent, setNewPostContent] = useState<string>("");
+  const [replyContent, setReplyContent] = useState<{ [key: string]: string }>(
+    {}
   );
+  const [expandedPost, setExpandedPost] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
+  const [isCreatePostExpanded, setIsCreatePostExpanded] = useState<boolean>(false);
+  const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null);
+  const [discussions, setDiscussions] = useState<{
+    [key: number]: Discussion[];
+  }>(mockDiscussions);
+  const [showBookmarks, setShowBookmarks] = useState<boolean>(false);
+  const [selectedTopicForPost, setSelectedTopicForPost] = useState<number>(trendingTopics[0].id);
+  const [dynamicTrendingTopics, setDynamicTrendingTopics] = useState<{
+    topicStats: { topic: string; count: number; activity: number; score: number; }[];
+  }>({ topicStats: [] });
+  const [newCommentId, setNewCommentId] = useState<string | null>(null);
+  const [showSidebar, setShowSidebar] = useState<boolean>(true);
+  const [showRightSidebar, setShowRightSidebar] = useState<boolean>(false);
+  const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
+  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
+  const [userSettings, setUserSettings] = useState({
+    notifications: true,
+    emailAlerts: false,
+    theme: 'dark',
+    autoSave: true
+  });
+  const newPostRef = useRef<HTMLTextAreaElement>(null);
+  const replyRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>({});
   useEffect(() => {
-    if (showLandingPage) return;
-    let clipboardCheckInterval: NodeJS.Timeout;
-    let lastClipboardContent = '';
-    const checkClipboard = async () => {
-      try {
-        const text = await navigator.clipboard.readText();
-        console.log("Clipboard check - found text:", text ? `${text.length} characters` : "empty");
-        if (text && text.trim() && text !== lastClipboardContent) {
-          const isDuplicate = clips.some(clip => clip.content === text);
-          console.log("Clipboard check - is duplicate:", isDuplicate);
-          if (!isDuplicate) {
-            lastClipboardContent = text;
-            handleAutoSave(text);
-          } else {
-            console.log("Clipboard content already exists in clips");
-          }
-        } else {
-          console.log("Clipboard check - no new content");
-        }
-      } catch (err) {
-        console.log("Clipboard access denied:", err);
-      }
-    };
-    const handleWindowBlur = () => {
-      clipboardCheckInterval = setInterval(checkClipboard, 2000);
-    };
-    const handleWindowFocus = () => {
-      if (clipboardCheckInterval) {
-        clearInterval(clipboardCheckInterval);
-      }
-      checkClipboard();
-    };
-    const handlePaste = (e: ClipboardEvent) => {
-      const text = e.clipboardData?.getData("text");
-      if (text && text.trim()) {
-        handleAutoSave(text);
-      }
-    };
-    const handleCopy = () => {
-      const selection = window.getSelection()?.toString();
-      if (selection && selection.trim()) {
-        handleAutoSave(selection);
-      }
-    };
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
-        setTimeout(() => {
-          const selection = window.getSelection()?.toString();
-          if (selection && selection.trim()) {
-            handleAutoSave(selection);
-          }
-        }, 100);
-      }
-    };
-    const initialClipboardCheck = async () => {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        if (navigator.permissions) {
-          const permission = await navigator.permissions.query({ name: 'clipboard-read' as PermissionName });
-          if (permission.state === 'granted' || permission.state === 'prompt') {
-            checkClipboard();
-          }
-        } else {
-          checkClipboard();
-        }
-      } catch (err) {
-        console.log("Initial clipboard check failed:", err);
-        setTimeout(() => {
-          if (document.hasFocus()) {
-            checkClipboard();
-          }
-        }, 2000);
-      }
-    };
-    document.addEventListener("paste", handlePaste);
-    document.addEventListener("copy", handleCopy);
-    document.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("focus", handleWindowFocus);
-    window.addEventListener("blur", handleWindowBlur);
-    initialClipboardCheck();
-    if (document.hasFocus()) {
-      setTimeout(checkClipboard, 100);
-    }
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
+    document.body.style.fontFamily =
+      "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
     return () => {
-      if (clipboardCheckInterval) {
-        clearInterval(clipboardCheckInterval);
-      }
-      document.removeEventListener("paste", handlePaste);
-      document.removeEventListener("copy", handleCopy);
-      document.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("focus", handleWindowFocus);
-      window.removeEventListener("blur", handleWindowBlur);
-    };
-  }, [clips, showLandingPage]);
-  useEffect(() => {
-    const handleResize = () => {
-      const isDesktop = window.innerWidth >= 768;
-      const isMobileDevice = window.innerWidth < 768;
-      setIsMobile(isMobileDevice);
-      if (!showLandingPage) {
-        setIsLeftOpen(isDesktop);
-        setIsRightOpen(isDesktop);
+      if (document.head.contains(link)) {
+        document.head.removeChild(link);
       }
     };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [showLandingPage]);
+  }, []);
+  const handleTopicChange = (topicId: number | null) => {
+    if (selectedTopic === topicId) return;
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setSelectedTopic(topicId);
+      setShowBookmarks(false);
+      setIsTransitioning(false);
+    }, 150);
+  };
+  const handleFilterChange = (filter: FilterType) => {
+    if (activeFilter === filter) return;
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setActiveFilter(filter);
+      setIsTransitioning(false);
+    }, 150);
+  };
+  const handleSignOut = () => {
+    setDiscussions(mockDiscussions);
+    setNewPostContent("");
+    setReplyContent({});
+    setExpandedPost(null);
+    setActiveFilter("Most recent");
+    setSelectedTopic(trendingTopics[0].id);
+    toast.success("Successfully signed out");
+  };
+  const getUserStats = () => {
+    const allDiscussions = Object.values(discussions).flat();
+    const userPosts = allDiscussions.filter(d => d.author === "John Doe");
+    const userReplies = allDiscussions.reduce((acc, d) => 
+      acc + d.replies.filter(r => r.author === "John Doe").length, 0);
+    const totalLikes = userPosts.reduce((acc, post) => acc + post.likes, 0);
+    const bookmarkedPosts = allDiscussions.filter(d => d.bookmarked).length;
+    return {
+      posts: userPosts.length,
+      replies: userReplies,
+      likes: totalLikes,
+      bookmarks: bookmarkedPosts
+    };
+  };
+  const addModeratorReply = (postId: string, topicId: number) => {
+    const moderatorReplies = [
+      "Great question! I'd love to help you with this.",
+      "This is an interesting topic. Here's what I think...",
+      "Thanks for bringing this up! This is a common challenge many developers face.",
+      "Good point! I've seen this come up frequently in our community.",
+      "This is a valuable discussion. Let me share some insights.",
+      "Excellent question! This touches on some important concepts.",
+      "I appreciate you starting this conversation. Very relevant topic!",
+      "This is definitely worth exploring. Great initiative!",
+    ];
+    const randomModerator = moderators[Math.floor(Math.random() * moderators.length)];
+    const randomReply = moderatorReplies[Math.floor(Math.random() * moderatorReplies.length)];
+    const moderatorReply: Reply = {
+      id: `r${Date.now()}`,
+      author: randomModerator.name,
+      content: randomReply,
+      timestamp: new Date(),
+    };
+    setDiscussions((prev) => {
+      const updatedDiscussions = [...prev[topicId]];
+      const postIndex = updatedDiscussions.findIndex((p) => p.id === postId);
+      if (postIndex !== -1) {
+        const updatedPost = {
+          ...updatedDiscussions[postIndex],
+          replies: [...updatedDiscussions[postIndex].replies, moderatorReply],
+          answered: true,
+        };
+        updatedDiscussions[postIndex] = updatedPost;
+      }
+      return {
+        ...prev,
+        [topicId]: updatedDiscussions,
+      };
+    });
+    toast.success(`${randomModerator.name} replied to your post!`);
+    // Set the new moderator comment for highlighting
+    setNewCommentId(moderatorReply.id);
+    // Scroll to the new moderator comment after state update
+    setTimeout(() => {
+      const repliesContainer = document.getElementById(`replies-container-${postId}`);
+      if (repliesContainer) {
+        repliesContainer.scrollTop = 0; // Scroll to top since newest is at top
+      }
+    }, 100);
+    // Clear the highlight after animation
+    setTimeout(() => {
+      setNewCommentId(null);
+    }, 2500);
+  };
+  const handleCreatePost = () => {
+    if (!newPostContent.trim()) {
+      toast.error("Post content cannot be empty");
+      return;
+    }
+    const assignedTopic = trendingTopics.find(t => t.id === selectedTopicForPost)?.title || "General";
+    const newPost: Discussion = {
+      id: `d${Date.now()}`,
+      author: "John Doe",
+      content: newPostContent,
+      replies: [],
+      timestamp: new Date(),
+      answered: false,
+      likes: 0,
+      bookmarked: false,
+      reactions: {},
+      topic: assignedTopic,
+    };
+    setDiscussions((prev) => ({
+      ...prev,
+      [selectedTopicForPost]: [newPost, ...(prev[selectedTopicForPost] || [])],
+    }));
+    setTimeout(() => {
+      addModeratorReply(newPost.id, selectedTopicForPost);
+    }, 3000);
+    setNewPostContent("");
+    setIsCreatePostExpanded(false);
+    toast.success(`Your post has been published in ${assignedTopic}!`);
+  };
   useEffect(() => {
-    const isAnyModalOpen = showCategoryModal || showQuickSaveModal || showNewClipModal;
-    document.body.style.overflow = isAnyModalOpen ? 'hidden' : 'unset';
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isCreatePostExpanded) {
+        setIsCreatePostExpanded(false);
+        setShowEmojiPicker(false);
+        newPostRef.current?.blur();
+      }
+      if (e.key === 'Escape' && showReactionPicker) {
+        setShowReactionPicker(null);
+      }
+    };
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showReactionPicker && !(e.target as Element).closest('.reaction-picker-container')) {
+        setShowReactionPicker(null);
+      }
+      if (showEmojiPicker && !(e.target as Element).closest('.emoji-picker-container')) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isCreatePostExpanded, showReactionPicker ?? '', showEmojiPicker]);
+  useEffect(() => {
+    if (showProfileModal || showSettingsModal || showWelcomeModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [showCategoryModal, showQuickSaveModal, showNewClipModal]);
+  }, [showProfileModal, showSettingsModal, showWelcomeModal]);
   useEffect(() => {
-    if (!searchQuery.trim() && categoryBeforeSearch) {
-      setSelectedCategory(categoryBeforeSearch);
+    const trending = calculateDynamicTrendingTopics(discussions);
+    setDynamicTrendingTopics(trending);
+  }, [discussions]);
+  const handleReply = (postId: string) => {
+    if (!replyContent[postId]?.trim()) {
+      toast.error("Reply cannot be empty");
+      return;
     }
-  }, [searchQuery, categoryBeforeSearch]);
-  const prevSearchQuery = useRef(searchQuery);
-  useEffect(() => {
-    if (!prevSearchQuery.current.trim() && searchQuery.trim()) {
-      setCategoryBeforeSearch(selectedCategory);
-    }
-    prevSearchQuery.current = searchQuery;
-  }, [searchQuery, selectedCategory]);
-  useEffect(() => {
-    if (showLandingPage) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        switch (e.key) {
-          case "n":
-            e.preventDefault();
-            if (autoSaveTimer) {
-              clearTimeout(autoSaveTimer);
-              setAutoSaveTimer(null);
-            }
-            handleQuickSave();
-            break;
-          case "f":
-            e.preventDefault();
-            document.getElementById("search-input")?.focus();
-            break;
-          case "s":
-            e.preventDefault();
-            if (selectedClip && isEditing) {
-              handleSaveEdit();
-            }
-            break;
-          case "e":
-            e.preventDefault();
-            if (selectedClip && !isEditing) {
-              handleEdit();
-            }
-            break;
-          case "d":
-            e.preventDefault();
-            if (selectedClip) {
-              handleDeleteClip(selectedClip.id);
-            }
-            break;
+    const newReply: Reply = {
+      id: `r${Date.now()}`,
+      author: "John Doe",
+      content: replyContent[postId],
+      timestamp: new Date(),
+    };
+    setDiscussions((prev) => {
+      const newDiscussions = { ...prev };
+      // Find the post across all topics
+      for (const topicId in newDiscussions) {
+        const topicDiscussions = [...newDiscussions[topicId]];
+        const postIndex = topicDiscussions.findIndex((p) => p.id === postId);
+        if (postIndex !== -1) {
+          const currentPost = topicDiscussions[postIndex];
+          const isReplyingToOwnPost = currentPost.author === "John Doe";
+          const updatedPost = {
+            ...currentPost,
+            replies: [...currentPost.replies, newReply],
+            answered: isReplyingToOwnPost ? currentPost.answered : true,
+          };
+          topicDiscussions[postIndex] = updatedPost;
+          newDiscussions[topicId] = topicDiscussions;
+          break;
         }
       }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedClip, isEditing, editContent, autoSaveTimer, showLandingPage]);
-  const filteredClips = useMemo(() => {
-    return clips
-      .filter((clip) => {
-        if (searchQuery.trim()) {
-          return (
-            clip.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            clip.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            clip.tags.some((tag) =>
-              tag.toLowerCase().includes(searchQuery.toLowerCase())
-            )
-          );
-        }
-        const matchesCategory =
-          selectedCategory === "all" || clip.categoryId === selectedCategory;
-        return matchesCategory;
-      })
-      .sort((a, b) => b.timestamp - a.timestamp);
-  }, [clips, selectedCategory, searchQuery]);
-  const handleQuickSave = () => {
-    if (copiedText) {
-      if (autoSaveTimer) {
-        clearTimeout(autoSaveTimer);
-        setAutoSaveTimer(null);
-      }
-      setQuickSaveClicked(true);
-      isModalOpenRef.current = true;
-      setQuickSaveSelectedCategory("general");
-      setShowQuickSaveModal(true);
-    }
-  };
-  const handleQuickSaveConfirm = () => {
-    if (copiedText) {
-      const isDuplicate = clips.some(clip => clip.content === copiedText);
-      if (isDuplicate) {
-        showNotification("This content is already saved", "error");
-        setQuickSaveClicked(false);
-        isModalOpenRef.current = false;
-        setShowQuickSaveModal(false);
-        setQuickSaveSelectedCategory("general");
-        setCopiedText("");
-        if (autoSaveTimer) {
-          clearTimeout(autoSaveTimer);
-          setAutoSaveTimer(null);
-        }
-        return;
-      }
-      const newClip: Clip = {
-        id: Date.now().toString(),
-        content: copiedText,
-        categoryId: quickSaveSelectedCategory,
-        timestamp: Date.now(),
-        tags: [],
-        title:
-          copiedText.substring(0, 50) + (copiedText.length > 50 ? "..." : ""),
-      };
-      const newClips = [newClip, ...clips];
-      setClips(newClips);
-      setSelectedClip(newClip);
-      setSelectedCategory("all");
-      saveToIndexedDB(newClips, categories);
-      if (autoSaveTimer) {
-        clearTimeout(autoSaveTimer);
-        setAutoSaveTimer(null);
-      }
-      setCopiedText("");
-      setQuickSaveClicked(false);
-      isModalOpenRef.current = false;
-      setShowQuickSaveModal(false);
-      setQuickSaveSelectedCategory("general");
-      showNotification("Clip saved successfully!", "success");
-      if (isMobile) {
-        setIsRightOpen(true);
-        setIsLeftOpen(false);
-      }
-    }
-  };
-  const handleQuickSaveCancel = () => {
-    if (autoSaveTimer) {
-      clearTimeout(autoSaveTimer);
-      setAutoSaveTimer(null);
-    }
-    setCopiedText("");
-    setQuickSaveClicked(false);
-    isModalOpenRef.current = false;
-    setShowQuickSaveModal(false);
-    setQuickSaveSelectedCategory("general");
-  };
-  const handleAutoSave = (text: string) => {
-    console.log("Auto-save triggered with text:", text.substring(0, 50) + "...");
-    if (autoSaveTimer) {
-      clearTimeout(autoSaveTimer);
-    }
-    setCopiedText(text);
-    setQuickSaveClicked(false);
-    setShowQuickSave(false);
-    setCountdown(0);
-    const timer = setTimeout(() => {
-      if (!isModalOpenRef.current) {
-        setCopiedText("");
-      }
-    }, 10000);
-    setAutoSaveTimer(timer);
-    showNotification(`Clipboard content ready to save`, "success");
-  };
-  const handleCreateClip = () => {
-    setNewClipSelectedCategory(selectedCategory === "all" ? "general" : selectedCategory);
-    setShowNewClipModal(true);
-  };
-  const handleConfirmNewClip = () => {
-    const newClip: Clip = {
-      id: Date.now().toString(),
-      content: "New clip content",
-      categoryId: newClipSelectedCategory,
-      timestamp: Date.now(),
-      tags: [],
-      title: "New Clip",
-    };
-    const newClips = [newClip, ...clips];
-    setClips(newClips);
-    setSelectedClip(newClip);
-    setIsEditing(true);
-    setEditContent(newClip.content);
-    saveToIndexedDB(newClips, categories);
-    setShowNewClipModal(false);
-    if (isMobile) {
-      setIsRightOpen(true);
-      setIsLeftOpen(false);
-    }
-  };
-  const handleCancelNewClip = () => {
-    setShowNewClipModal(false);
-    setNewClipSelectedCategory("general");
-  };
-  const handleDeleteClip = (clipId: string) => {
-    const newClips = clips.filter((c) => c.id !== clipId);
-    setClips(newClips);
-    saveToIndexedDB(newClips, categories);
-    if (selectedClip?.id === clipId) {
-      setSelectedClip(null);
-      if (isMobile) {
-        setIsRightOpen(false);
-      }
-    }
-    showNotification("Clip deleted", "success");
-  };
-  const handleEdit = () => {
-    if (selectedClip) {
-      setIsEditing(true);
-      setEditContent(selectedClip.content);
-    }
-  };
-  const handleSaveEdit = () => {
-    if (selectedClip) {
-      const newTitle = editContent.trim().split(/\s+/).slice(0, 5).join(" ");
-      const updatedClips = clips.map((c) =>
-        c.id === selectedClip.id
-          ? {
-            ...c,
-            content: editContent,
-            timestamp: Date.now(),
-            title: newTitle,
-          }
-          : c
-      );
-      setClips(updatedClips);
-      setSelectedClip({
-        ...selectedClip,
-        content: editContent,
-        title: newTitle,
-      });
-      setIsEditing(false);
-      saveToIndexedDB(updatedClips, categories);
-      showNotification("Clip updated", "success");
-    }
-  };
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    setEditContent("");
-  };
-  const handleCopyToClipboard = async (content: string) => {
-    try {
-      await navigator.clipboard.writeText(content);
-      showNotification("Copied to clipboard!", "success");
-    } catch (err) {
-      showNotification("Failed to copy", "error");
-    }
-  };
-  const handleDragStart = (clip: Clip) => {
-    setDraggedClip(clip);
-  };
-  const handleDragEnd = () => {
-    setDraggedClip(null);
-  };
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-  const handleDrop = (e: React.DragEvent, categoryId: string) => {
-    e.preventDefault();
-    if (draggedClip && draggedClip.categoryId !== categoryId) {
-      const updatedClips = clips.map((c) =>
-        c.id === draggedClip.id ? { ...c, categoryId } : c
-      );
-      setClips(updatedClips);
-      saveToIndexedDB(updatedClips, categories);
-      const targetCategory = categories.find(cat => cat.id === categoryId);
-      const categoryName = targetCategory ? targetCategory.name : "Unknown";
-      showNotification(`Clip moved to "${categoryName}"`, "success");
-    }
-  };
-  const handleExport = () => {
-    const data = {
-      clips,
-      categories,
-      exportDate: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
+      return newDiscussions;
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `clipboard-backup-${new Date().toISOString().split("T")[0]
-      }.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showNotification("Data exported successfully", "success");
-  };
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const data = JSON.parse(event.target?.result as string);
-          if (data.clips && data.categories) {
-            setClips(data.clips);
-            setCategories(data.categories);
-            saveToIndexedDB(data.clips, data.categories);
-            showNotification("Data imported successfully", "success");
-          }
-        } catch (err) {
-          showNotification("Failed to import data", "error");
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
-  const showNotification = (message: string, type: "success" | "error") => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
-  };
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    if (days === 0) {
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      if (hours === 0) {
-        const minutes = Math.floor(diff / (1000 * 60));
-        return minutes === 0 ? "Just now" : `${minutes}m ago`;
+    setReplyContent((prev) => ({ ...prev, [postId]: "" }));
+    toast.success("Reply posted successfully!");
+    // Set the new comment for highlighting
+    setNewCommentId(newReply.id);
+    // Scroll to the new comment after state update
+    setTimeout(() => {
+      const repliesContainer = document.getElementById(`replies-container-${postId}`);
+      if (repliesContainer) {
+        repliesContainer.scrollTop = 0; // Scroll to top since newest is at top
       }
-      return `${hours}h ago`;
-    } else if (days === 1) {
-      return "Yesterday";
-    } else if (days < 7) {
-      return `${days} days ago`;
-    } else {
-      return date.toLocaleDateString();
+    }, 100);
+    // Clear the highlight after animation
+    setTimeout(() => {
+      setNewCommentId(null);
+    }, 2500);
+    if (replyRefs.current[postId]) {
+      replyRefs.current[postId]?.focus();
     }
   };
-  const LandingPage = () => (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-poppins mobile-safe-area">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-20 w-96 h-96 bg-gradient-to-br from-blue-400/10 to-purple-400/8 rounded-full blur-3xl" style={{ animation: 'float 20s ease-in-out infinite' }}></div>
-        <div className="absolute bottom-20 right-20 w-80 h-80 bg-gradient-to-tl from-purple-400/8 to-blue-400/10 rounded-full blur-3xl" style={{ animation: 'floatReverse 25s ease-in-out infinite', animationDelay: '2s' }}></div>
-        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-gradient-to-r from-indigo-400/6 to-slate-400/5 rounded-full blur-2xl" style={{ animation: 'float 18s ease-in-out infinite', animationDelay: '5s' }}></div>
-      </div>
-      <div className="relative z-10 min-h-screen flex flex-col">
-        <nav className="p-4 sm:p-6 lg:p-8 backdrop-blur-sm bg-slate-950/80 border-b border-slate-800/30">
-          <div className="max-w-7xl mx-auto flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
-                <HiClipboard className="text-white text-lg sm:text-xl" />
-              </div>
-              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                ClipVault
-              </h1>
-            </div>
-            <button
-              onClick={() => setShowLandingPage(false)}
-              className="px-4 py-2 sm:px-6 sm:py-3 glass-morphism hover:bg-slate-800/60 text-blue-400 hover:text-blue-300 rounded-lg transition-all duration-300 hover:scale-105 cursor-pointer touch-target mobile-touch"
-            >
-              <span className="text-sm sm:text-base font-medium">Launch App</span>
-            </button>
-          </div>
-        </nav>
-        <main className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-          <div className="max-w-5xl mx-auto text-center">
-            <div className="mb-12 sm:mb-16">
-              <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-2xl mb-6 sm:mb-8 backdrop-blur-sm border border-blue-500/20 shadow-2xl fade-in-up">
-                <HiClipboard className="text-3xl sm:text-4xl text-blue-400" />
-              </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold mb-6 sm:mb-8 leading-tight">
-                <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
-                  Smart Clipboard
-                </span>
-                <br />
-                <span className="text-slate-100">Management</span>
-              </h1>
-              <p className="text-lg sm:text-xl lg:text-2xl text-slate-400 max-w-3xl mx-auto leading-relaxed font-light">
-                Effortlessly organize, search, and manage your clipboard history with intelligent categorization and seamless synchronization.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-12 sm:mb-16 max-w-4xl mx-auto">
-              <div className="p-6 sm:p-8 glass-morphism rounded-2xl hover:border-blue-500/30 hover:shadow-blue-500/10 hover:shadow-xl transition-all duration-300 mobile-touch group text-center cursor-pointer">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-blue-500/30 transition-colors duration-300 shadow-lg mx-auto">
-                  <HiClock className="text-2xl sm:text-3xl text-blue-400" />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-slate-100">Auto-Save</h3>
-                <p className="text-base sm:text-lg text-slate-400 leading-relaxed">Automatically captures and saves your clipboard content in real-time without interruption.</p>
-              </div>
-              <div className="p-6 sm:p-8 glass-morphism rounded-2xl hover:border-purple-500/30 hover:shadow-purple-500/10 hover:shadow-xl transition-all duration-300 mobile-touch group text-center cursor-pointer">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-purple-500/30 transition-colors duration-300 shadow-lg mx-auto">
-                  <HiFolder className="text-2xl sm:text-3xl text-purple-400" />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-slate-100">Smart Categories</h3>
-                <p className="text-base sm:text-lg text-slate-400 leading-relaxed">Organize clips into custom categories with drag-and-drop simplicity and color coding.</p>
-              </div>
-              <div className="p-6 sm:p-8 glass-morphism rounded-2xl hover:border-green-500/30 hover:shadow-green-500/10 hover:shadow-xl transition-all duration-300 mobile-touch group text-center sm:col-span-2 lg:col-span-1 cursor-pointer">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-green-500/20 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-green-500/30 transition-colors duration-300 shadow-lg mx-auto">
-                  <HiMagnifyingGlass className="text-2xl sm:text-3xl text-green-400" />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-slate-100">Instant Search</h3>
-                <p className="text-base sm:text-lg text-slate-400 leading-relaxed">Find any clip instantly with powerful search across content, titles, and tags.</p>
-              </div>
-            </div>
-            <div className="flex flex-col items-center gap-6 sm:gap-8">
-              <button
-                onClick={() => setShowLandingPage(false)}
-                className="w-full sm:w-auto px-8 py-4 sm:px-12 sm:py-5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-semibold text-lg sm:text-xl transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-blue-500/25 cursor-pointer touch-target mobile-touch"
-              >
-                Get Started Free
-              </button>
-              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8 text-slate-400">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-sm sm:text-base font-medium">No signup required</span>
-                </div>
-                <div className="hidden sm:block w-1 h-1 bg-slate-600 rounded-full"></div>
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                  <span className="text-sm sm:text-base font-medium">Works offline</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-        <footer className="mt-16 sm:mt-20 p-6 sm:p-8 lg:p-12 border-t border-slate-800/30 bg-slate-900/20 w-full">
-          <div className="w-full">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-md flex items-center justify-center">
-                  <HiClipboard className="text-white text-sm" />
-                </div>
-                <span className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  ClipVault
-                </span>
-              </div>
-              <p className="text-slate-400 text-sm sm:text-base max-w-md mx-auto leading-relaxed mb-6">
-                Built with modern web technologies for optimal performance and privacy.
-              </p>
-              <div className="pt-6 border-t border-slate-800/30">
-                <p className="text-slate-500 text-xs sm:text-sm">
-                  2024 ClipVault. All data stays on your device.
-                </p>
-              </div>
-            </div>
-          </div>
-        </footer>
-      </div>
-    </div>
+  const toggleBookmark = (postId: string) => {
+    setDiscussions((prev) => {
+      const newDiscussions = { ...prev };
+      for (const topicId in newDiscussions) {
+        const topicDiscussions = newDiscussions[topicId];
+        const postIndex = topicDiscussions.findIndex((p) => p.id === postId);
+        if (postIndex !== -1) {
+          newDiscussions[topicId] = [
+            ...topicDiscussions.slice(0, postIndex),
+            {
+              ...topicDiscussions[postIndex],
+              bookmarked: !topicDiscussions[postIndex].bookmarked,
+            },
+            ...topicDiscussions.slice(postIndex + 1),
+          ];
+          break;
+        }
+      }
+      return newDiscussions;
+    });
+  };
+  const toggleLike = (postId: string) => {
+    setDiscussions((prev) => {
+      const newDiscussions = { ...prev };
+      // Find the post across all topics
+      for (const topicId in newDiscussions) {
+        const topicDiscussions = [...newDiscussions[topicId]];
+        const postIndex = topicDiscussions.findIndex((p) => p.id === postId);
+        if (postIndex !== -1) {
+          topicDiscussions[postIndex] = {
+            ...topicDiscussions[postIndex],
+            likes:
+              topicDiscussions[postIndex].likes +
+              (topicDiscussions[postIndex].likedByUser ? -1 : 1),
+            likedByUser: !topicDiscussions[postIndex].likedByUser,
+          };
+          newDiscussions[topicId] = topicDiscussions;
+          break;
+        }
+      }
+      return newDiscussions;
+    });
+  };
+  const toggleReplyExpansion = (postId: string) => {
+    setExpandedPost(expandedPost === postId ? null : postId);
+  };
+  const addReaction = (postId: string, emoji: string) => {
+    setDiscussions((prev) => {
+      const newDiscussions = { ...prev };
+      for (const topicId in newDiscussions) {
+        const topicDiscussions = [...newDiscussions[topicId]];
+        const postIndex = topicDiscussions.findIndex((p) => p.id === postId);
+        if (postIndex !== -1) {
+          const post = topicDiscussions[postIndex];
+          const reactions = { ...(post.reactions || {}) };
+          const currentReaction = reactions[emoji] || { count: 0, users: [] };
+          const hasUserReacted = currentReaction.users.includes("John Doe");
+          if (hasUserReacted) {
+            const newUsers = currentReaction.users.filter((user: string) => user !== "John Doe");
+            if (newUsers.length > 0) {
+              reactions[emoji] = { count: newUsers.length, users: newUsers };
+            } else {
+              delete reactions[emoji];
+            }
+          } else {
+            reactions[emoji] = { 
+              count: currentReaction.count + 1, 
+              users: [...currentReaction.users, "John Doe"] 
+            };
+          }
+          topicDiscussions[postIndex] = {
+            ...post,
+            reactions: reactions
+          };
+          newDiscussions[topicId] = topicDiscussions;
+          break;
+        }
+      }
+      return newDiscussions;
+    });
+    setShowReactionPicker(null);
+  };
+  const getReactionEmojis = () => [
+    "👍", "❤️", "😊", "🔥", "🎉", "👏", "💯", "🚀"
+  ];
+  const getAllBookmarkedPosts = () => {
+    const allPosts = Object.values(discussions).flat();
+    return allPosts.filter(post => post.bookmarked);
+  };
+  const currentDiscussions = showBookmarks 
+    ? getAllBookmarkedPosts() 
+    : selectedTopic 
+      ? (discussions[selectedTopic] || [])
+      : Object.values(discussions).flat();
+  let filteredDiscussions = [...currentDiscussions];
+  if (!showBookmarks) {
+    if (activeFilter === "Most recent") {
+      filteredDiscussions.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
+    } else if (activeFilter === "Most replied") {
+      filteredDiscussions.sort((a, b) => b.replies.length - a.replies.length);
+    } else if (activeFilter === "Unanswered") {
+      filteredDiscussions = filteredDiscussions.filter(
+        (d) => d.replies.length === 0
+      );
+    }
+  } else {
+    filteredDiscussions.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
+  }
+  const filteredTopics = trendingTopics.filter((topic) =>
+    topic.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  if (showLandingPage) {
+  const handleEmojiClick = (emoji: string) => {
+    setNewPostContent((prev) => prev + emoji);
+  };
+  const handleFormatText = (format: "bold" | "italic" | "link") => {
+    const textarea = newPostRef.current;
+    if (!textarea) return;
+    textarea.focus();
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = newPostContent.substring(start, end);
+    let formattedText = "";
+    let newCursorPos = start;
+    switch (format) {
+      case "bold":
+        if (selectedText) {
+          formattedText = `**${selectedText}**`;
+          newCursorPos = start + formattedText.length;
+        } else {
+          formattedText = "**bold text**";
+          newCursorPos = start + 2;
+        }
+        break;
+      case "italic":
+        if (selectedText) {
+          formattedText = `*${selectedText}*`;
+          newCursorPos = start + 1;
+        } else {
+          formattedText = "*italic text*";
+          newCursorPos = start + 1;
+        }
+        break;
+      case "link":
+        if (selectedText) {
+          formattedText = `[${selectedText}](https://example.com)`;
+          newCursorPos = start + formattedText.length - 18;
+        } else {
+          formattedText = "[Click here](https://example.com)";
+          newCursorPos = start + formattedText.length - 18;
+        }
+        break;
+    }
+    const newText =
+      newPostContent.substring(0, start) +
+      formattedText +
+      newPostContent.substring(end);
+    setNewPostContent(newText);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 10);
+  };
+  const renderMarkdown = (text: string) => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.*?)\*/g, "<em>$1</em>")
+      .replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-[#A55EEA] hover:text-[#FF6B9D] hover:underline transition-colors duration-200">$1</a>'
+      );
+  };
+  if (isLoading) {
     return (
-      <div className="font-poppins">
-        <style>
-          {`
-            @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-            .font-poppins { font-family: 'Poppins', sans-serif; }
-            html, body {
-              -webkit-text-size-adjust: 100%;
-              -ms-text-size-adjust: 100%;
-              text-size-adjust: 100%;
-              -webkit-tap-highlight-color: transparent;
-              -webkit-font-smoothing: antialiased;
-              -moz-osx-font-smoothing: grayscale;
-            }
-            @keyframes float {
-              0%, 100% { transform: translateY(0px) rotate(0deg); }
-              33% { transform: translateY(-20px) rotate(1deg); }
-              66% { transform: translateY(10px) rotate(-1deg); }
-            }
-                         @keyframes floatReverse {
-               0%, 100% { transform: translateY(0px) rotate(0deg); }
-               33% { transform: translateY(15px) rotate(-1deg); }
-               66% { transform: translateY(-10px) rotate(1deg); }
-             }
-             @keyframes fadeInUp {
-               from {
-                 opacity: 0;
-                 transform: translateY(30px);
-               }
-               to {
-                 opacity: 1;
-                 transform: translateY(0);
-               }
-             }
-             .fade-in-up {
-               animation: fadeInUp 0.6s ease-out;
-             }
-             .glass-morphism {
-               background: rgba(15, 23, 42, 0.8);
-               backdrop-filter: blur(16px);
-               -webkit-backdrop-filter: blur(16px);
-               border: 1px solid rgba(71, 85, 105, 0.3);
-               box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-             }
-             @media (max-width: 768px) {
-               .mobile-touch:active {
-                 transform: scale(0.98);
-                 transition: transform 0.1s ease-out;
-               }
-               .mobile-safe-area {
-                 padding-bottom: env(safe-area-inset-bottom);
-                 padding-left: env(safe-area-inset-left);
-                 padding-right: env(safe-area-inset-right);
-               }
-               .touch-target {
-                 min-height: 44px;
-                 min-width: 44px;
-               }
-             }
-          `}
-        </style>
-        <LandingPage />
+      <div className="relative h-screen w-screen overflow-hidden text-[#FFFFFF]">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0F0F1A] via-[#1A1A2E] to-[#16213E]">
+          <div className="absolute top-10 left-10 w-96 h-96 bg-gradient-to-br from-[#A855F7] to-[#EC4899] rounded-full opacity-30 blur-3xl animate-pulse"></div>
+          <div className="absolute top-32 right-16 w-80 h-80 bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] rounded-full opacity-25 blur-3xl"></div>
+          <div className="absolute bottom-20 left-20 w-72 h-72 bg-gradient-to-br from-[#EF4444] to-[#F97316] rounded-full opacity-20 blur-3xl"></div>
+          <div className="absolute bottom-32 right-32 w-64 h-64 bg-gradient-to-br from-[#10B981] to-[#059669] rounded-full opacity-25 blur-3xl"></div>
+          </div>
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        <div className="relative z-10 flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="flex justify-center mb-8">
+              <div className="relative">
+                <div className="w-24 h-24 bg-black/30 backdrop-blur-xl border border-white/20 rounded-2xl flex items-center justify-center shadow-2xl animate-bounce">
+                  <FaComments className="w-12 h-12 text-[#A55EEA]" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] rounded-full animate-ping"></div>
+              </div>
+            </div>
+            <h1 className="text-5xl font-bold mb-2 tracking-wide bg-gradient-to-r from-[#A55EEA] via-[#FF6B9D] to-[#3B82F6] bg-clip-text text-transparent animate-pulse">
+            CommunityHub
+          </h1>
+            <div className="w-32 h-1 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] rounded-full mx-auto mb-6"></div>
+            <p className="text-xl text-white/80 mb-8">
+            Connecting developers worldwide
+          </p>
+            <div className="flex justify-center space-x-1">
+              <div className="w-2 h-2 bg-[#A55EEA] rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-[#A55EEA] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-[#A55EEA] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
   return (
-    <div className="font-poppins bg-slate-950 text-slate-100 flex h-screen w-full overflow-hidden relative mobile-safe-area">
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-          .font-poppins { font-family: 'Poppins', sans-serif; }
-          html, body {
-            -webkit-text-size-adjust: 100%;
-            -ms-text-size-adjust: 100%;
-            text-size-adjust: 100%;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-          }
-          @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            33% { transform: translateY(-20px) rotate(1deg); }
-            66% { transform: translateY(10px) rotate(-1deg); }
-          }
-          @keyframes floatReverse {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            33% { transform: translateY(15px) rotate(-1deg); }
-            66% { transform: translateY(-10px) rotate(1deg); }
-          }
-          .glass-card:hover {
-            background: rgba(30, 41, 59, 0.6);
-            box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.15);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-          }
-          @media (max-width: 768px) {
-            .glass-card:hover {
-              transform: none;
-            }
-            .mobile-touch:active {
-              transform: scale(0.98);
-              transition: transform 0.1s ease-out;
-            }
-            .mobile-safe-area {
-              padding-bottom: env(safe-area-inset-bottom);
-              padding-left: env(safe-area-inset-left);
-              padding-right: env(safe-area-inset-right);
-            }
-            .touch-target {
-              min-height: 44px;
-              min-width: 44px;
-            }
-            .prevent-zoom {
-              font-size: 16px;
-            }
-          }
-          * {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-          }
-          *::-webkit-scrollbar {
-            display: none;
-          }
-          @keyframes slideInFromTop {
-            from {
-              opacity: 0;
-              transform: translateY(-20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-          .animate-in {
-            animation: slideInFromTop 0.3s ease-out;
-          }
-          .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-          }
-          .line-clamp-3 {
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-          }
-        `}
-      </style>
-      {(isLeftOpen || isRightOpen) && (
-        <div
-          className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-10 cursor-pointer"
-          onClick={() => {
-            setIsLeftOpen(false);
-            setIsRightOpen(false);
-          }}
-        />
-      )}
-      <div className={`w-72 sm:w-80 bg-slate-900/95 backdrop-blur-xl border-r border-slate-800/50 flex flex-col transition-transform duration-300 ${isLeftOpen ? 'translate-x-0' : '-translate-x-full'} md:relative absolute top-0 left-0 z-20 h-screen`}>
-        <div className="p-4 sm:p-7 border-b border-slate-800/50 glass-morphism flex items-center justify-between min-h-[80px]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
-              <HiFolder className="text-xl text-blue-400" />
-            </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold text-slate-100">Categories</h2>
-              <p className="text-xs text-slate-400 font-medium h-4.5">
-                Organize your clips
-              </p>
-            </div>
-          </div>
+    <>
+      <div className="relative h-screen w-screen overflow-hidden text-[#FFFFFF]">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0F0F1A] via-[#1A1A2E] to-[#16213E]">
+          <div className="absolute top-10 left-10 w-96 h-96 bg-gradient-to-br from-[#A855F7] to-[#EC4899] rounded-full opacity-30 blur-3xl animate-pulse"></div>
+          <div className="absolute top-32 right-16 w-80 h-80 bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] rounded-full opacity-25 blur-3xl"></div>
+          <div className="absolute bottom-20 left-20 w-72 h-72 bg-gradient-to-br from-[#EF4444] to-[#F97316] rounded-full opacity-20 blur-3xl"></div>
+          <div className="absolute bottom-32 right-32 w-64 h-64 bg-gradient-to-br from-[#10B981] to-[#059669] rounded-full opacity-25 blur-3xl"></div>
+        </div>
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        <div className="relative z-10 flex flex-col lg:flex-row h-full w-full">
           <button
-            className="md:hidden p-2 glass-morphism hover:bg-slate-700/80 text-slate-400 hover:text-slate-100 rounded-lg transition-all duration-300 cursor-pointer touch-target mobile-touch"
-            onClick={() => setIsLeftOpen(false)}
-            title="Close"
+            onClick={() => setShowSidebar(!showSidebar)}
+            className="lg:hidden fixed left-0 top-1/2 transform -translate-y-1/2 z-50 p-2 bg-black/20 backdrop-blur-md border border-white/10 rounded-r-lg hover:bg-white/10 transition cursor-pointer"
           >
-            <HiXMark className="text-lg" />
+            {showSidebar ? (
+                <FaChevronLeft className="text-white/60" />
+            ) : (
+                <FaChevronRight className="text-white/60" />
+            )}
           </button>
-        </div>
-        <div className="p-4 sm:p-6">
-          <button
-            onClick={handleOpenCategoryModal}
-            className="w-full px-4 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-semibold transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl flex items-center justify-center gap-3 cursor-pointer touch-target mobile-touch"
-          >
-            <HiPlus className="text-lg" />
-            <span className="text-sm sm:text-base">New Category</span>
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4">
-          <div
-            className={`p-4 mb-3 rounded-xl cursor-pointer flex items-center gap-3 transition-all duration-300 group min-h-[72px] ${selectedCategory === "all"
-                ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg"
-                : "glass-morphism hover:bg-slate-800/60 text-slate-300 hover:text-slate-100"
-              }`}
-            onClick={() => {
-              setSelectedCategory("all");
-              if (!searchQuery.trim()) {
-                setCategoryBeforeSearch("all");
-              }
-            }}
-          >
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: '#3B82F630' }}
-            >
-              <div
-                className="w-3 h-3 rounded-full flex-shrink-0"
-                style={{ backgroundColor: '#3B82F6' }}
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold truncate">All Clips</div>
-              <div className="text-xs opacity-75 mt-0.5 truncate">View all your clips</div>
-            </div>
-            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
-              {/* Empty spacer to match other categories */}
-            </div>
-            <div className={`text-xs px-3 py-1.5 rounded-lg font-semibold min-w-[40px] text-center flex items-center justify-center flex-shrink-0 ${selectedCategory === "all"
-                ? "bg-white/20 text-white"
-                : "bg-slate-700/60 text-slate-300"
-              }`}>
-              {clips.length}
-            </div>
-          </div>
-          {categories.map((category) => (
-            <div
-              key={category.id}
-              className={`p-4 mb-3 rounded-xl cursor-pointer flex items-center gap-3 transition-all duration-300 group min-h-[72px] ${selectedCategory === category.id
-                  ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg"
-                  : "glass-morphism hover:bg-slate-800/60 text-slate-300 hover:text-slate-100"
-                }`}
-              onClick={() => {
-                setSelectedCategory(category.id);
-                if (!searchQuery.trim()) {
-                  setCategoryBeforeSearch(category.id);
-                }
-              }}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, category.id)}
-            >
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: `${category.color}30` }}
-              >
-                <div
-                  className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: category.color }}
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div
-                  className="text-sm font-semibold truncate cursor-pointer"
-                  onDoubleClick={() =>
-                    handleStartEditCategory(category.id, category.name)
-                  }
-                >
-                  {category.name}
-                </div>
-                <div className="text-xs opacity-75 mt-0.5 truncate">
-                  {clips.filter((c) => c.categoryId === category.id).length} clips
-                </div>
-              </div>
-              <button
-                className={`w-8 h-8 p-2 rounded-lg transition-all flex-shrink-0 cursor-pointer flex items-center justify-center ${selectedCategory === category.id
-                    ? "opacity-0 group-hover:opacity-100 hover:bg-white/20"
-                    : "opacity-0 group-hover:opacity-100 hover:bg-slate-700/50"
-                  }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleStartEditCategory(category.id, category.name);
-                }}
-                title="Edit category"
-              >
-                <HiPencil className="text-sm" />
-              </button>
-              <div className={`text-xs px-3 py-1.5 rounded-lg font-semibold min-w-[40px] text-center flex items-center justify-center flex-shrink-0 ${selectedCategory === category.id
-                  ? "bg-white/20 text-white"
-                  : "bg-slate-700/60 text-slate-300"
-                }`}>
-                {clips.filter((c) => c.categoryId === category.id).length}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="p-4 sm:p-6 border-t border-slate-800/50 glass-morphism">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 text-sm text-slate-400 mb-4">
-              <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center">
-                <HiArrowDownTray className="text-slate-400 text-sm" />
-              </div>
-              <div>
-                <div className="font-medium">Data Management</div>
-                <div className="text-xs text-slate-500">Backup and restore your clips</div>
-              </div>
-            </div>
-            <div className="flex gap-3 w-full">
-              <button
-                className="flex-1 px-3 py-3 glass-morphism hover:bg-slate-700/80 border border-slate-700/50 rounded-xl text-xs sm:text-sm font-medium transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer touch-target mobile-touch text-green-400 hover:text-green-300 group"
-                onClick={handleExport}
-              >
-                <HiArrowDownTray className="text-base group-hover:scale-110 transition-transform" />
-                <span>Export</span>
-              </button>
-              <button
-                className="flex-1 px-3 py-3 glass-morphism hover:bg-slate-700/80 border border-slate-700/50 rounded-xl text-xs sm:text-sm font-medium transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer touch-target mobile-touch text-blue-400 hover:text-blue-300 group"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <HiArrowUpTray className="text-base group-hover:scale-110 transition-transform" />
-                <span>Import</span>
-              </button>
-            </div>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleImport}
-            className="hidden"
-          />
-        </div>
-      </div>
-      <div className="flex-1 flex flex-col bg-slate-950 relative overflow-hidden min-w-0 h-screen">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-20 w-96 h-96 bg-gradient-to-br from-blue-400/8 to-purple-400/6 rounded-full blur-3xl" style={{ animation: 'float 20s ease-in-out infinite' }}></div>
-          <div className="absolute bottom-20 right-20 w-80 h-80 bg-gradient-to-tl from-purple-400/6 to-blue-400/8 rounded-full blur-3xl" style={{ animation: 'floatReverse 25s ease-in-out infinite', animationDelay: '2s' }}></div>
-          <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-gradient-to-r from-indigo-400/5 to-slate-400/4 rounded-full blur-2xl" style={{ animation: 'float 18s ease-in-out infinite', animationDelay: '5s' }}></div>
-          <div className="absolute bottom-1/3 left-1/4 w-72 h-72 bg-gradient-to-bl from-cyan-400/5 to-violet-400/6 rounded-full blur-3xl" style={{ animation: 'floatReverse 22s ease-in-out infinite', animationDelay: '7s' }}></div>
-          <div className="absolute top-10 right-1/3 w-48 h-48 bg-gradient-to-tr from-slate-400/4 to-gray-400/3 rounded-full blur-2xl" style={{ animation: 'float 15s ease-in-out infinite', animationDelay: '3s' }}></div>
-          <div className="absolute bottom-10 left-1/2 w-56 h-56 bg-gradient-to-bl from-emerald-400/4 to-teal-400/5 rounded-full blur-3xl" style={{ animation: 'floatReverse 28s ease-in-out infinite', animationDelay: '8s' }}></div>
-        </div>
-        <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-sm">
-          <div className="absolute inset-0 opacity-3" style={{
-            backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.2) 1px, transparent 0)',
-            backgroundSize: '40px 40px'
-          }}></div>
-        </div>
-        <div className="relative z-10 p-3 sm:p-4 md:p-6 border-b border-slate-800/50 bg-slate-950/60 backdrop-blur-md min-h-[80px] flex items-center w-full">
-          <div className="flex items-center justify-between w-full max-w-none">
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <button
-                onClick={() => setShowLandingPage(true)}
-                className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 bg-slate-800/60 hover:bg-slate-700/80 border border-slate-700/50 text-slate-300 hover:text-slate-100 rounded-lg transition-all duration-300 cursor-pointer touch-target mobile-touch"
-                title="Back to Home"
-              >
-                <div className="w-6 h-6 sm:w-7 sm:h-7 bg-gradient-to-br from-blue-500 to-purple-600 rounded-md flex items-center justify-center">
-                  <HiClipboard className="text-white text-sm sm:text-base" />
-                </div>
-                <span className="text-xs sm:text-sm font-medium hidden sm:inline">ClipVault</span>
-              </button>
-            </div>
-            <div className="flex-1 max-w-md mx-4 sm:mx-8 relative">
-              <HiMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg sm:text-xl" />
-              <input
-                id="search-input"
-                type="text"
-                className="w-full pl-10 pr-4 py-3 sm:py-3 bg-slate-900/60 border border-slate-800/30 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-transparent backdrop-blur-sm prevent-zoom touch-target cursor-text"
-                placeholder={isMobile ? "Search all clips..." : "Search all clips... (Ctrl+F)"}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center flex-shrink-0">
-              <button
-                className={`px-4 md:px-6 py-3 text-white rounded-lg font-medium transition-all transform flex items-center justify-center gap-2 backdrop-blur-sm touch-target mobile-touch ${isEditing
-                    ? "bg-blue-600/30 cursor-not-allowed"
-                    : "bg-blue-600/70 hover:bg-blue-600/90 hover:-translate-y-0.5 cursor-pointer"
-                  }`}
-                onClick={() => {
-                  if (isEditing) {
-                    showNotification("Please save or cancel your current edit before creating a new clip", "error");
-                    return;
-                  }
-                  handleCreateClip();
-                }}
-                disabled={isEditing}
-              >
-                <HiPlus className="text-lg sm:text-xl" />
-                <span className="text-sm sm:text-base">{isMobile ? "New" : "New Clip"}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className="relative z-10 flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
-          {filteredClips.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-slate-500 text-center px-4">
-              <HiClipboard className="text-4xl md:text-6xl mb-4 opacity-30" />
-              <h3 className="text-lg md:text-xl font-semibold mb-2 text-slate-400">No clips found</h3>
-              <p className="text-sm max-w-sm">Create a new clip or copy some text to get started</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
-              {filteredClips.map((clip) => (
-                <div
-                  key={clip.id}
-                  className={`glass-card bg-slate-900/60 border rounded-xl p-4 sm:p-5 transition-all transform backdrop-blur-sm mobile-touch touch-target relative h-36 sm:h-40 flex flex-col ${selectedClip?.id === clip.id
-                      ? "border-blue-400/40 bg-slate-800/70 shadow-blue-400/10"
-                      : "border-slate-800/30"
-                    } ${draggedClip?.id === clip.id ? "opacity-50" : ""} ${isEditing && selectedClip?.id !== clip.id
-                      ? "opacity-50 cursor-not-allowed"
-                      : "cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:border-slate-700/50"
-                    }`}
-                  onClick={() => {
-                    if (isEditing) {
-                      showNotification("Please save or cancel your current edit before selecting another clip", "error");
-                      return;
-                    }
-                    const isSelecting = selectedClip?.id !== clip.id;
-                    setSelectedClip(isSelecting ? clip : null);
-                    if (isSelecting) {
-                      setSelectedCategory(clip.categoryId);
-                    }
-                    if (isMobile) {
-                      if (isSelecting) {
-                        setIsRightOpen(true);
-                        setIsLeftOpen(false);
-                      } else {
-                        setIsRightOpen(false);
-                      }
-                    }
-                  }}
-                  draggable={!isMobile}
-                  onDragStart={!isMobile ? () => handleDragStart(clip) : undefined}
-                  onDragEnd={!isMobile ? handleDragEnd : undefined}
-                >
-                  <div className="flex justify-between items-start mb-2 flex-shrink-0">
-                    <h3 className="font-medium text-slate-100 truncate flex-1 text-sm sm:text-base">
-                      {clip.title || "Untitled"}
-                    </h3>
-                    <span className="text-xs text-slate-400 flex items-center gap-1 ml-2 flex-shrink-0">
-                      <HiClock className="text-xs sm:text-sm" />
-                      <span className="hidden sm:inline">{formatDate(clip.timestamp)}</span>
-                      <span className="sm:hidden">{formatDate(clip.timestamp).replace(/\s+ago$/, "")}</span>
-                    </span>
+          {showWelcomeModal && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-black/30 backdrop-blur-xl border border-white/20 rounded-lg sm:rounded-2xl max-w-md w-full p-6 sm:p-8 text-center shadow-2xl">
+                <div className="flex justify-center mb-4">
+                  <div className="bg-[#A55EEA]/20 p-4 sm:p-6 rounded-full">
+                    <FaComments className="w-12 h-12 sm:w-16 sm:h-16 text-[#A55EEA]" />
                   </div>
-                  <div className="text-xs sm:text-sm text-slate-300 line-clamp-3 mb-2 leading-relaxed break-words flex-grow overflow-hidden">
-                    {clip.content}
-                  </div>
-                  {clip.tags.length > 0 ? (
-                    <div className="flex gap-1 sm:gap-2 flex-wrap flex-shrink-0 pb-4">
-                      {clip.tags.slice(0, isMobile ? 2 : 4).map((tag, index) => (
-                        <span
-                          key={index}
-                          className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded-md"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                      {((isMobile && clip.tags.length > 2) || (!isMobile && clip.tags.length > 4)) && (
-                        <span className="text-xs px-2 py-1 bg-slate-500/20 text-slate-400 rounded-md">
-                          +{clip.tags.length - (isMobile ? 2 : 4)}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="pb-4"></div>
-                  )}
-                  {!isMobile && (
-                    <div
-                      className="absolute bottom-2 right-2 flex items-center justify-center w-6 h-6 text-slate-500 hover:text-slate-300 transition-colors duration-200 cursor-grab active:cursor-grabbing"
-                      title="Drag and drop"
-                    >
-                      <HiSquares2X2 className="text-sm" />
-                    </div>
-                  )}
                 </div>
-              ))}
+                <h2 className="text-xl sm:text-2xl font-bold text-white mb-3">Welcome to CommunityHub!</h2>
+                <p className="text-sm sm:text-base text-white/60 mb-6 leading-relaxed">
+                  Join our vibrant community of developers. Share knowledge, ask questions, and connect.
+                </p>
+                <button
+                  onClick={() => setShowWelcomeModal(false)}
+                  className="w-full py-3 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white rounded-lg font-semibold hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 transition-colors cursor-pointer text-sm sm:text-base"
+                >
+                  Get Started
+                </button>
+              </div>
             </div>
           )}
-        </div>
-      </div>
-      <div className={`w-full sm:w-80 md:w-96 bg-slate-900 border-l border-slate-800 flex flex-col transition-transform duration-300 ${isRightOpen ? 'translate-x-0' : 'translate-x-full'} md:relative absolute top-0 right-0 z-20 h-screen max-w-sm sm:max-w-md md:max-w-none`}>
-        <div className="p-4 sm:p-7.5 border-b border-slate-800/50 glass-morphism flex justify-between items-center min-h-[80px]">
-          <div className="flex flex-col">
-            <h2 className="text-lg sm:text-xl font-bold text-slate-100">Preview</h2>
-          </div>
-          <div className="flex gap-2">
-            <button
-              className="md:hidden p-2 glass-morphism hover:bg-slate-700/80 text-slate-400 hover:text-slate-100 rounded-lg transition-all duration-300 cursor-pointer touch-target mobile-touch"
-              onClick={() => setIsRightOpen(false)}
-              title="Close"
-            >
-              <HiXMark className="text-lg" />
-            </button>
-            {selectedClip && isEditing ? (
-              <>
-                <button
-                  className="p-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg cursor-pointer touch-target mobile-touch"
-                  onClick={handleSaveEdit}
-                  title="Save (Ctrl+S)"
-                >
-                  <HiCheck className="text-lg" />
-                </button>
-                <button
-                  className="p-3 glass-morphism hover:bg-slate-700/80 text-slate-300 hover:text-slate-100 rounded-xl transition-all duration-300 cursor-pointer touch-target mobile-touch"
-                  onClick={handleCancelEdit}
-                  title="Cancel"
-                >
-                  <HiXMark className="text-lg" />
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  className={`p-3 glass-morphism rounded-xl transition-all duration-300 touch-target mobile-touch group ${selectedClip && !isEditing
-                      ? 'hover:bg-slate-700/80 text-blue-400 hover:text-blue-300 cursor-pointer'
-                      : 'text-slate-600 cursor-not-allowed opacity-50'
-                    }`}
-                  onClick={selectedClip && !isEditing ? handleEdit : undefined}
-                  disabled={!selectedClip || isEditing}
-                  title={isMobile ? "Edit" : "Edit (Ctrl+E)"}
-                >
-                  <HiPencil className="text-lg group-hover:scale-110 transition-transform" />
-                </button>
-                <button
-                  className={`p-3 glass-morphism rounded-xl transition-all duration-300 touch-target mobile-touch group ${selectedClip && !isEditing
-                      ? 'hover:bg-slate-700/80 text-green-400 hover:text-green-300 cursor-pointer'
-                      : 'text-slate-600 cursor-not-allowed opacity-50'
-                    }`}
-                  onClick={selectedClip && !isEditing ? () => handleCopyToClipboard(selectedClip.content) : undefined}
-                  disabled={!selectedClip || isEditing}
-                  title="Copy"
-                >
-                  <HiClipboard className="text-lg group-hover:scale-110 transition-transform" />
-                </button>
-                <button
-                  className={`p-3 rounded-xl transition-all duration-300 transform touch-target mobile-touch ${selectedClip && !isEditing
-                      ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white hover:scale-105 shadow-lg cursor-pointer'
-                      : 'bg-slate-700/50 text-slate-600 cursor-not-allowed opacity-50'
-                    }`}
-                  onClick={selectedClip && !isEditing ? () => handleDeleteClip(selectedClip.id) : undefined}
-                  disabled={!selectedClip || isEditing}
-                  title={isMobile ? "Delete" : "Delete (Ctrl+D)"}
-                >
-                  <HiTrash className="text-lg" />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-        {selectedClip ? (
-          <>
-            <div className="flex-1 p-4 sm:p-6 overflow-y-auto bg-slate-950/30">
-              {isEditing ? (
-                <div className="h-full">
-                  <textarea
-                    className="w-full h-full bg-slate-900/60 border border-slate-700/50 rounded-xl p-4 text-slate-100 font-mono text-sm sm:text-base leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 backdrop-blur-sm prevent-zoom transition-all duration-300 cursor-text"
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    autoFocus={!isMobile}
-                    placeholder="Start typing your content..."
-                  />
+          {showProfileModal && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-black/30 backdrop-blur-xl border border-white/20 rounded-lg sm:rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold text-white">Profile</h2>
+                  <button
+                    onClick={() => setShowProfileModal(false)}
+                    className="text-white/60 hover:text-white text-lg sm:text-xl cursor-pointer"
+                  >
+                    <FaTimes />
+                  </button>
                 </div>
-              ) : (
-                <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 sm:p-6 min-h-full shadow-lg">
-                  <pre className="text-sm sm:text-base text-slate-100 whitespace-pre-wrap break-words leading-relaxed font-mono selection:bg-blue-500/30">
-                    {selectedClip.content}
-                  </pre>
+                <div className="text-center mb-6 sm:mb-8">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center text-white font-bold text-lg sm:text-2xl mx-auto mb-4">
+                    JD
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">John Doe</h3>
+                  <p className="text-sm sm:text-base text-white/60">Full Stack Developer</p>
+              </div>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
+                  {Object.entries(getUserStats()).map(([key, value]) => (
+                    <div key={key} className="text-center p-3 sm:p-4 bg-white/10 rounded-lg">
+                      <div className="text-lg sm:text-2xl font-bold text-white mb-1">{value}</div>
+                      <div className="text-xs sm:text-sm text-white/60 capitalize">{key}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/60">Joined</span>
+                    <span className="text-white">January 2024</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/60">Status</span>
+                    <span className="text-green-400">Online</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/60">Reputation</span>
+                    <span className="text-white">Advanced</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {showSettingsModal && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-black/30 backdrop-blur-xl border border-white/20 rounded-lg sm:rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold text-white">Settings</h2>
+                    <button
+                    onClick={() => setShowSettingsModal(false)}
+                    className="text-white/60 hover:text-white text-lg sm:text-xl cursor-pointer"
+                  >
+                    ×
+                    </button>
+            </div>
+                <div className="space-y-5 sm:space-y-6">
+                  <div className="space-y-3 sm:space-y-4">
+                    <h3 className="text-base sm:text-lg font-semibold text-white">Notifications</h3>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm sm:text-base text-white/80">Push Notifications</span>
+              <button
+                        onClick={() => setUserSettings(prev => ({ ...prev, notifications: !prev.notifications }))}
+                        className={`relative w-10 h-5 sm:w-12 sm:h-6 rounded-full transition-colors cursor-pointer ${
+                          userSettings.notifications ? 'bg-[#A55EEA]' : 'bg-white/20'
+                        }`}
+                      >
+                        <div className={`absolute top-0.5 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white transition-transform duration-200 ${
+                          userSettings.notifications ? 'translate-x-5 sm:translate-x-6' : 'translate-x-0.5'
+                        }`} />
+              </button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/80">Email Alerts</span>
+                  <button
+                        onClick={() => setUserSettings(prev => ({ ...prev, emailAlerts: !prev.emailAlerts }))}
+                        className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
+                          userSettings.emailAlerts ? 'bg-[#A55EEA]' : 'bg-white/20'
+                        }`}
+                      >
+                        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${
+                          userSettings.emailAlerts ? 'translate-x-6' : 'translate-x-0.5'
+                        }`} />
+                  </button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/80">Auto-save Drafts</span>
+                  <button
+                        onClick={() => setUserSettings(prev => ({ ...prev, autoSave: !prev.autoSave }))}
+                        className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
+                          userSettings.autoSave ? 'bg-[#A55EEA]' : 'bg-white/20'
+                        }`}
+                      >
+                        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${
+                          userSettings.autoSave ? 'translate-x-6' : 'translate-x-0.5'
+                        }`} />
+                  </button>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-white">Theme</h3>
+                    <div className="space-y-2">
+                      {['dark', 'light', 'auto'].map((theme) => (
+                  <button
+                          key={theme}
+                          onClick={() => setUserSettings(prev => ({ ...prev, theme }))}
+                          className={`w-full p-3 rounded-lg text-left transition-colors cursor-pointer ${
+                            userSettings.theme === theme 
+                              ? 'bg-[#A55EEA]/20 text-[#A55EEA] border border-[#A55EEA]/30' 
+                              : 'bg-white/10 text-white/60 hover:bg-white/20'
+                          }`}
+                        >
+                          <span className="capitalize">{theme}</span>
+                  </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowSettingsModal(false);
+                      toast.success('Settings saved successfully');
+                    }}
+                    className="w-full py-3 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white rounded-lg font-semibold hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 transition-colors cursor-pointer"
+                  >
+                    Save Settings
+                  </button>
+                </div>
+              </div>
                 </div>
               )}
+                    <aside
+            className={`${showSidebar ? 'translate-x-0' : '-translate-x-full'
+              } lg:translate-x-0 fixed lg:relative inset-y-0 left-0 z-40 w-full sm:w-80 lg:w-72 xl:w-80 bg-black/30 backdrop-blur-xl border-r border-white/20 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl`}
+          >
+            <div className="overflow-auto flex-1">
+              <div className="px-4 sm:px-6 py-4 sm:py-6">
+                <div className="flex items-center gap-3 mb-0">
+                  <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-[#A55EEA] via-[#FF6B9D] to-[#3B82F6] bg-clip-text text-transparent">
+                    CommunityHub
+                  </h1>
+                </div>
+                <div className="mt-2 sm:mt-3 mb-4 sm:mb-6">
+                  <div className="w-12 sm:w-16 h-1 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] rounded-full"></div>
             </div>
-            <div className="p-4 sm:p-6 border-t border-slate-800/50 glass-morphism">
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 text-sm text-slate-300">
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                    <HiClock className="text-blue-400 text-sm" />
-                  </div>
-                  <div>
-                    <div className="font-medium">Created</div>
-                    <div className="text-xs text-slate-400">
-                      {new Date(selectedClip.timestamp).toLocaleString()}
-                    </div>
-                  </div>
+                <div className="relative mb-4 sm:mb-6">
+                  <input
+                    type="text"
+                    placeholder="Search topics..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 sm:py-4 bg-white/10 border border-white/30 rounded-xl focus:outline-none focus:border-[#A55EEA] focus:ring-2 focus:ring-[#A55EEA]/20 text-sm sm:text-base text-white placeholder:text-white/60 transition-all duration-300 backdrop-blur-sm hover:bg-white/15"
+                  />
+                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 text-sm sm:text-base" />
                 </div>
-                <div className="flex items-center gap-3 text-sm text-slate-300">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{
-                    backgroundColor: `${categories.find((c) => c.id === selectedClip.categoryId)?.color || "#3B82F6"}20`
-                  }}>
-                    <HiFolder className="text-sm" style={{
-                      color: categories.find((c) => c.id === selectedClip.categoryId)?.color || "#3B82F6"
-                    }} />
+                <h2 className="text-sm font-semibold mb-4 text-white/60 uppercase tracking-wide">Trending Topics</h2>
+                <ul className="space-y-1">
+                  {filteredTopics
+                    .map((topic) => {
+                      const topicStats = dynamicTrendingTopics.topicStats.find(stat => stat.topic === topic.title);
+                      const trendingRank = topicStats ? dynamicTrendingTopics.topicStats.findIndex(stat => stat.topic === topic.title) + 1 : null;
+                      return { ...topic, trendingRank };
+                    })
+                    .sort((a, b) => {
+                      if (a.trendingRank && b.trendingRank) {
+                        return a.trendingRank - b.trendingRank;
+                      }
+                      if (a.trendingRank && !b.trendingRank) {
+                        return -1;
+                      }
+                      if (!a.trendingRank && b.trendingRank) {
+                        return 1;
+                      }
+                      return a.id - b.id;
+                    })
+                    .map((topic) => {
+                    return (
+                    <li key={topic.id}>
+                        <button
+                        onClick={() => {
+                          handleTopicChange(selectedTopic === topic.id ? null : topic.id);
+                        }}
+                        className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-left flex items-center gap-2 sm:gap-3 text-sm sm:text-base transition-all duration-300 cursor-pointer min-h-[48px] sm:min-h-[56px]
+                  ${topic.id === selectedTopic && !showBookmarks
+                            ? 'bg-white/10 border border-white/20 text-white font-medium backdrop-blur-sm shadow-lg'
+                            : 'hover:bg-white/5 text-white/60 hover:border-white/10 border border-transparent'
+                          }`}
+                      >
+                        <span className="text-base flex-shrink-0">{topic.icon}</span>
+                        <span className="truncate flex-1">{topic.title}</span>
+                        {topic.trendingRank && topic.trendingRank <= 5 && (
+                          <span className="text-xs bg-[#A55EEA]/20 text-[#A55EEA] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full flex-shrink-0">
+                            #{topic.trendingRank}
+                          </span>
+                        )}
+                        </button>
+                    </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+            <div className="relative px-3 sm:px-6 py-3 sm:py-4 border-t border-white/10">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer flex-1 min-w-0"
+                >
+                  <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center text-white font-semibold text-sm sm:text-base flex-shrink-0">
+                    JD
                   </div>
-                  <div>
-                    <div className="font-medium">Category</div>
-                    <div className="text-xs text-slate-400">
-                      {categories.find((c) => c.id === selectedClip.categoryId)?.name || "Unknown"}
-                    </div>
+                  <div className="text-left flex-1 min-w-0">
+                    <p className="font-medium text-sm sm:text-base text-white truncate">John Doe</p>
+                    <p className="text-xs sm:text-sm text-white/60">Online</p>
                   </div>
-                </div>
-                {selectedClip.tags.length > 0 && (
-                  <div className="flex items-start gap-3 text-sm text-slate-300">
-                    <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0">
-                      <HiTag className="text-purple-400 text-sm" />
+                </button>
+                <button
+                  onClick={() => {
+                    setIsTransitioning(true);
+                    setTimeout(() => {
+                      setShowBookmarks(!showBookmarks);
+                      setIsTransitioning(false);
+                    }, 150);
+                  }}
+                  className={`p-2 rounded-lg transition-colors cursor-pointer flex-shrink-0 ${
+                    showBookmarks 
+                      ? 'bg-[#A55EEA]/20 text-[#A55EEA]' 
+                      : 'hover:bg-white/10 text-white/60 hover:text-white'
+                  }`}
+                >
+                  <FaBookmark className="text-base sm:text-lg" />
+                </button>
+              </div>
+            </div>
+          </aside>
+          <main className="flex-1 flex flex-col overflow-auto lg:ml-0 text-[#FFFFFF]">
+            <div className="border-b border-white/20 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 bg-black/30 backdrop-blur-xl shadow-lg">
+              <div className="flex items-center gap-4">
+                <h1 className={`text-xl sm:text-2xl font-bold text-white mb-0 truncate transition-all duration-300 ${
+                  isTransitioning ? 'opacity-0 transform translate-y-1' : 'opacity-100 transform translate-y-0'
+                }`}>
+                  {showBookmarks 
+                    ? "Bookmarks" 
+                    : selectedTopic 
+                      ? trendingTopics.find((t) => t.id === selectedTopic)?.title || "Select a topic"
+                      : "All Posts"
+                  }
+                </h1>
+              </div>
+            </div>
+            <section className="flex-1 overflow-auto">
+              {!showBookmarks && (
+                <div className={`p-4 sm:p-6 lg:p-8 bg-black/30 backdrop-blur-xl shadow-lg create-post-section transition-all duration-300 ${
+                  isTransitioning ? 'opacity-0 transform translate-y-2' : 'opacity-100 transform translate-y-0'
+                }`}>
+                  <div className="flex flex-row gap-3 sm:gap-4">
+                    <div className="flex-shrink-0">
+                        <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center">
+                        <FaUser className="text-white text-sm sm:text-lg" />
+                      </div>
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium mb-2">Tags</div>
-                      <div className="flex flex-wrap gap-1">
-                        {selectedClip.tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded-md text-xs font-medium"
-                          >
-                            {tag}
-                          </span>
-                        ))}
+                        <div className={`flex gap-3 sm:gap-4 ${isCreatePostExpanded ? 'flex-col' : 'flex-row items-start'}`}>
+                          <div className="relative flex-1">
+                        <textarea
+                          ref={newPostRef}
+                          value={newPostContent}
+                          onChange={(e) => setNewPostContent(e.target.value)}
+                              onFocus={() => setIsCreatePostExpanded(true)}
+                              onBlur={(e) => {
+                                setTimeout(() => {
+                                  if (!e.relatedTarget?.closest('.create-post-section') && !newPostContent.trim()) {
+                                    setIsCreatePostExpanded(false);
+                                  }
+                                }, 150);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  if (newPostContent.trim()) {
+                                    handleCreatePost();
+                                  }
+                                }
+                              }}
+                              placeholder={isCreatePostExpanded ? "Share your thoughts..." : "What's on your mind?"}
+                              className={`w-full bg-white/10 border border-white/30 rounded-lg sm:rounded-xl focus:outline-none focus:border-[#A55EEA] focus:ring-2 focus:ring-[#A55EEA]/20 text-sm sm:text-base text-white placeholder:text-white/60 transition-colors duration-300 backdrop-blur-sm hover:bg-white/15 ${!isCreatePostExpanded ? 'h-[48px] sm:h-[56px] px-3 sm:px-4 py-0 leading-[48px] sm:leading-[56px] resize-none' : 'p-3 sm:p-4'}`}
+                              rows={isCreatePostExpanded ? 3 : 1}
+                          maxLength={500}
+                        />
+                                                      {isCreatePostExpanded && (
+                            <div className="absolute bottom-2 right-2 text-xs text-white/60">
+                        {newPostContent.length}/500
+                      </div>
+                          )}
+                    </div>
+                        {isCreatePostExpanded && (
+                          <div className=" space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-white/80 mb-2">
+                                Topic
+                              </label>
+                              <select
+                                value={selectedTopicForPost}
+                                onChange={(e) => setSelectedTopicForPost(parseInt(e.target.value))}
+                                className="w-full p-2 bg-white/10 border border-white/30 rounded-lg focus:outline-none focus:border-[#A55EEA] focus:ring-2 focus:ring-[#A55EEA]/20 text-white"
+                              >
+                                {trendingTopics.map((topic) => (
+                                  <option key={topic.id} value={topic.id} className="bg-gray-800 text-white">
+                                    {topic.title}
+                                  </option>
+                                ))}
+                              </select>
+                              <p className="text-xs text-white/60 mt-1">
+                                Select the topic for your post
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        {!isCreatePostExpanded && (
+                            <button
+                              onClick={handleCreatePost}
+                              disabled={!newPostContent.trim()}
+                              className={`px-4 sm:px-6 rounded-lg sm:rounded-xl font-semibold transition-colors duration-300 flex items-center justify-center gap-2 flex-shrink-0 h-[48px] sm:h-[56px] border border-transparent ${newPostContent.trim()
+                                ? "bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 cursor-pointer shadow-lg"
+                                : "bg-white/10 text-white/40 cursor-not-allowed"
+                                }`}
+                            >
+                              <FaPaperPlane className="text-sm sm:text-base" />
+                              <span className="text-sm sm:text-base">Post</span>
+                            </button>
+                          )}
+                        </div>
+                        <div className={`transition-all duration-300 ease-in-out ${!showEmojiPicker ? 'overflow-hidden' : ''} ${
+                          isCreatePostExpanded ? 'max-h-24 opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0'
+                        }`}>
+                          <div className="flex justify-between items-center gap-4">
+                        <div className="flex gap-2">
+                          <div className="relative emoji-picker-container">
+                            <button
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                              className={`p-2 rounded-lg transition-all duration-200 cursor-pointer ${
+                                showEmojiPicker 
+                                  ? 'bg-gradient-to-r from-[#A55EEA]/20 to-[#FF6B9D]/20 text-[#A55EEA] border border-[#A55EEA]/30' 
+                                  : 'hover:bg-white/10 text-white/60 hover:text-white border border-transparent'
+                              }`}
+                            >
+                              <FaSmile />
+                            </button>
+                            {showEmojiPicker && (
+                              <div className="absolute bottom-12 left-0 bg-gradient-to-br from-[#1A1A2E] to-[#0F0F1A] backdrop-blur-xl border border-[#A55EEA]/30 rounded-xl shadow-2xl p-3 z-20 w-72 transform animate-in fade-in-0 zoom-in-95 duration-200">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h3 className="text-xs font-semibold text-white flex items-center gap-2">
+                                    <FaSmile className="text-[#A55EEA] text-xs" />
+                                    Pick emoji
+                                  </h3>
+                                  <button
+                                    onClick={() => setShowEmojiPicker(false)}
+                                    className="text-white/60 hover:text-white transition-colors hover:bg-white/10 rounded-full w-5 h-5 flex items-center justify-center"
+                                  >
+                                    <FaTimes className="text-xs" />
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-8 gap-1">
+                                  {["😊", "👍", "❤️", "🎉", "🔥", "💡", "🚀", "⭐", "😄", "👏", "💪", "🎯", "✨", "🌟", "💎", "🏆"].map(
+                                    (emoji) => (
+                                      <button
+                                        key={emoji}
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => handleEmojiClick(emoji)}
+                                        className="relative p-2 rounded-lg text-lg cursor-pointer transition-all duration-200 flex items-center justify-center w-8 h-8 hover:scale-110 active:scale-95 hover:bg-[#A55EEA]/20 hover:shadow-lg"
+                                        style={{ fontSize: '18px', lineHeight: '1' }}
+                                      >
+                                        <span role="img" aria-label={`Insert ${emoji}`}>
+                                          {emoji}
+                                        </span>
+                                      </button>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <button onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormatText("bold")} className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white cursor-pointer transition-colors"><FaBold /></button>
+                          <button onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormatText("italic")} className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white cursor-pointer transition-colors"><FaItalic /></button>
+                          <button onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormatText("link")} className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white cursor-pointer transition-colors"><FaLink /></button>
+                        </div>
+                        <button
+                          onClick={handleCreatePost}
+                          disabled={!newPostContent.trim()}
+                              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 h-[48px] ${newPostContent.trim()
+                                ? "bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 cursor-pointer shadow-lg"
+                                : "bg-white/10 text-white/40 cursor-not-allowed"
+                                }`}
+                            >
+                              <FaPaperPlane className="text-base" />
+                              <span className="text-base">Post</span>
+                        </button>
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-center p-6 bg-slate-950/30">
-              <div className="glass-morphism rounded-2xl p-8 sm:p-12 max-w-sm mx-auto">
-                <div className="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-                  <HiDocumentText className="text-3xl text-purple-400" />
                 </div>
-                <h3 className="text-xl font-bold mb-3 text-slate-300">Select a clip to preview</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">
-                  Click on any clip to view its contents and details in this panel
-                </p>
-              </div>
-            </div>
-            <div className="p-4 sm:p-6 border-t border-slate-800/50 glass-morphism">
-              <div className="flex items-center gap-3 text-sm text-slate-500">
-                <div className="w-8 h-8 bg-slate-700/50 rounded-lg flex items-center justify-center">
-                  <HiClock className="text-slate-500 text-sm" />
-                </div>
-                <div>
-                  <div className="font-medium">Ready to preview</div>
-                  <div className="text-xs text-slate-600">Select any clip to get started</div>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-      {copiedText && (
-        <button
-          className={`fixed ${isMobile ? 'bottom-20 right-4' : 'bottom-6 right-6'} z-[1000] bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer touch-target mobile-touch ${quickSaveClicked ? '' : 'animate-bounce'
-            } px-3 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4 whitespace-nowrap`}
-          onClick={handleQuickSave}
-          title={`Save clipboard content (${copiedText.length} characters)`}
-        >
-          <HiClipboard className="text-base sm:text-lg md:text-xl group-hover:scale-110 transition-transform duration-300" />
-          <span className="text-xs sm:text-sm md:text-base font-semibold">{isMobile ? 'Save' : 'Quick Save'}</span>
-          <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 w-5 h-5 sm:w-6 sm:h-6 bg-blue-500 rounded-full flex items-center justify-center animate-pulse">
-            <HiPlus className="text-xs text-white" />
-          </div>
-        </button>
-      )}
-      {notification && (
-        <div className={`fixed ${isMobile ? 'top-20 left-4 right-4' : 'top-6 right-6'} z-[1001] max-w-sm ${isMobile ? 'max-w-none' : ''} animate-in rounded-lg px-4 py-3 shadow-lg backdrop-blur-md border transform transition-all duration-300 ${notification.type === "success"
-            ? "bg-emerald-950/90 border-emerald-500/30 shadow-emerald-500/20"
-            : "bg-red-950/90 border-red-500/30 shadow-red-500/20"
-          }`}>
-          <div className="flex items-center gap-3">
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${notification.type === "success"
-                ? "bg-emerald-500 text-white"
-                : "bg-red-500 text-white"
-              }`}>
-              {notification.type === "success" ? (
-                <HiCheck className="text-xs font-bold" />
-              ) : (
-                <HiXMark className="text-xs font-bold" />
+                  </div>
               )}
-            </div>
-            <p className={`text-sm font-medium ${notification.type === "success"
-                ? "text-emerald-100"
-                : "text-red-100"
-              }`}>
-              {notification.message}
-            </p>
-          </div>
-        </div>
-      )}
-      {showCategoryModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center z-50 p-4 md:p-8">
-          <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-4 sm:p-6 md:p-8 w-full max-w-sm sm:max-w-md shadow-2xl mobile-safe-area">
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full mb-4">
-                <HiFolder className="text-2xl text-blue-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-slate-100 mb-2">
-                {isEditingCategory ? "Edit Category" : "Create New Category"}
-              </h3>
-              <p className="text-slate-400 text-sm">
-                {isEditingCategory ? "Update your category details" : "Organize your clips with a new category"}
-              </p>
-            </div>
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-3">
-                  Category Name
-                </label>
-                <input
-                  type="text"
-                  value={categoryDraft}
-                  onChange={(e) => setCategoryDraft(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
-                  placeholder="Enter category name..."
-                  className="w-full px-3 sm:px-4 py-3 bg-slate-800/60 border border-slate-700/50 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all backdrop-blur-sm prevent-zoom touch-target cursor-text"
-                  autoFocus={!isMobile}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-3">
-                  Category Color
-                </label>
-                <div className="grid grid-cols-5 gap-2 sm:gap-3">
-                  {PREDEFINED_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setSelectedColor(color)}
-                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl transition-all transform hover:scale-110 cursor-pointer touch-target mobile-touch ${selectedColor === color
-                          ? "ring-2 sm:ring-3 ring-white/70 ring-offset-1 sm:ring-offset-2 ring-offset-slate-900/50 scale-105"
-                          : "hover:shadow-lg"
-                        }`}
-                      style={{
-                        backgroundColor: color,
-                        boxShadow: selectedColor === color ? `0 0 20px ${color}40` : undefined
-                      }}
-                      title={`Select ${color}`}
-                    />
-                  ))}
+              {!showBookmarks && (
+                <div className="px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-2">
+                  <div className={`flex flex-wrap gap-2 transition-all duration-300 ${
+                    isTransitioning ? 'opacity-0 transform translate-y-1' : 'opacity-100 transform translate-y-0'
+                  }`}>
+                    {filters.map((filter) => (
+                      <button
+                        key={filter}
+                        className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all duration-300 cursor-pointer flex items-center gap-2 border
+              ${activeFilter === filter
+                            ? "bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white border-white/20 shadow-lg"
+                            : "bg-white/10 text-white/60 hover:bg-white/20 hover:border-white/30 border-white/20 backdrop-blur-sm"
+                          }`}
+                        onClick={() => handleFilterChange(filter)}
+                      >
+                        <span>{filter}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
+              )}
+              <div className="px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-6 lg:pb-8">
+              {(() => {
+                                if (filteredDiscussions.length === 0) {
+                  return (
+                    <div className={`flex flex-col items-center justify-center h-full text-white/60 py-12 sm:py-16 transition-all duration-300 ${
+                      isTransitioning ? 'opacity-0 transform translate-y-2' : 'opacity-100 transform translate-y-0'
+                    }`}>
+                      <div className="bg-white/10 border border-white/20 rounded-xl w-16 h-16 sm:w-20 sm:h-20 mb-4 sm:mb-6 flex items-center justify-center">
+                        {showBookmarks ? (
+                          <FaBookmark className="text-2xl sm:text-3xl text-[#A55EEA]" />
+                        ) : (
+                          <FaComments className="text-2xl sm:text-3xl text-[#A55EEA]" />
+                        )}
+                      </div>
+                      <h3 className="text-lg sm:text-xl font-semibold mb-2 text-white text-center px-4">
+                        {showBookmarks ? "No bookmarked posts" : "No discussions yet"}
+                      </h3>
+                      <p className="mb-4 sm:mb-6 text-sm sm:text-base text-white/60 text-center px-4">
+                        {showBookmarks
+                          ? "Start bookmarking posts to see them here!"
+                          : "Be the first to start a conversation!"}
+                      </p>
+                      {!showBookmarks && (
+                        <button
+                          onClick={() => newPostRef.current?.focus()}
+                          className="px-4 sm:px-6 py-2.5 sm:py-3 bg-[#A55EEA]/20 text-[#A55EEA] rounded-lg hover:bg-[#A55EEA]/30 transition-colors cursor-pointer font-medium text-sm sm:text-base"
+                        >
+                          Create a post
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+                return (
+                  <ul className={`space-y-6 sm:space-y-8 max-w-4xl mx-auto transition-all duration-300 ${
+                    isTransitioning ? 'opacity-0 transform translate-y-2' : 'opacity-100 transform translate-y-0'
+                  }`}>
+                    {filteredDiscussions.map((d) => (
+                      <li
+                        key={d.id}
+                        className="bg-black/30 backdrop-blur-xl border border-white/20 rounded-lg sm:rounded-xl p-4 sm:p-6 lg:p-8 shadow-xl hover:shadow-2xl hover:bg-black/40 transition-all duration-300"
+                      >
+                        <div className="flex gap-3 sm:gap-4">
+                          <div className="flex justify-center sm:block">
+                            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center text-white font-semibold text-sm sm:text-base">
+                              {d.author.charAt(0).toUpperCase()}
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              <span className="font-semibold text-sm sm:text-base text-white">{d.author}</span>
+                              <span className="text-xs sm:text-sm text-white/60">{formatRelativeTime(d.timestamp)}</span>
+                              {d.replies.length > 0 ? (
+                                <span className="px-2 py-0.5 bg-[#2EA043]/20 text-[#2EA043] text-xs sm:text-sm rounded-full">Answered</span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-[#FB8500]/20 text-[#FB8500] text-xs sm:text-sm rounded-full">Unanswered</span>
+                              )}
+                            </div>
+                            <div
+                              className="text-white mb-4 text-sm sm:text-base leading-relaxed"
+                              dangerouslySetInnerHTML={{
+                                __html: renderMarkdown(d.content),
+                              }}
+                            ></div>
+                            {d.topic && (
+                              <div className="mb-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-white/60">Topic:</span>
+                                  <span className="px-2 py-1 bg-white/10 text-white/80 text-xs rounded-full">
+                                    {d.topic}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-3 sm:gap-4 text-white/60 text-sm sm:text-base flex-wrap">
+                              <button onClick={() => toggleLike(d.id)} className="flex items-center gap-1 hover:text-[#F85149] cursor-pointer">
+                                {d.likedByUser ? <FaHeart className="text-[#F85149]" /> : <FaRegHeart />}
+                                <span>{d.likes}</span>
+                              </button>
+                              <button onClick={() => toggleReplyExpansion(d.id)} className="flex items-center gap-1 hover:text-[#A55EEA] cursor-pointer">
+                                <FaReply />
+                                <span>
+                                  {expandedPost === d.id ? "Hide" : "View"} {d.replies.length} {d.replies.length === 1 ? "reply" : "replies"}
+                                </span>
+                              </button>
+                              <div className="relative reaction-picker-container">
+                                <button 
+                                  onClick={() => setShowReactionPicker(showReactionPicker === d.id ? null : d.id)}
+                                  className="flex items-center gap-1 hover:text-[#A55EEA] cursor-pointer"
+                                >
+                                  <FaSmile />
+                                  <span>React</span>
+                                </button>
+                                {showReactionPicker === d.id && (
+                                  <div className="absolute bottom-8 left-0 bg-gradient-to-br from-[#1A1A2E] to-[#0F0F1A] backdrop-blur-xl border border-[#A55EEA]/30 rounded-xl shadow-2xl p-3 z-20 transform animate-in fade-in-0 zoom-in-95 duration-200">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <h3 className="text-xs font-semibold text-white flex items-center gap-1">
+                                        <FaSmile className="text-[#A55EEA] text-xs" />
+                                        React
+                                      </h3>
+                                      <button
+                                        onClick={() => setShowReactionPicker(null)}
+                                        className="text-white/60 hover:text-white transition-colors hover:bg-white/10 rounded-full w-5 h-5 flex items-center justify-center"
+                                      >
+                                        <FaTimes className="text-xs" />
+                                      </button>
+                                    </div>
+                                    <div className="flex gap-1">
+                                      {getReactionEmojis().map((emoji) => (
+                                        <button
+                                          key={emoji}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            addReaction(d.id, emoji);
+                                          }}
+                                          className="relative flex items-center justify-center w-8 h-8 rounded-lg text-lg transition-all duration-200 cursor-pointer hover:scale-110 active:scale-95 hover:bg-[#A55EEA]/20 hover:shadow-lg"
+                                          style={{ fontSize: '18px', lineHeight: '1' }}
+                                        >
+                                          <span role="img" aria-label={`React with ${emoji}`}>
+                                            {emoji}
+                                          </span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <button onClick={() => toggleBookmark(d.id)} className="ml-auto flex items-center gap-1 hover:text-[#A55EEA] cursor-pointer">
+                                {d.bookmarked ? <FaBookmark className="text-[#A55EEA]" /> : <FaRegBookmark />}
+                                <span>{d.bookmarked ? "Bookmarked" : "Bookmark"}</span>
+                              </button>
+                            </div>
+                            {d.reactions && Object.keys(d.reactions).length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-4">
+                                {Object.entries(d.reactions).map(([emoji, reaction]) => (
+                                  <button
+                                    key={emoji}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addReaction(d.id, emoji);
+                                    }}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 ${
+                                      reaction.users.includes("John Doe")
+                                        ? "bg-[#A55EEA]/30 text-[#A55EEA] border-2 border-[#A55EEA]/50 shadow-lg"
+                                        : "bg-white/15 text-white/80 hover:bg-white/25 border-2 border-white/20 hover:border-white/30"
+                                    }`}
+                                  >
+                                    <span className="text-lg" style={{ fontSize: '18px', lineHeight: '1' }}>
+                                      {emoji}
+                                    </span>
+                                    <span className="text-sm font-semibold">{reaction.count}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {expandedPost === d.id && (
+                              <div className="mt-6">
+                                {d.replies.length > 0 && (
+                                  <div className="mb-4">
+                                    <div className="flex items-center justify-between mb-4">
+                                      <h4 className="font-bold text-xl text-white">Replies</h4>
+                                      {d.replies.length > 3 && (
+                                        <span className="text-sm text-white/60 px-2 py-1 bg-white/10 rounded-full">
+                                          {d.replies.length} replies
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div 
+                                      className={`space-y-4 ${d.replies.length > 3 ? 'overflow-y-auto pr-2 replies-scroll pb-2' : ''}`} 
+                                      style={d.replies.length > 3 ? { maxHeight: '240px' } : {}}
+                                      id={`replies-container-${d.id}`}
+                                    >
+                                      {[...d.replies].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).map((reply) => (
+                                        <div 
+                                          key={reply.id} 
+                                          className={`flex flex-row gap-3 rounded-xl p-3 -m-3 ${
+                                            newCommentId === reply.id ? 'new-comment-highlight' : ''
+                                          }`} 
+                                          id={`reply-${reply.id}`}
+                                        >
+                                          <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white/60 text-sm">
+                                            {reply.author === "John Doe" ? "JD" : reply.author.charAt(0)}
+                                          </div>
+                                          <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <span className="font-medium text-base text-white">
+                                                {reply.author}
+                                              </span>
+                                              <span className="text-sm text-white/60">
+                                                {formatRelativeTime(reply.timestamp)}
+                                              </span>
+                                            </div>
+                                            <p className="text-white text-base leading-relaxed">
+                                              {renderMarkdown(reply.content)}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                <div className="flex gap-3 mt-4">
+                                  <div className="flex-shrink-0">
+                                    <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                                      <FaUser className="text-white/60" />
+                                    </div>
+                                  </div>
+                                  <div className="flex-1">
+                                    <textarea
+                                      ref={(el) => {
+                                        replyRefs.current[d.id] = el;
+                                      }}
+                                      value={replyContent[d.id] || ""}
+                                      onChange={(e) =>
+                                        setReplyContent((prev) => ({
+                                          ...prev,
+                                          [d.id]: e.target.value,
+                                        }))
+                                      }
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                          e.preventDefault();
+                                          if (replyContent[d.id]?.trim()) {
+                                            handleReply(d.id);
+                                          }
+                                        }
+                                      }}
+                                      placeholder="Write a reply..."
+                                      className="w-full p-3 border border-white/30 rounded-xl focus:outline-none focus:border-[#A55EEA] focus:ring-2 focus:ring-[#A55EEA]/20 bg-white/10 text-white placeholder:text-white/60 transition-all duration-300 backdrop-blur-sm hover:bg-white/15"
+                                      rows={2}
+                                    />
+                                    <div className="flex justify-end mt-2">
+                                      <button
+                                        onClick={() => handleReply(d.id)}
+                                        className="px-4 py-2 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white rounded-lg text-base font-medium hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 transition cursor-pointer h-[40px] flex items-center gap-2"
+                                      >
+                                        <FaPaperPlane className="text-sm" />
+                                        Reply
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
+              </div>
+            </section>
+          </main>
+          <button
+            onClick={() => setShowRightSidebar(!showRightSidebar)}
+              className="lg:hidden fixed right-0 top-1/2 transform -translate-y-1/2 z-50 p-2 bg-black/20 backdrop-blur-md rounded-l-lg border border-white/10 border-r-0 hover:bg-white/10 transition-all duration-200 cursor-pointer"
+          >
+            {showRightSidebar ? (
+                <FaChevronRight className="text-white/60 text-sm" />
+            ) : (
+                <FaChevronLeft className="text-white/60 text-sm" />
+            )}
+          </button>
+          <aside
+            className={`${showRightSidebar ? "translate-x-0" : "translate-x-full"
+              } lg:translate-x-0 fixed lg:relative inset-y-0 right-0 z-40 w-full sm:w-80 lg:w-72 xl:w-80 bg-black/30 backdrop-blur-xl border-l border-white/20 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl`}
+          >
+            <div className="overflow-auto flex-1">
+              <div className="px-4 sm:px-6 py-4 sm:py-6">
+                <h2 className="text-lg sm:text-2xl font-bold mb-4 sm:mb-6 text-white flex items-center">
+                  <span className="bg-[#A55EEA]/20 p-1 rounded mr-2">
+                    <FaCrown className="text-[#A55EEA] text-sm sm:text-base" />
+                  </span>
+                  Moderators
+                </h2>
+                <ul className="space-y-3 sm:space-y-4">
+                  {moderators.map((mod) => (
+                    <li
+                      key={mod.name}
+                      className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center text-white text-sm sm:text-base flex-shrink-0">
+                        {mod.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm sm:text-base truncate text-white">
+                          {mod.name}
+                        </p>
+                        <p className="text-xs sm:text-sm text-white/60 truncate">
+                          {mod.role}
+                        </p>
+                      </div>
+                      <span className="text-xs sm:text-sm px-2 py-1 bg-[#2EA043]/20 text-[#2EA043] rounded-full flex-shrink-0">
+                        Online
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="px-4 sm:px-6 py-4 sm:py-6">
+                <h2 className="text-lg sm:text-2xl font-bold mb-4 sm:mb-6 text-white flex items-center">
+                  <span className="bg-[#A55EEA]/20 p-1 rounded mr-2">
+                    <FaUser className="text-[#A55EEA] text-sm sm:text-base" />
+                  </span>
+                  Active Now
+                </h2>
+                <ul className="space-y-2 sm:space-y-3">
+                  {activeUsers.map((user) => (
+                    <li
+                      key={user.name}
+                      className="flex items-center gap-2 sm:gap-3 p-2 hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                      <div className="relative flex-shrink-0">
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white/60 text-xs sm:text-sm">
+                          {user.name.charAt(0)}
+                        </div>
+                        <div className="absolute bottom-0 right-0 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-[#2EA043] rounded-full border-2 border-black/20"></div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm sm:text-base truncate text-white">
+                          {user.name}
+                        </p>
+                      </div>
+                      <span className="text-xs sm:text-sm text-white/60 flex-shrink-0">
+                        {user.activity}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
-            <div className="flex gap-2 sm:gap-3 mt-6 sm:mt-8">
-              <button
-                onClick={handleCloseCategoryModal}
-                className="flex-1 px-4 sm:px-6 py-3 bg-slate-700/60 hover:bg-slate-600/80 text-slate-100 rounded-xl font-medium transition-all transform hover:scale-[1.02] backdrop-blur-sm cursor-pointer touch-target mobile-touch"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddCategory}
-                disabled={!categoryDraft.trim()}
-                className="flex-1 px-4 sm:px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-slate-600 disabled:to-slate-600 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-all transform hover:scale-[1.02] shadow-lg disabled:shadow-none cursor-pointer touch-target mobile-touch"
-              >
-                {isEditingCategory ? (isMobile ? "Save" : "Save Changes") : (isMobile ? "Create" : "Create Category")}
-              </button>
-            </div>
-            <button
-              onClick={handleCloseCategoryModal}
-              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 sm:p-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg transition-all cursor-pointer touch-target mobile-touch"
-            >
-              <HiXMark className="text-lg sm:text-xl" />
-            </button>
-          </div>
-        </div>
-      )}
-      {showQuickSaveModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4 md:p-8">
-          <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-4 sm:p-6 md:p-8 w-full max-w-sm sm:max-w-lg shadow-2xl mobile-safe-area">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-full mb-4">
-                <HiClipboard className="text-2xl text-green-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-slate-100 mb-2">
-                Quick Save Clipboard
-              </h3>
-              <p className="text-slate-400 text-sm">
-                Preview and save your clipboard content
+            <footer className="px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-white/60">
+              <p className="font-semibold text-sm sm:text-base mb-0 bg-gradient-to-r from-[#A55EEA] via-[#FF6B9D] to-[#3B82F6] bg-clip-text text-transparent">CommunityHub v1.0</p>
+              <p className="mt-1">Connecting developers worldwide</p>
+              <p className="mt-2">
+                {new Date().getFullYear()} All rights reserved
               </p>
-            </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-xs sm:text-sm font-semibold text-slate-300 mb-2 sm:mb-3">
-                Category
-              </label>
-              <select
-                value={quickSaveSelectedCategory}
-                onChange={(e) => setQuickSaveSelectedCategory(e.target.value)}
-                className="w-full px-3 sm:px-4 py-3 bg-slate-800/60 border border-slate-700/50 rounded-xl text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all backdrop-blur-sm prevent-zoom touch-target cursor-pointer"
-              >
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id} className="bg-slate-800 text-slate-100">
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-xs sm:text-sm font-semibold text-slate-300 mb-2 sm:mb-3">
-                Content to Save ({copiedText.length} characters)
-              </label>
-              <div className="w-full max-h-48 sm:max-h-64 bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 sm:p-4 overflow-y-auto">
-                <pre className="text-xs sm:text-sm text-slate-100 whitespace-pre-wrap break-words leading-relaxed">
-                  {copiedText}
-                </pre>
-              </div>
-            </div>
-            <div className="flex gap-2 sm:gap-3">
-              <button
-                onClick={handleQuickSaveCancel}
-                className="flex-1 px-4 sm:px-6 py-3 bg-slate-700/60 hover:bg-slate-600/80 text-slate-100 rounded-xl font-medium transition-all transform hover:scale-[1.02] backdrop-blur-sm cursor-pointer touch-target mobile-touch"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleQuickSaveConfirm}
-                className="flex-1 px-4 sm:px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-xl font-medium transition-all transform hover:scale-[1.02] shadow-lg cursor-pointer touch-target mobile-touch"
-              >
-                {isMobile ? "Save" : "Save Clip"}
-              </button>
-            </div>
-            <button
-              onClick={handleQuickSaveCancel}
-              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 sm:p-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg transition-all cursor-pointer touch-target mobile-touch"
-            >
-              <HiXMark className="text-lg sm:text-xl" />
-            </button>
-          </div>
+            </footer>
+          </aside>
         </div>
-      )}
-      {showNewClipModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4 md:p-8">
-          <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-4 sm:p-6 md:p-8 w-full max-w-sm sm:max-w-md shadow-2xl mobile-safe-area">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full mb-4">
-                <HiPlus className="text-2xl text-blue-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-slate-100 mb-2">
-                Create New Clip
-              </h3>
-              <p className="text-slate-400 text-sm">
-                Choose a category for your new clip
-              </p>
-            </div>
-            <div className="mb-6">
-              <label className="block text-xs sm:text-sm font-semibold text-slate-300 mb-3">
-                Category
-              </label>
-              <select
-                value={newClipSelectedCategory}
-                onChange={(e) => setNewClipSelectedCategory(e.target.value)}
-                className="w-full px-3 sm:px-4 py-3 bg-slate-800/60 border border-slate-700/50 rounded-xl text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all backdrop-blur-sm prevent-zoom touch-target cursor-pointer"
-                autoFocus={!isMobile}
-              >
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id} className="bg-slate-800 text-slate-100">
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex gap-2 sm:gap-3">
-              <button
-                onClick={handleCancelNewClip}
-                className="flex-1 px-4 sm:px-6 py-3 bg-slate-700/60 hover:bg-slate-600/80 text-slate-100 rounded-xl font-medium transition-all transform hover:scale-[1.02] backdrop-blur-sm cursor-pointer touch-target mobile-touch"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmNewClip}
-                className="flex-1 px-4 sm:px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-medium transition-all transform hover:scale-[1.02] shadow-lg cursor-pointer touch-target mobile-touch"
-              >
-                Create
-              </button>
-            </div>
-            <button
-              onClick={handleCancelNewClip}
-              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 sm:p-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg transition-all cursor-pointer touch-target mobile-touch"
-            >
-              <HiXMark className="text-lg sm:text-xl" />
-            </button>
-          </div>
-        </div>
-      )}
-      {!isLeftOpen && !isRightOpen && (
-        <div className="md:hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 bg-slate-900/20 backdrop-blur-2xl border border-slate-700/30 rounded-2xl shadow-2xl mobile-safe-area">
-          <div className="flex items-center justify-center px-2 py-2">
-            <button
-              onClick={toggleLeft}
-              className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 cursor-pointer touch-target mobile-touch ${isLeftOpen
-                  ? 'bg-blue-500/30 text-blue-400 shadow-lg'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-                }`}
-            >
-              <HiFolder className="text-lg mb-1" />
-              <span className="text-xs font-medium">Categories</span>
-            </button>
-            <button
-              onClick={() => {
-                setIsLeftOpen(false);
-                setIsRightOpen(false);
-              }}
-              className="flex flex-col items-center justify-center p-3 mx-2 rounded-xl text-slate-300 hover:text-slate-100 hover:bg-slate-800/30 transition-all duration-300 cursor-pointer touch-target mobile-touch"
-            >
-              <HiClipboard className="text-lg mb-1" />
-              <span className="text-xs font-medium">Clips</span>
-            </button>
-            <button
-              onClick={toggleRight}
-              className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 cursor-pointer touch-target mobile-touch ${isRightOpen
-                  ? 'bg-purple-500/30 text-purple-400 shadow-lg'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-                }`}
-            >
-              <HiDocumentText className="text-lg mb-1" />
-              <span className="text-xs font-medium">Preview</span>
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
+      <Toaster position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: "rgba(0, 0, 0, 0.3)",
+            backdropFilter: "blur(16px)",
+            color: "#FFFFFF",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+            borderRadius: "12px",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+          },
+          success: {
+            style: {
+              background: "linear-gradient(135deg, rgba(165, 94, 234, 0.2), rgba(255, 107, 157, 0.2))",
+              backdropFilter: "blur(16px)",
+              border: "1px solid rgba(165, 94, 234, 0.3)",
+            },
+            iconTheme: {
+              primary: "#A55EEA",
+              secondary: "#FFFFFF",
+            },
+          },
+          error: {
+            style: {
+              background: "rgba(239, 68, 68, 0.2)",
+              backdropFilter: "blur(16px)",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+            },
+            iconTheme: {
+              primary: "#ef4444",
+              secondary: "#FFFFFF",
+            },
+          },
+        }}
+      />
+      <style>{`
+             @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+              body {
+                font-family: 'Poppins', sans-serif;
+              }
+              *::-webkit-scrollbar {
+                display: none;
+              }
+              * {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+              }
+              .replies-scroll {
+                scroll-behavior: smooth;
+              }
+              .replies-scroll::-webkit-scrollbar {
+                width: 6px;
+              }
+              .replies-scroll::-webkit-scrollbar-track {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 3px;
+                margin: 4px 0;
+              }
+              .replies-scroll::-webkit-scrollbar-thumb {
+                background: rgba(165, 94, 234, 0.6);
+                border-radius: 3px;
+                min-height: 20px;
+              }
+              .replies-scroll::-webkit-scrollbar-thumb:hover {
+                background: rgba(165, 94, 234, 0.8);
+              }
+              @keyframes highlight-new-comment {
+                0% { 
+                  background: rgba(165, 94, 234, 0.3);
+                  border-radius: 12px;
+                  box-shadow: 0 0 0 2px rgba(165, 94, 234, 0.2);
+                }
+                100% { 
+                  background: transparent;
+                  border-radius: 12px;
+                  box-shadow: 0 0 0 0px rgba(165, 94, 234, 0);
+                }
+              }
+              .new-comment-highlight {
+                animation: highlight-new-comment 2s ease-out;
+                border-radius: 12px;
+              }
+              `}
+      </style>
+    </>
   );
 };
-export default ClipboardManager;
+export default CommunityDashboard;
