@@ -1,490 +1,866 @@
-"use client";
-import { useState, useEffect, useRef } from "react";
-import {
-  FaUser,
-  FaComment,
-  FaBookmark,
-  FaReply,
-  FaRegBookmark,
-  FaSearch,
-  FaCrown,
-  FaStar,
-  FaHeart,
-  FaRegHeart,
-  FaSmile,
-  FaBold,
-  FaItalic,
-  FaLink,
-  FaChevronLeft,
-  FaChevronRight,
-  FaArrowLeft,
-  FaCode,
-  FaCss3Alt,
-  FaReact,
-  FaRocket,
-  FaComments,
-  FaPaperPlane,
-  FaTimes,
-} from "react-icons/fa";
-import toast, { Toaster } from "react-hot-toast";
-const trendingTopics = [
-  {
-    id: 1,
-    title: "React Tips",
-    icon: <FaReact className="text-[#A55EEA]" />,
-  },
-  {
-    id: 2,
-    title: "TypeScript",
-    icon: <FaCode className="text-[#A55EEA]" />,
-  },
-  {
-    id: 3,
-    title: "Tailwind CSS",
-    icon: <FaCss3Alt className="text-[#A55EEA]" />,
-  },
-  {
-    id: 4,
-    title: "State Manage",
-    icon: <FaStar className="text-[#A55EEA]" />,
-  },
-  {
-    id: 5,
-    title: "Deployment",
-    icon: <FaRocket className="text-[#A55EEA]" />,
-  },
-];
-const mockDiscussions: { [key: number]: Discussion[] } = {
-  1: [
-    {
-      id: "d1",
-      author: "alice",
-      content: "What are some essential tips you follow when using React?",
-      replies: [
-        {
-          id: "r1",
-          author: "bob",
-          content: "I always use React.memo for performance optimization!",
-          timestamp: new Date(Date.now() - 2 * 60 * 1000),
-        },
-        {
-          id: "r2",
-          author: "charlie",
-          content: "Component composition over inheritance is key.",
-          timestamp: new Date(Date.now() - 5 * 60 * 1000),
-        },
-      ],
-      timestamp: new Date(Date.now() - 5 * 60 * 1000),
-      answered: true,
-      likes: 12,
-      bookmarked: false,
-      reactions: {
-        "👍": { count: 5, users: ["bob", "charlie", "dana", "ed", "fiona"] },
-        "❤️": { count: 3, users: ["alice", "bob", "charlie"] },
-        "🔥": { count: 2, users: ["dana", "greg"] },
-      },
-      topic: "React Tips",
-    },
-    {
-      id: "d2",
-      author: "bob",
-      content: "How do you organize components in a large project?",
-      replies: [
-        {
-          id: "r3",
-          author: "dana",
-          content: "I use atomic design methodology.",
-          timestamp: new Date(Date.now() - 1 * 60 * 1000),
-        },
-      ],
-      timestamp: new Date(Date.now() - 10 * 60 * 1000),
-      answered: true,
-      likes: 8,
-      bookmarked: true,
-      reactions: {},
-      topic: "React Tips",
-    },
-    {
-      id: "d3",
-      author: "charlie",
-      content: "Do you use React Context or Redux more often?",
-      replies: [],
-      timestamp: new Date(Date.now() - 20 * 60 * 1000),
-      answered: false,
-      likes: 15,
-      bookmarked: false,
-      reactions: {},
-      topic: "React Tips",
-    },
-  ],
-  2: [
-    {
-      id: "d4",
-      author: "dana",
-      content: "How do you type API responses in TypeScript?",
-      replies: [
-        {
-          id: "r4",
-          author: "ed",
-          content: "I create interfaces for each API response.",
-          timestamp: new Date(Date.now() - 3 * 60 * 1000),
-        },
-        {
-          id: "r5",
-          author: "fiona",
-          content: "Generics are useful for reusable types.",
-          timestamp: new Date(Date.now() - 7 * 60 * 1000),
-        },
-      ],
-      timestamp: new Date(Date.now() - 2 * 60 * 1000),
-      answered: true,
-      likes: 21,
-      bookmarked: true,
-      reactions: {
-        "💯": { count: 4, users: ["alice", "bob", "charlie", "greg"] },
-        "🚀": { count: 2, users: ["dana", "fiona"] },
-      },
-      topic: "TypeScript",
-    },
-    {
-      id: "d5",
-      author: "ed",
-      content: "Tips for beginners learning TS?",
-      replies: [],
-      timestamp: new Date(Date.now() - 35 * 60 * 1000),
-      answered: true,
-      likes: 17,
-      bookmarked: false,
-      reactions: {},
-      topic: "TypeScript",
-    },
-  ],
-  3: [
-    {
-      id: "d6",
-      author: "fiona",
-      content: "How to create responsive layouts quickly?",
-      replies: [],
-      timestamp: new Date(Date.now() - 1 * 60 * 1000),
-      answered: true,
-      likes: 9,
-      bookmarked: false,
-      reactions: {},
-      topic: "Tailwind CSS",
-    },
-  ],
-  4: [],
-  5: [
-    {
-      id: "d7",
-      author: "greg",
-      content: "Netlify vs Vercel for React apps?",
-      replies: [
-        {
-          id: "r6",
-          author: "alice",
-          content: "Vercel has better Next.js integration.",
-          timestamp: new Date(Date.now() - 15 * 60 * 1000),
-        },
-      ],
-      timestamp: new Date(Date.now() - 50 * 60 * 1000),
-      answered: true,
-      likes: 14,
-      bookmarked: false,
-      reactions: {
-        "👍": { count: 6, users: ["alice", "bob", "charlie", "dana", "ed", "fiona"] },
-        "🎉": { count: 1, users: ["greg"] },
-      },
-      topic: "Deployment",
-    },
-  ],
-};
-const moderators = [
-  { name: "Alice", role: "Lead Moderator" },
-  { name: "Bob", role: "Community Manager" },
-  { name: "Fiona", role: "Technical Expert" },
-];
-const activeUsers = [
-  { name: "Charlie", activity: "Posting" },
-  { name: "Dana", activity: "Commenting" },
-  { name: "Ed", activity: "Browsing" },
-  { name: "Greg", activity: "Reacting" },
-];
-type FilterType = "Most recent" | "Most replied" | "Unanswered";
-const filters: FilterType[] = [
-  "Most recent",
-  "Most replied",
-  "Unanswered",
-];
-interface Reply {
+'use client'
+import React, { useState, useRef, useEffect } from "react";
+import { PiPushPinFill, PiPushPinSlashFill } from "react-icons/pi";
+
+interface User {
   id: string;
-  author: string;
-  content: string;
-  timestamp: Date;
+  name: string;
+  avatar: string;
+  role: string;
 }
-interface Discussion {
+
+interface Comment {
   id: string;
-  author: string;
   content: string;
-  replies: Reply[];
+  author: User;
+  status: "open" | "resolved" | "pending";
   timestamp: Date;
-  answered: boolean;
-  likes: number;
-  bookmarked: boolean;
-  likedByUser?: boolean;
-  reactions?: { [emoji: string]: { count: number; users: string[] } };
-  topic: string;
+  position: { x: number; y: number };
+  sectionId: string;
+  mentions: string[];
+  isPinned: boolean;
+  anchoredToPointIndex?: number; // Index of the document point this comment is anchored to
+  endPointIndex?: number; // For multi-line comments, the end point index
 }
-const formatRelativeTime = (date: Date): string => {
-  const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diffInSeconds < 60) {
-    return "Just now";
-  } else if (diffInSeconds < 3600) {
-    const minutes = Math.floor(diffInSeconds / 60);
-    return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
-  } else if (diffInSeconds < 86400) {
-    const hours = Math.floor(diffInSeconds / 3600);
-    return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
-  } else if (diffInSeconds < 2592000) {
-    const days = Math.floor(diffInSeconds / 86400);
-    return `${days} ${days === 1 ? "day" : "days"} ago`;
-  } else {
-    const months = Math.floor(diffInSeconds / 2592000);
-    return `${months} ${months === 1 ? "month" : "months"} ago`;
-  }
-};
-const calculateDynamicTrendingTopics = (discussions: { [key: number]: Discussion[] }) => {
-  const topicCounts: { [topic: string]: number } = {};
-  // Count posts for all topics, including those with 0 posts
-  trendingTopics.forEach(topic => {
-    const topicPosts = discussions[topic.id] || [];
-    topicCounts[topic.title] = topicPosts.length;
-  });
-  const topicScores = Object.keys(topicCounts).map(topic => {
-    const count = topicCounts[topic] || 0;
-    return {
-      topic,
-      count,
-      activity: 0,
-      score: count
-    };
-  });
-  const topicStats = topicScores
-    .sort((a, b) => {
-      if (b.count === a.count) {
-        return a.topic.localeCompare(b.topic);
-      }
-      return b.count - a.count;
-    })
-    .slice(0, 5);
-  return { 
-    topicStats
-  };
-};
-const CommunityDashboard: React.FC = () => {
-  const [selectedTopic, setSelectedTopic] = useState<number | null>(null);
-  const [activeFilter, setActiveFilter] = useState<FilterType>("Most recent");
-  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(true);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
-  const [newPostContent, setNewPostContent] = useState<string>("");
-  const [replyContent, setReplyContent] = useState<{ [key: string]: string }>(
-    {}
+
+interface DocumentSection {
+  id: string;
+  title: string;
+  content: string[];
+  version: number;
+  hasChanges: boolean;
+}
+
+interface Document {
+  id: string;
+  title: string;
+  sections: DocumentSection[];
+  lastModified: Date;
+  author: string;
+  status: "draft" | "review" | "approved";
+}
+
+interface VersionChange {
+  id: string;
+  type: "added" | "removed" | "modified";
+  content: string;
+  sectionId: string;
+  oldContent?: string;
+  newContent?: string;
+  pointNumber?: number;
+}
+
+const DocumentReviewTool: React.FC = () => {
+  const [darkMode, setDarkMode] = useState(true);
+  const [selectedSection, setSelectedSection] = useState<string>("1");
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [draggedCommentId, setDraggedCommentId] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(
+    null
   );
-  const [expandedPost, setExpandedPost] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
-  const [isCreatePostExpanded, setIsCreatePostExpanded] = useState<boolean>(false);
-  const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null);
-  const [discussions, setDiscussions] = useState<{
-    [key: number]: Discussion[];
-  }>(mockDiscussions);
-  const [showBookmarks, setShowBookmarks] = useState<boolean>(false);
-  const [selectedTopicForPost, setSelectedTopicForPost] = useState<number>(trendingTopics[0].id);
-  const [dynamicTrendingTopics, setDynamicTrendingTopics] = useState<{
-    topicStats: { topic: string; count: number; activity: number; score: number; }[];
-  }>({ topicStats: [] });
-  const [newCommentId, setNewCommentId] = useState<string | null>(null);
-  const [showSidebar, setShowSidebar] = useState<boolean>(true);
-  const [showRightSidebar, setShowRightSidebar] = useState<boolean>(false);
-  const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
-  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
-  const [userSettings, setUserSettings] = useState({
-    notifications: true,
-    emailAlerts: false,
-    theme: 'dark',
-    autoSave: true
-  });
-  const newPostRef = useRef<HTMLTextAreaElement>(null);
-  const replyRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>({});
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, []);
-  useEffect(() => {
-    const link = document.createElement("link");
-    link.href =
-      "https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap";
-    link.rel = "stylesheet";
-    document.head.appendChild(link);
-    document.body.style.fontFamily =
-      "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    return () => {
-      if (document.head.contains(link)) {
-        document.head.removeChild(link);
-      }
-    };
-  }, []);
-  const handleTopicChange = (topicId: number | null) => {
-    if (selectedTopic === topicId) return;
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setSelectedTopic(topicId);
-      setShowBookmarks(false);
-      setIsTransitioning(false);
-    }, 150);
-  };
-  const handleFilterChange = (filter: FilterType) => {
-    if (activeFilter === filter) return;
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setActiveFilter(filter);
-      setIsTransitioning(false);
-    }, 150);
-  };
-  const handleSignOut = () => {
-    setDiscussions(mockDiscussions);
-    setNewPostContent("");
-    setReplyContent({});
-    setExpandedPost(null);
-    setActiveFilter("Most recent");
-    setSelectedTopic(trendingTopics[0].id);
-    toast.success("Successfully signed out");
-  };
-  const getUserStats = () => {
-    const allDiscussions = Object.values(discussions).flat();
-    const userPosts = allDiscussions.filter(d => d.author === "John Doe");
-    const userReplies = allDiscussions.reduce((acc, d) => 
-      acc + d.replies.filter(r => r.author === "John Doe").length, 0);
-    const totalLikes = userPosts.reduce((acc, post) => acc + post.likes, 0);
-    const bookmarkedPosts = allDiscussions.filter(d => d.bookmarked).length;
+  const dragPosRef = useRef<{ x: number; y: number } | null>(null);
+  const [, forceRerender] = useState(0);
+  const [showVersionModal, setShowVersionModal] = useState(false);
+  const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
+  const [mentionSearch, setMentionSearch] = useState("");
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [collapsedComments, setCollapsedComments] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<Comment["status"] | null>(null);
+  const [sortBy, setSortBy] = useState("timestamp");
+  const [selectedText, setSelectedText] = useState<string>("");
+  const [selectionRange, setSelectionRange] = useState<{pointIndex: number, start: number, end: number, endPointIndex?: number} | null>(null);
+  const [showEditPopup, setShowEditPopup] = useState(false);
+  const [editPopupPosition, setEditPopupPosition] = useState<{x: number, y: number}>({x: 0, y: 0});
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingText, setEditingText] = useState("");
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [expandedPinnedComments, setExpandedPinnedComments] = useState<Set<string>>(new Set());
+  const [autoCollapseTimers, setAutoCollapseTimers] = useState<Map<string, NodeJS.Timeout>>(new Map());
+  const [documentScrollPosition, setDocumentScrollPosition] = useState({ x: 0, y: 0 });
+  
+  // Function to get the current position of a document point element
+  const getPointElementPosition = (pointIndex: number) => {
+    if (!documentRef.current) return null;
+    
+    const pointElement = documentRef.current.querySelector(`[data-point-index="${pointIndex}"]`);
+    if (!pointElement) return null;
+    
+    const documentRect = documentRef.current.getBoundingClientRect();
+    const pointRect = pointElement.getBoundingClientRect();
+    
     return {
-      posts: userPosts.length,
-      replies: userReplies,
-      likes: totalLikes,
-      bookmarks: bookmarkedPosts
+      x: pointRect.left - documentRect.left + documentRef.current.scrollLeft,
+      y: pointRect.top - documentRect.top + documentRef.current.scrollTop
     };
   };
-  const addModeratorReply = (postId: string, topicId: number) => {
-    const moderatorReplies = [
-      "Great question! I'd love to help you with this.",
-      "This is an interesting topic. Here's what I think...",
-      "Thanks for bringing this up! This is a common challenge many developers face.",
-      "Good point! I've seen this come up frequently in our community.",
-      "This is a valuable discussion. Let me share some insights.",
-      "Excellent question! This touches on some important concepts.",
-      "I appreciate you starting this conversation. Very relevant topic!",
-      "This is definitely worth exploring. Great initiative!",
-    ];
-    const randomModerator = moderators[Math.floor(Math.random() * moderators.length)];
-    const randomReply = moderatorReplies[Math.floor(Math.random() * moderatorReplies.length)];
-    const moderatorReply: Reply = {
-      id: `r${Date.now()}`,
-      author: randomModerator.name,
-      content: randomReply,
-      timestamp: new Date(),
-    };
-    setDiscussions((prev) => {
-      const updatedDiscussions = [...prev[topicId]];
-      const postIndex = updatedDiscussions.findIndex((p) => p.id === postId);
-      if (postIndex !== -1) {
-        const updatedPost = {
-          ...updatedDiscussions[postIndex],
-          replies: [...updatedDiscussions[postIndex].replies, moderatorReply],
-          answered: true,
-        };
-        updatedDiscussions[postIndex] = updatedPost;
+  const [documentSectionsState, setDocumentSectionsState] = useState<DocumentSection[]>([]);
+
+  // Helper function to convert array index to display number
+  const getDisplayNumber = (sectionId: string, arrayIndex: number): number => {
+    const section = documentSectionsState.find(s => s.id === sectionId);
+    if (!section) return arrayIndex + 1;
+    
+    return section.content.slice(0, arrayIndex + 1)
+      .filter(p => p.trim() !== '').length;
+  };
+
+  // Helper function to convert display number to array index
+  const getArrayIndex = (sectionId: string, displayNumber: number): number => {
+    const section = documentSectionsState.find(s => s.id === sectionId);
+    if (!section) return displayNumber - 1;
+    
+    let count = 0;
+    for (let i = 0; i < section.content.length; i++) {
+      if (section.content[i].trim() !== '') {
+        count++;
+        if (count === displayNumber) {
+          return i;
+        }
       }
-      return {
-        ...prev,
-        [topicId]: updatedDiscussions,
+    }
+    return displayNumber - 1; // fallback
+  };
+
+  // Helper function to calculate midpoint position between two points for multi-line comments
+  const calculateMidpointPosition = (startPointIndex: number, endPointIndex: number): { x: number; y: number } => {
+    if (!documentRef.current) return { x: 50, y: 50 };
+
+    const startPointElement = documentRef.current.querySelector(`[data-point-index="${startPointIndex}"]`);
+    const endPointElement = documentRef.current.querySelector(`[data-point-index="${endPointIndex}"]`);
+
+    if (!startPointElement || !endPointElement) return { x: 50, y: 50 };
+
+    const startRect = startPointElement.getBoundingClientRect();
+    const endRect = endPointElement.getBoundingClientRect();
+    const documentRect = documentRef.current.getBoundingClientRect();
+
+    // Calculate midpoint between start and end points
+    const midY = (startRect.top + startRect.height / 2 + endRect.top + endRect.height / 2) / 2;
+    const midX = startRect.left + startRect.width / 2; // Use left edge of start point for X
+
+    // Convert to absolute coordinates within the document container
+    return {
+      x: midX - documentRect.left + documentRef.current.scrollLeft,
+      y: midY - documentRect.top + documentRef.current.scrollTop
+    };
+  };
+
+  // Helper function to calculate pin dot position for comments
+  const calculatePinDotPosition = (comment: Comment): { x: number; y: number } => {
+    if (comment.endPointIndex !== undefined && comment.anchoredToPointIndex !== undefined) {
+      // Multi-line comment - use midpoint between start and end points
+      const midpointPos = calculateMidpointPosition(comment.anchoredToPointIndex, comment.endPointIndex);
+      return midpointPos; // Use absolute midpoint position
+    } else if (comment.anchoredToPointIndex !== undefined) {
+      // Single-line comment - use anchored point position
+      const pointPos = getPointElementPosition(comment.anchoredToPointIndex);
+      return pointPos ? {
+        x: pointPos.x + comment.position.x,
+        y: pointPos.y + comment.position.y
+      } : comment.position;
+    }
+    // Fallback to absolute position
+    return comment.position;
+  };
+
+  // Helper function to constrain comment position within document boundaries
+  const constrainCommentPosition = (position: { x: number; y: number }, commentWidth: number = 320, commentHeight: number = 200): { x: number; y: number } => {
+    if (!documentRef.current) return position;
+
+    const documentRect = documentRef.current.getBoundingClientRect();
+    const documentScrollLeft = documentRef.current.scrollLeft;
+    const documentScrollTop = documentRef.current.scrollTop;
+    
+    // Calculate the visible area boundaries
+    const minX = documentScrollLeft + 10; // 10px padding from left edge
+    const maxX = documentScrollLeft + documentRef.current.clientWidth - commentWidth - 10; // 10px padding from right edge
+    const minY = documentScrollTop + 10; // 10px padding from top edge
+    const maxY = documentScrollTop + documentRef.current.clientHeight - commentHeight - 10; // 10px padding from bottom edge
+
+    return {
+      x: Math.max(minX, Math.min(maxX, position.x)),
+      y: Math.max(minY, Math.min(maxY, position.y))
+    };
+  };
+
+  // Helper function to check if two rectangles overlap
+  const rectanglesOverlap = (rect1: { x: number; y: number; width: number; height: number }, rect2: { x: number; y: number; width: number; height: number }): boolean => {
+    return !(rect1.x + rect1.width < rect2.x || 
+             rect2.x + rect2.width < rect1.x || 
+             rect1.y + rect1.height < rect2.y || 
+             rect2.y + rect2.height < rect1.y);
+  };
+
+  // Helper function to adjust pin dot position to avoid overlapping with expanded comments
+  const adjustPinDotPosition = (originalPos: { x: number; y: number }, commentId: string): { x: number; y: number } => {
+    const pinDotSize = 24; // 6 * 4 (w-6 h-6)
+    let adjustedPos = { ...originalPos };
+    
+    // Get all expanded comment cards
+    const expandedComments = comments.filter(c => 
+      c.id !== commentId && 
+      c.isPinned && 
+      expandedPinnedComments.has(c.id) && 
+      c.sectionId === selectedSection
+    );
+
+    if (expandedComments.length === 0) {
+      return adjustedPos; // No adjustments needed
+    }
+
+    for (const expandedComment of expandedComments) {
+      const commentPos = calculatePinDotPosition(expandedComment);
+      const commentRect = {
+        x: commentPos.x,
+        y: commentPos.y,
+        width: 320, // Comment card width
+        height: 200 // Estimated comment card height
       };
-    });
-    toast.success(`${randomModerator.name} replied to your post!`);
-    // Set the new moderator comment for highlighting
-    setNewCommentId(moderatorReply.id);
-    // Scroll to the new moderator comment after state update
-    setTimeout(() => {
-      const repliesContainer = document.getElementById(`replies-container-${postId}`);
-      if (repliesContainer) {
-        repliesContainer.scrollTop = 0; // Scroll to top since newest is at top
+
+      const pinDotRect = {
+        x: adjustedPos.x - pinDotSize / 2,
+        y: adjustedPos.y - pinDotSize / 2,
+        width: pinDotSize,
+        height: pinDotSize
+      };
+
+      if (rectanglesOverlap(commentRect, pinDotRect)) {
+        // Calculate document boundaries
+        const docScrollLeft = documentRef.current?.scrollLeft || 0;
+        const docScrollTop = documentRef.current?.scrollTop || 0;
+        const docWidth = documentRef.current?.clientWidth || 800;
+        const docHeight = documentRef.current?.clientHeight || 600;
+        
+        // Try different positions in order of preference
+        const possiblePositions = [
+          // Right side of comment
+          { x: commentRect.x + commentRect.width + 15, y: originalPos.y },
+          // Left side of comment
+          { x: commentRect.x - pinDotSize - 15, y: originalPos.y },
+          // Above comment
+          { x: originalPos.x, y: commentRect.y - pinDotSize - 15 },
+          // Below comment
+          { x: originalPos.x, y: commentRect.y + commentRect.height + 15 },
+          // Top-right corner
+          { x: commentRect.x + commentRect.width + 15, y: commentRect.y - pinDotSize - 15 },
+          // Top-left corner
+          { x: commentRect.x - pinDotSize - 15, y: commentRect.y - pinDotSize - 15 },
+          // Bottom-right corner
+          { x: commentRect.x + commentRect.width + 15, y: commentRect.y + commentRect.height + 15 },
+          // Bottom-left corner
+          { x: commentRect.x - pinDotSize - 15, y: commentRect.y + commentRect.height + 15 }
+        ];
+
+        // Find the first position that fits within document boundaries
+        for (const pos of possiblePositions) {
+          if (pos.x >= docScrollLeft + 10 && 
+              pos.x + pinDotSize <= docScrollLeft + docWidth - 10 &&
+              pos.y >= docScrollTop + 10 && 
+              pos.y + pinDotSize <= docScrollTop + docHeight - 10) {
+            
+            // Check if this position overlaps with other expanded comments
+            const testRect = {
+              x: pos.x - pinDotSize / 2,
+              y: pos.y - pinDotSize / 2,
+              width: pinDotSize,
+              height: pinDotSize
+            };
+            
+            let overlapsWithOther = false;
+            for (const otherComment of expandedComments) {
+              if (otherComment.id === expandedComment.id) continue;
+              const otherPos = calculatePinDotPosition(otherComment);
+              const otherRect = {
+                x: otherPos.x,
+                y: otherPos.y,
+                width: 320,
+                height: 200
+              };
+              if (rectanglesOverlap(testRect, otherRect)) {
+                overlapsWithOther = true;
+                break;
+              }
+            }
+            
+            if (!overlapsWithOther) {
+              adjustedPos = pos;
+              break;
+            }
+          }
+        }
       }
-    }, 100);
-    // Clear the highlight after animation
-    setTimeout(() => {
-      setNewCommentId(null);
-    }, 2500);
+    }
+
+    return adjustedPos;
   };
-  const handleCreatePost = () => {
-    if (!newPostContent.trim()) {
-      toast.error("Post content cannot be empty");
+
+  // Text selection and editing functions
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      setShowEditPopup(false);
       return;
     }
-    const assignedTopic = trendingTopics.find(t => t.id === selectedTopicForPost)?.title || "General";
-    const newPost: Discussion = {
-      id: `d${Date.now()}`,
-      author: "John Doe",
-      content: newPostContent,
-      replies: [],
-      timestamp: new Date(),
-      answered: false,
-      likes: 0,
-      bookmarked: false,
-      reactions: {},
-      topic: assignedTopic,
-    };
-    setDiscussions((prev) => ({
-      ...prev,
-      [selectedTopicForPost]: [newPost, ...(prev[selectedTopicForPost] || [])],
-    }));
-    setTimeout(() => {
-      addModeratorReply(newPost.id, selectedTopicForPost);
-    }, 3000);
-    setNewPostContent("");
-    setIsCreatePostExpanded(false);
-    toast.success(`Your post has been published in ${assignedTopic}!`);
+
+    const range = selection.getRangeAt(0);
+    const selectedTextContent = selection.toString().trim();
+    
+    if (selectedTextContent.length === 0) {
+      setShowEditPopup(false);
+      return;
+    }
+
+    if (!documentRef.current) return;
+
+    // Find which points contain the selected text
+    const container = range.commonAncestorContainer;
+    const startContainer = range.startContainer;
+    const endContainer = range.endContainer;
+    
+    // Find the start point
+    const startPointElement = startContainer.nodeType === Node.TEXT_NODE 
+      ? startContainer.parentElement?.closest('[data-point-index]')
+      : (startContainer as Element).closest ? (startContainer as Element).closest('[data-point-index]') : null;
+    
+    // Find the end point
+    const endPointElement = endContainer.nodeType === Node.TEXT_NODE 
+      ? endContainer.parentElement?.closest('[data-point-index]')
+      : (endContainer as Element).closest ? (endContainer as Element).closest('[data-point-index]') : null;
+    
+    if (!startPointElement || !endPointElement) return;
+
+    const startPointIndex = parseInt(startPointElement.getAttribute('data-point-index') || '0');
+    const endPointIndex = parseInt(endPointElement.getAttribute('data-point-index') || '0');
+    
+    // Calculate selection positions within the text
+    let startOffset = 0;
+    let endOffset = 0;
+    
+    if (startPointIndex === endPointIndex) {
+      // Single point selection
+      const pointText = documentSectionsState.find((s: any) => s.id === selectedSection)?.content[startPointIndex] || '';
+      const pointTextNode = startPointElement.querySelector('p')?.firstChild;
+      
+      if (pointTextNode) {
+        const tempRange = document.createRange();
+        tempRange.selectNodeContents(pointTextNode);
+        tempRange.setEnd(range.startContainer, range.startOffset);
+        startOffset = tempRange.toString().length;
+        endOffset = startOffset + selectedTextContent.length;
+      }
+    } else {
+      // Multi-point selection
+      const startPointTextNode = startPointElement.querySelector('p')?.firstChild;
+      const endPointTextNode = endPointElement.querySelector('p')?.firstChild;
+      
+      if (startPointTextNode) {
+        const tempRange = document.createRange();
+        tempRange.selectNodeContents(startPointTextNode);
+        tempRange.setEnd(range.startContainer, range.startOffset);
+        startOffset = tempRange.toString().length;
+      }
+      
+      if (endPointTextNode) {
+        const tempRange = document.createRange();
+        tempRange.selectNodeContents(endPointTextNode);
+        tempRange.setEnd(range.endContainer, range.endOffset);
+        endOffset = tempRange.toString().length;
+      }
+    }
+
+    setSelectedText(selectedTextContent);
+    setSelectionRange({ 
+      pointIndex: startPointIndex, 
+      start: startOffset, 
+      end: endOffset,
+      endPointIndex: endPointIndex !== startPointIndex ? endPointIndex : undefined
+    });
+
+    // Position popup near selection
+    const rect = range.getBoundingClientRect();
+    const documentRect = documentRef.current.getBoundingClientRect();
+    setEditPopupPosition({
+      x: rect.left + rect.width / 2 - documentRect.left + documentRef.current.scrollLeft,
+      y: rect.top - documentRect.top + documentRef.current.scrollTop
+    });
+    setShowEditPopup(true);
   };
+
+  const startEditing = () => {
+    setIsEditing(true);
+    setEditingText(selectedText);
+    setShowEditPopup(false);
+  };
+
+  const startCommenting = () => {
+    if (!selectionRange || !selectedSection) return;
+
+    const section = documentSectionsState.find((s: any) => s.id === selectedSection);
+    if (!section) return;
+
+    const { pointIndex, endPointIndex } = selectionRange;
+    
+    // Create comment text based on whether it's single or multi-line selection
+    let commentText = '';
+    if (endPointIndex !== undefined && endPointIndex !== pointIndex) {
+      // Multi-line selection - use display numbers
+      const startDisplayNumber = getDisplayNumber(selectedSection, pointIndex);
+      const endDisplayNumber = getDisplayNumber(selectedSection, endPointIndex);
+      commentText = `Regarding points ${startDisplayNumber} to ${endDisplayNumber}: `;
+    } else {
+      // Single line selection - use display number
+      const displayNumber = getDisplayNumber(selectedSection, pointIndex);
+      commentText = `Regarding point ${displayNumber}: `;
+    }
+    
+    // Set the new comment in the input field with the line reference
+    setNewComment(commentText);
+    
+    // Clear text selection state
+    setSelectedText("");
+    setSelectionRange(null);
+    setShowEditPopup(false);
+    
+    // Focus the comment input field
+    setTimeout(() => {
+      if (commentInputRef.current) {
+        commentInputRef.current.focus();
+        // Position cursor at the end
+        commentInputRef.current.setSelectionRange(commentInputRef.current.value.length, commentInputRef.current.value.length);
+      }
+    }, 100);
+  };
+
+  const saveEdit = () => {
+    if (!selectionRange || !selectedSection) return;
+
+    const section = documentSectionsState.find((s: any) => s.id === selectedSection);
+    if (!section) return;
+
+    const { pointIndex, start, end, endPointIndex } = selectionRange;
+    
+    if (endPointIndex !== undefined && endPointIndex !== pointIndex) {
+      // Multi-line edit - handle spanning across multiple points
+      const updatedContent = [...section.content];
+      let combinedOriginalText = '';
+      
+      // Collect original text from all affected points
+      for (let i = pointIndex; i <= endPointIndex; i++) {
+        if (i === pointIndex) {
+          // First point - from start position to end
+          combinedOriginalText += updatedContent[i].substring(start);
+        } else if (i === endPointIndex) {
+          // Last point - from beginning to end position
+          combinedOriginalText += ' ' + updatedContent[i].substring(0, end);
+        } else {
+          // Middle points - entire content
+          combinedOriginalText += ' ' + updatedContent[i];
+        }
+      }
+      
+      // For multi-line editing, we want to preserve the structure
+      // Split the edited text by paragraphs/sentences if it contains line breaks
+      const editedLines = editingText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+      
+      // If no line breaks in edited text, treat as single replacement
+      if (editedLines.length <= 1) {
+        // Single line replacement across multiple points
+        const singleLineContent = editedLines[0] || editingText;
+        
+        // Replace first point with prefix + edited content + suffix from last point
+        const prefixFromFirst = updatedContent[pointIndex].substring(0, start);
+        const suffixFromLast = updatedContent[endPointIndex].substring(end);
+        updatedContent[pointIndex] = prefixFromFirst + singleLineContent + suffixFromLast;
+        
+        // Clear intermediate points but keep them as empty strings to maintain structure
+        for (let i = pointIndex + 1; i < endPointIndex; i++) {
+          updatedContent[i] = '';
+        }
+        
+        // Clear the end point (its content was merged into first point)
+        updatedContent[endPointIndex] = '';
+        
+      } else {
+        // Multi-line replacement - distribute across available points
+        const prefixFromFirst = updatedContent[pointIndex].substring(0, start);
+        const suffixFromLast = updatedContent[endPointIndex].substring(end);
+        
+        // First point gets prefix + first edited line
+        updatedContent[pointIndex] = prefixFromFirst + editedLines[0];
+        
+        // Distribute remaining edited lines to subsequent points
+        for (let i = 1; i < editedLines.length; i++) {
+          if (pointIndex + i <= endPointIndex) {
+            updatedContent[pointIndex + i] = editedLines[i];
+          } else {
+            // If we need more points than available, append to the last available point
+            if (pointIndex + i - 1 <= endPointIndex) {
+              updatedContent[pointIndex + i - 1] += ' ' + editedLines[i];
+            }
+          }
+        }
+        
+        // Handle the suffix from the last point
+        if (suffixFromLast.trim()) {
+          // Find the last point that has content and append the suffix
+          let lastContentIndex = Math.min(pointIndex + editedLines.length - 1, endPointIndex);
+          updatedContent[lastContentIndex] += suffixFromLast;
+        }
+        
+        // Clear any remaining points in the selection range that weren't used
+        for (let i = pointIndex + editedLines.length; i <= endPointIndex; i++) {
+          updatedContent[i] = '';
+        }
+      }
+      
+      // Keep the structure intact - don't filter out empty points
+      // Empty points will be preserved as empty strings
+      
+      // Update the document content
+      const updatedSections = documentSectionsState.map(s => 
+        s.id === selectedSection 
+          ? {
+              ...s,
+              content: updatedContent,
+              version: s.version + 1,
+              hasChanges: true
+            }
+          : s
+      );
+      setDocumentSectionsState(updatedSections);
+
+      // Add version change entry for multi-line edit
+      const newVersionChange: VersionChange = {
+        id: Date.now().toString(),
+        type: "modified",
+        content: `Updated text across points ${pointIndex + 1} to ${endPointIndex + 1}`,
+        sectionId: selectedSection,
+        oldContent: combinedOriginalText,
+        newContent: editingText,
+        pointNumber: pointIndex + 1 // Reference the starting point
+      };
+
+      setVersionChanges(prev => [...prev, newVersionChange]);
+      
+    } else {
+      // Single-line edit (existing logic)
+      const originalText = section.content[pointIndex];
+      const newText = originalText.substring(0, start) + editingText + originalText.substring(end);
+
+      // Update the document content
+      const updatedSections = documentSectionsState.map(s => 
+        s.id === selectedSection 
+          ? {
+              ...s,
+              content: s.content.map((content, index) => 
+                index === pointIndex ? newText : content
+              ),
+              version: s.version + 1,
+              hasChanges: true
+            }
+          : s
+      );
+      setDocumentSectionsState(updatedSections);
+
+      // Add version change entry for single-line edit
+      const newVersionChange: VersionChange = {
+        id: Date.now().toString(),
+        type: "modified",
+        content: `Updated text in point ${pointIndex + 1}`,
+        sectionId: selectedSection,
+        oldContent: originalText,
+        newContent: newText,
+        pointNumber: pointIndex + 1
+      };
+
+      setVersionChanges(prev => [...prev, newVersionChange]);
+    }
+
+    console.log('Document edit applied:', {
+      sectionId: selectedSection,
+      pointIndex,
+      endPointIndex,
+      isMultiLine: endPointIndex !== undefined && endPointIndex !== pointIndex
+    });
+
+    // Clear editing state
+    setIsEditing(false);
+    setEditingText("");
+    setSelectedText("");
+    setSelectionRange(null);
+    setShowEditPopup(false);
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setEditingText("");
+    setShowEditPopup(false);
+  };
+
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  const expandPinnedComment = (commentId: string) => {
+    // First, collapse all other expanded pinned comments
+    expandedPinnedComments.forEach(expandedCommentId => {
+      if (expandedCommentId !== commentId) {
+        clearAutoCollapseTimer(expandedCommentId);
+      }
+    });
+    
+    // Set only the new comment as expanded
+    setExpandedPinnedComments(new Set([commentId]));
+    startAutoCollapseTimer(commentId);
+    
+    // Force re-render to reposition pin dots
+    setTimeout(() => {
+      forceRerender((n) => n + 1);
+    }, 50);
+  };
+
+  const collapsePinnedComment = (commentId: string) => {
+    setExpandedPinnedComments(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(commentId);
+      return newSet;
+    });
+    clearAutoCollapseTimer(commentId);
+    
+    // Force re-render to reposition pin dots
+    setTimeout(() => {
+      forceRerender((n) => n + 1);
+    }, 50);
+  };
+
+  const startAutoCollapseTimer = (commentId: string) => {
+    // Clear existing timer if any
+    clearAutoCollapseTimer(commentId);
+    
+    const timer = setTimeout(() => {
+      collapsePinnedComment(commentId);
+    }, 10000); // 10 seconds
+    
+    setAutoCollapseTimers(prev => new Map(prev).set(commentId, timer));
+  };
+
+  const clearAutoCollapseTimer = (commentId: string) => {
+    const timer = autoCollapseTimers.get(commentId);
+    if (timer) {
+      clearTimeout(timer);
+      setAutoCollapseTimers(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(commentId);
+        return newMap;
+      });
+    }
+  };
+
+  const handlePinnedCommentInteraction = (commentId: string) => {
+    if (expandedPinnedComments.has(commentId)) {
+      // Reset the auto-collapse timer on interaction
+      startAutoCollapseTimer(commentId);
+    }
+  };
+
+  // Filter and sort comments
+  const filteredComments = comments
+    .filter(comment => comment.sectionId === selectedSection)
+    .filter(comment => !statusFilter || comment.status === statusFilter)
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "timestamp-asc":
+          return a.timestamp.getTime() - b.timestamp.getTime();
+        case "status":
+          return a.status.localeCompare(b.status);
+        case "author":
+          return a.author.name.localeCompare(b.author.name);
+        default:
+          return b.timestamp.getTime() - a.timestamp.getTime();
+      }
+    });
+
+  const documentRef = useRef<HTMLDivElement>(null);
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
+
+  const [burgerOpen, setBurgerOpen] = useState(false);
+
+  const burgerMenuRef = useRef<HTMLDivElement>(null);
+
+  const users: User[] = [
+    { id: "1", name: "Sarah Chen", avatar: "SC", role: "Senior Editor" },
+    { id: "2", name: "Michael Rodriguez", avatar: "MR", role: "Legal Counsel" },
+    { id: "3", name: "Emily Watson", avatar: "EW", role: "Project Manager" },
+    { id: "4", name: "David Kim", avatar: "DK", role: "Technical Lead" },
+  ];
+
+  const documentSections: DocumentSection[] = [
+    {
+      id: "1",
+      title: "Executive Summary",
+      content: [
+        "This strategic initiative represents a comprehensive transformation of our market positioning and operational capabilities, designed to capitalize on emerging opportunities in the global marketplace while addressing evolving customer demands and competitive pressures.",
+        "Our analysis of current market dynamics reveals significant potential for growth in both established and emerging markets, particularly in the technology services sector where we have identified substantial untapped opportunities.",
+        "Our strategic approach focuses on three core pillars: market expansion through targeted geographic diversification, operational efficiency improvements leveraging advanced technologies and process optimization, and enhanced customer experience delivery through innovative service models. Additionally, we have integrated comprehensive sustainability initiatives that align with global environmental standards and stakeholder expectations.",
+        "This multi-faceted strategy is designed to drive sustainable revenue growth while maintaining our commitment to operational excellence and stakeholder value creation.",
+        "The implementation of these initiatives is expected to deliver measurable improvements across key performance indicators, including a projected 25% increase in market share within target segments, 15% reduction in operational costs through process optimization, and enhanced customer satisfaction scores exceeding 90%.",
+        "These outcomes will position our organization as a market leader in the rapidly evolving technology services landscape.",
+        "Success metrics for this initiative include quarterly revenue growth targets, customer acquisition rates, operational efficiency benchmarks, and employee engagement scores. Regular monitoring and adjustment of our strategic approach will ensure we remain responsive to market changes while maintaining alignment with our long-term organizational objectives."
+      ],
+      version: 2,
+      hasChanges: true,
+    },
+    {
+      id: "2",
+      title: "Market Analysis",
+      content: [
+        "Our comprehensive market analysis reveals compelling opportunities for strategic expansion, particularly in the rapidly growing Southeast Asian and Latin American markets.",
+        "These regions demonstrate strong economic fundamentals, increasing technology adoption rates, and favorable regulatory environments that align with our business model and growth objectives.",
+        "The digital transformation initiatives driving these markets present significant opportunities for our technology services portfolio.",
+        "In Southeast Asia, we have identified Vietnam, Indonesia, and the Philippines as primary target markets, where GDP growth rates averaging 6-7% annually, combined with increasing technology infrastructure investments, create an ideal environment for our service offerings.",
+        "The region's young, tech-savvy population and government support for digital initiatives provide additional momentum for market entry and expansion strategies.",
+        "Latin America presents equally compelling opportunities, with Brazil, Mexico, and Colombia emerging as key growth markets.",
+        "The region's increasing focus on digital transformation, combined with improving economic stability and regulatory frameworks, creates favorable conditions for technology service providers.",
+        "Our analysis indicates strong demand for cloud computing solutions, cybersecurity services, and digital consulting expertise across these markets.",
+        "Competitive landscape analysis reveals a fragmented market structure with significant opportunities for differentiation through our specialized expertise in enterprise software solutions and industry-specific knowledge.",
+        "While established global players maintain strong positions in traditional IT services, we have identified underserved segments in mid-market enterprises and industry-specific solutions where our expertise provides competitive advantages."
+      ],
+      version: 1,
+      hasChanges: false,
+    },
+    {
+      id: "3",
+      title: "Financial Projections",
+      content: [
+        "Our financial projections reflect a conservative yet ambitious growth trajectory, with revenue growth targets of 25% year-over-year over the next three years, driven primarily by market expansion initiatives and enhanced service offerings.",
+        "This growth projection is based on detailed market analysis, historical performance data, and conservative assumptions regarding market penetration rates and competitive dynamics.",
+        "Operating margins are expected to improve by 3 percentage points from current levels, reaching 18% by the end of the projection period.",
+        "This margin expansion will be achieved through operational efficiency improvements, economies of scale from increased market presence, and enhanced pricing power resulting from our differentiated service offerings.",
+        "Cost optimization initiatives, including automation of routine processes and strategic sourcing partnerships, will contribute significantly to margin improvement.",
+        "Capital expenditure requirements for the expansion initiatives are projected at $15 million over the next 24 months, with the majority allocated to technology infrastructure, market entry costs, and talent acquisition.",
+        "These investments are expected to generate positive returns within 18 months of deployment, with payback periods averaging 14 months across all major initiatives.",
+        "Cash flow projections indicate strong positive operating cash flows throughout the projection period, with free cash flow margins expanding from 12% to 15% by year three.",
+        "This strong cash generation will support continued investment in growth initiatives while maintaining financial flexibility for strategic acquisitions and market opportunities that may arise during the implementation period."
+      ],
+      version: 3,
+      hasChanges: true,
+    },
+    {
+      id: "4",
+      title: "Implementation Timeline",
+      content: [
+        "The implementation of our strategic initiatives will be executed through a phased approach designed to minimize risk while maximizing market impact and operational efficiency.",
+        "Phase 1, scheduled for Q1 2025, focuses on foundational infrastructure development and organizational readiness, including the establishment of regional offices, technology platform deployment, and comprehensive team training programs across all functional areas.",
+        "Phase 2, commencing in Q2 2025, will focus on market entry and pilot program execution in our primary target markets.",
+        "This phase includes the launch of localized service offerings, establishment of key customer relationships, and validation of our market entry strategies through controlled pilot programs.",
+        "Success metrics for this phase include customer acquisition targets, service delivery quality scores, and market feedback integration.",
+        "Phase 3, beginning in Q3 2025, will expand our market presence through scaled operations and enhanced service delivery capabilities.",
+        "This phase includes the full deployment of our technology platforms, expansion of our service portfolio, and implementation of advanced analytics and customer relationship management systems.",
+        "Operational efficiency improvements and process optimization initiatives will be fully implemented during this phase.",
+        "Phase 4, scheduled for Q4 2025, will focus on market consolidation, performance optimization, and strategic positioning for continued growth.",
+        "This final phase includes comprehensive performance evaluation, strategic adjustments based on market feedback, and preparation for additional market expansion opportunities.",
+        "Success metrics will be evaluated against our established KPIs, with adjustments made to ensure alignment with our long-term strategic objectives."
+      ],
+      version: 2,
+      hasChanges: false,
+    },
+  ];
+
+  const [versionChanges, setVersionChanges] = useState<VersionChange[]>([
+    {
+      id: "1",
+      type: "added",
+      content: "Added sustainability initiatives to strategic pillars",
+      sectionId: "1",
+      oldContent: "Our strategic approach focuses on three core pillars: market expansion through targeted geographic diversification, operational efficiency improvements leveraging advanced technologies and process optimization, and enhanced customer experience delivery through innovative service models.",
+      newContent: "Our strategic approach focuses on three core pillars: market expansion through targeted geographic diversification, operational efficiency improvements leveraging advanced technologies and process optimization, and enhanced customer experience delivery through innovative service models. Additionally, we have integrated comprehensive sustainability initiatives that align with global environmental standards and stakeholder expectations.",
+      pointNumber: 3
+    },
+    {
+      id: "2",
+      type: "modified",
+      content: "Updated revenue growth targets from 20% to 25% based on latest market data",
+      sectionId: "3",
+      oldContent: "Our financial projections reflect a conservative growth trajectory, with revenue growth targets of 20% year-over-year over the next three years, driven primarily by market expansion initiatives and enhanced service offerings.",
+      newContent: "Our financial projections reflect a conservative yet ambitious growth trajectory, with revenue growth targets of 25% year-over-year over the next three years, driven primarily by market expansion initiatives and enhanced service offerings.",
+      pointNumber: 1
+    },
+    {
+      id: "3",
+      type: "removed",
+      content: "Removed outdated traditional market entry strategy",
+      sectionId: "2",
+      oldContent: "Our initial market entry strategy focused on traditional regional expansion through established partnerships and local market research. This approach, while effective in the past, has become less relevant in today's rapidly evolving digital landscape.",
+      newContent: "",
+      pointNumber: 2
+    },
+  ]);
+
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isCreatePostExpanded) {
-        setIsCreatePostExpanded(false);
-        setShowEmojiPicker(false);
-        newPostRef.current?.blur();
+    setDocumentSectionsState(documentSections);
+  }, []);
+
+  useEffect(() => {
+    const sampleComments: Comment[] = [
+      {
+        id: "1",
+        content:
+          "Great analysis @Sarah Chen! Should we include more details about the competitive landscape?",
+        author: users[0],
+        status: "open",
+        timestamp: new Date(Date.now() - 3600000),
+        position: { x: 150, y: 180 },
+        sectionId: "1",
+        mentions: ["Sarah Chen"],
+        isPinned: false,
+        anchoredToPointIndex: 0,
+      },
+      {
+        id: "2",
+        content:
+          "@Michael Rodriguez - Please review the legal implications of the new market entry strategy.",
+        author: users[0],
+        status: "pending",
+        timestamp: new Date(Date.now() - 7200000),
+        position: { x: 200, y: 280 },
+        sectionId: "2",
+        mentions: ["Michael Rodriguez"],
+        isPinned: false,
+        anchoredToPointIndex: 1,
+      },
+    ];
+    setComments(sampleComments);
+  }, []);
+
+  useEffect(() => {
+    if (!burgerOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (
+        burgerMenuRef.current &&
+        !burgerMenuRef.current.contains(e.target as Node)
+      ) {
+        setBurgerOpen(false);
       }
-      if (e.key === 'Escape' && showReactionPicker) {
-        setShowReactionPicker(null);
-      }
-    };
-    const handleClickOutside = (e: MouseEvent) => {
-      if (showReactionPicker && !(e.target as Element).closest('.reaction-picker-container')) {
-        setShowReactionPicker(null);
-      }
-      if (showEmojiPicker && !(e.target as Element).closest('.emoji-picker-container')) {
-        setShowEmojiPicker(false);
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
-    document.addEventListener('click', handleClickOutside);
+    }
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setBurgerOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleEsc);
     return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleEsc);
     };
-  }, [isCreatePostExpanded, showReactionPicker ?? '', showEmojiPicker]);
+  }, [burgerOpen]);
+
   useEffect(() => {
-    if (showProfileModal || showSettingsModal || showWelcomeModal) {
+    if (showVersionModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -492,1163 +868,2270 @@ const CommunityDashboard: React.FC = () => {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [showProfileModal, showSettingsModal, showWelcomeModal]);
+  }, [showVersionModal]);
+
+  // Handle text selection
   useEffect(() => {
-    const trending = calculateDynamicTrendingTopics(discussions);
-    setDynamicTrendingTopics(trending);
-  }, [discussions]);
-  const handleReply = (postId: string) => {
-    if (!replyContent[postId]?.trim()) {
-      toast.error("Reply cannot be empty");
+    const handleSelectionChange = () => {
+      if (!isEditing) {
+        handleTextSelection();
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, [isEditing, selectedSection]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      autoCollapseTimers.forEach(timer => clearTimeout(timer));
+    };
+  }, [autoCollapseTimers]);
+
+  // Track document scroll position and trigger re-render for anchored comments
+  useEffect(() => {
+    const handleDocumentScroll = () => {
+      if (documentRef.current) {
+        setDocumentScrollPosition({
+          x: documentRef.current.scrollLeft,
+          y: documentRef.current.scrollTop
+        });
+        // Force re-render to update anchored comment positions
+        forceRerender((n) => n + 1);
+      }
+    };
+
+    if (documentRef.current) {
+      documentRef.current.addEventListener('scroll', handleDocumentScroll);
+      return () => {
+        if (documentRef.current) {
+          documentRef.current.removeEventListener('scroll', handleDocumentScroll);
+        }
+      };
+    }
+  }, [selectedSection]);
+
+  const handleCommentMouseDown = (e: React.MouseEvent, comment: Comment) => {
+    // Don't start dragging if clicking on the collapse button, delete button, pin button, or status dropdown
+    if ((e.target as HTMLElement).closest('.collapse-button') || 
+        (e.target as HTMLElement).closest('.delete-button') ||
+        (e.target as HTMLElement).closest('.pin-button') ||
+        (e.target as HTMLElement).tagName === 'SELECT' ||
+        (e.target as HTMLElement).closest('select')) {
       return;
     }
-    const newReply: Reply = {
-      id: `r${Date.now()}`,
-      author: "John Doe",
-      content: replyContent[postId],
-      timestamp: new Date(),
+    
+    // Show toast if comment is pinned and user tries to drag
+    if (comment.isPinned) {
+      showToastMessage("Please unpin the comment to reposition");
+      return;
+    }
+    
+    if (!documentRef.current) return;
+    const rect = documentRef.current.getBoundingClientRect();
+    const offsetX = (e.clientX - rect.left + documentRef.current.scrollLeft) - comment.position.x;
+    const offsetY = (e.clientY - rect.top + documentRef.current.scrollTop) - comment.position.y;
+    setDraggedCommentId(comment.id);
+    setDragOffset({ x: offsetX, y: offsetY });
+    dragPosRef.current = { x: comment.position.x, y: comment.position.y };
+    forceRerender((n) => n + 1);
+    document.body.style.userSelect = "none";
+  };
+
+  React.useEffect(() => {
+    if (!draggedCommentId || !dragOffset) return;
+    let animationFrame: number;
+    function onMouseMove(e: MouseEvent) {
+      if (!documentRef.current || !dragOffset) return;
+      const rect = documentRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left - dragOffset.x + documentRef.current.scrollLeft;
+      const y = e.clientY - rect.top - dragOffset.y + documentRef.current.scrollTop;
+      
+      // Apply constraints to keep comment within document boundaries
+      const constrainedPos = constrainCommentPosition({ x, y });
+      dragPosRef.current = constrainedPos;
+      
+      // Use requestAnimationFrame to throttle re-renders during dragging
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+      animationFrame = requestAnimationFrame(() => {
+      forceRerender((n) => n + 1);
+      });
+    }
+    function onMouseUp() {
+      if (!documentRef.current || !draggedCommentId || !dragPosRef.current) {
+        setDraggedCommentId(null);
+        setDragOffset(null);
+        dragPosRef.current = null;
+        forceRerender((n) => n + 1);
+        document.body.style.userSelect = "";
+        return;
+      }
+      const dropPos = dragPosRef.current;
+      // Apply final constraint to the drop position
+      const constrainedDropPos = constrainCommentPosition(dropPos);
+      setComments((prev) =>
+        prev.map((comment) =>
+          comment.id === draggedCommentId && constrainedDropPos
+            ? { ...comment, position: { x: constrainedDropPos.x, y: constrainedDropPos.y } }
+            : comment
+        )
+      );
+      setDraggedCommentId(null);
+      setDragOffset(null);
+      dragPosRef.current = null;
+      forceRerender((n) => n + 1);
+      document.body.style.userSelect = "";
+    }
+    function onFrame() {
+      animationFrame = requestAnimationFrame(onFrame);
+    }
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    animationFrame = requestAnimationFrame(onFrame);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      cancelAnimationFrame(animationFrame);
     };
-    setDiscussions((prev) => {
-      const newDiscussions = { ...prev };
-      // Find the post across all topics
-      for (const topicId in newDiscussions) {
-        const topicDiscussions = [...newDiscussions[topicId]];
-        const postIndex = topicDiscussions.findIndex((p) => p.id === postId);
-        if (postIndex !== -1) {
-          const currentPost = topicDiscussions[postIndex];
-          const isReplyingToOwnPost = currentPost.author === "John Doe";
-          const updatedPost = {
-            ...currentPost,
-            replies: [...currentPost.replies, newReply],
-            answered: isReplyingToOwnPost ? currentPost.answered : true,
-          };
-          topicDiscussions[postIndex] = updatedPost;
-          newDiscussions[topicId] = topicDiscussions;
-          break;
+  }, [draggedCommentId, dragOffset, setComments]);
+
+  const addComment = () => {
+    if (!newComment.trim() || !selectedSection) return;
+
+    const mentions = extractMentions(newComment);
+    
+    // Check if comment is referencing specific points (single or range)
+    const singlePointRegex = /^Regarding point (\d+):/;
+    const multiPointRegex = /^Regarding points (\d+) to (\d+):/;
+    
+    const singlePointMatch = newComment.match(singlePointRegex);
+    const multiPointMatch = newComment.match(multiPointRegex);
+    
+    let closestPointIndex = 0;
+    let isPinned = false;
+    let commentPosition = { x: 317, y: 265 }; // Default position
+    
+    if (multiPointMatch) {
+      // Comment is referencing multiple points - convert display numbers to array indices
+      const startDisplayNumber = parseInt(multiPointMatch[1]);
+      const endDisplayNumber = parseInt(multiPointMatch[2]);
+      const startPoint = getArrayIndex(selectedSection, startDisplayNumber);
+      const endPoint = getArrayIndex(selectedSection, endDisplayNumber);
+      const currentSection = documentSectionsState.find(s => s.id === selectedSection);
+      
+      if (currentSection && startPoint >= 0 && endPoint < currentSection.content.length && startPoint <= endPoint) {
+        closestPointIndex = startPoint; // Anchor to the starting point
+        isPinned = true;
+        
+        // If this comment was created from text selection, position it at the selection start
+        if (selectionRange && selectionRange.pointIndex === startPoint && selectionRange.endPointIndex === endPoint) {
+          // Calculate position at the beginning of the selected text
+          const pointElement = documentRef.current?.querySelector(`[data-point-index="${startPoint}"]`);
+          if (pointElement) {
+            const pointTextElement = pointElement.querySelector('p');
+            if (pointTextElement) {
+              // Create a range to measure the position of the selection start
+              const range = document.createRange();
+              const textNode = pointTextElement.firstChild;
+              if (textNode) {
+                range.setStart(textNode, selectionRange.start);
+                range.setEnd(textNode, selectionRange.start);
+                const rect = range.getBoundingClientRect();
+                const documentRect = documentRef.current!.getBoundingClientRect();
+                
+                // Position relative to the document point
+                commentPosition = {
+                  x: rect.left - documentRect.left + documentRef.current!.scrollLeft - (pointElement.getBoundingClientRect().left - documentRect.left + documentRef.current!.scrollLeft),
+                  y: rect.top - documentRect.top + documentRef.current!.scrollTop - (pointElement.getBoundingClientRect().top - documentRect.top + documentRef.current!.scrollTop) - 10
+                };
+              }
+            }
+          }
+        } else {
+          // Default relative position for non-selection comments
+          commentPosition = calculateMidpointPosition(startPoint, endPoint);
+        }
+        
+        // Store the end point index for multi-line comments
+        const newCommentObj: Comment = {
+          id: Date.now().toString(),
+          content: newComment,
+          author: users[0],
+          status: "open",
+          timestamp: new Date(),
+          position: constrainCommentPosition(commentPosition),
+          sectionId: selectedSection,
+          mentions,
+          isPinned,
+          anchoredToPointIndex: closestPointIndex,
+          endPointIndex: endPoint, // Store end point for multi-line comments
+        };
+
+        setComments((prev) => [...prev, newCommentObj]);
+        setNewComment("");
+        setShowMentionSuggestions(false);
+        
+        // Clear selection range after creating comment
+        setSelectionRange(null);
+        
+        // If the comment was pinned, collapse it to pin dot initially
+        if (isPinned) {
+          setTimeout(() => {
+            collapsePinnedComment(newCommentObj.id);
+          }, 100);
+        }
+        return; // Early return for multi-line comments
+      }
+    } else if (singlePointMatch) {
+      // Comment is referencing a single point - convert display number to array index
+      const displayNumber = parseInt(singlePointMatch[1]);
+      const referencedPoint = getArrayIndex(selectedSection, displayNumber);
+      const currentSection = documentSectionsState.find(s => s.id === selectedSection);
+      
+      if (currentSection && referencedPoint >= 0 && referencedPoint < currentSection.content.length) {
+        closestPointIndex = referencedPoint;
+        isPinned = true;
+        
+        // If this comment was created from text selection, position it at the selection start
+        if (selectionRange && selectionRange.pointIndex === referencedPoint) {
+          // Calculate position at the beginning of the selected text
+          const pointElement = documentRef.current?.querySelector(`[data-point-index="${referencedPoint}"]`);
+          if (pointElement) {
+            const pointTextElement = pointElement.querySelector('p');
+            if (pointTextElement) {
+              // Create a range to measure the position of the selection start
+              const range = document.createRange();
+              const textNode = pointTextElement.firstChild;
+              if (textNode) {
+                range.setStart(textNode, selectionRange.start);
+                range.setEnd(textNode, selectionRange.start);
+                const rect = range.getBoundingClientRect();
+                const documentRect = documentRef.current!.getBoundingClientRect();
+                
+                // Position relative to the document point
+                commentPosition = {
+                  x: rect.left - documentRect.left + documentRef.current!.scrollLeft - (pointElement.getBoundingClientRect().left - documentRect.left + documentRef.current!.scrollLeft),
+                  y: rect.top - documentRect.top + documentRef.current!.scrollTop - (pointElement.getBoundingClientRect().top - documentRect.top + documentRef.current!.scrollTop) - 10
+                };
+              }
+            }
+          }
+        } else {
+          // Default relative position for non-selection comments
+          commentPosition = { x: 50, y: 50 };
         }
       }
-      return newDiscussions;
-    });
-    setReplyContent((prev) => ({ ...prev, [postId]: "" }));
-    toast.success("Reply posted successfully!");
-    // Set the new comment for highlighting
-    setNewCommentId(newReply.id);
-    // Scroll to the new comment after state update
-    setTimeout(() => {
-      const repliesContainer = document.getElementById(`replies-container-${postId}`);
-      if (repliesContainer) {
-        repliesContainer.scrollTop = 0; // Scroll to top since newest is at top
+    } else {
+      // Find the closest document point to anchor the comment to (existing logic)
+      const currentSection = documentSectionsState.find(s => s.id === selectedSection);
+      if (currentSection && documentRef.current) {
+        const documentRect = documentRef.current.getBoundingClientRect();
+        const centerY = documentRect.top + documentRect.height / 2;
+        
+        let minDistance = Infinity;
+        currentSection.content.forEach((_, index) => {
+          const pointElement = documentRef.current?.querySelector(`[data-point-index="${index}"]`);
+          if (pointElement) {
+            const pointRect = pointElement.getBoundingClientRect();
+            const distance = Math.abs(pointRect.top + pointRect.height / 2 - centerY);
+            if (distance < minDistance) {
+              minDistance = distance;
+              closestPointIndex = index;
+            }
+          }
+        });
       }
-    }, 100);
-    // Clear the highlight after animation
-    setTimeout(() => {
-      setNewCommentId(null);
-    }, 2500);
-    if (replyRefs.current[postId]) {
-      replyRefs.current[postId]?.focus();
+    }
+    
+    const newCommentObj: Comment = {
+      id: Date.now().toString(),
+      content: newComment,
+      author: users[0],
+      status: "open",
+      timestamp: new Date(),
+      position: constrainCommentPosition(commentPosition),
+      sectionId: selectedSection,
+      mentions,
+      isPinned,
+      anchoredToPointIndex: closestPointIndex,
+    };
+
+    setComments((prev) => [...prev, newCommentObj]);
+    setNewComment("");
+    setShowMentionSuggestions(false);
+    
+    // Clear selection range after creating comment
+    setSelectionRange(null);
+    
+    // If the comment was pinned, collapse it to pin dot initially
+    if (isPinned) {
+      setTimeout(() => {
+        collapsePinnedComment(newCommentObj.id);
+      }, 100);
     }
   };
-  const toggleBookmark = (postId: string) => {
-    setDiscussions((prev) => {
-      const newDiscussions = { ...prev };
-      for (const topicId in newDiscussions) {
-        const topicDiscussions = newDiscussions[topicId];
-        const postIndex = topicDiscussions.findIndex((p) => p.id === postId);
-        if (postIndex !== -1) {
-          newDiscussions[topicId] = [
-            ...topicDiscussions.slice(0, postIndex),
-            {
-              ...topicDiscussions[postIndex],
-              bookmarked: !topicDiscussions[postIndex].bookmarked,
-            },
-            ...topicDiscussions.slice(postIndex + 1),
-          ];
-          break;
-        }
+
+  const extractMentions = (text: string): string[] => {
+    const mentionRegex = /@(\w+)/g;
+    const matches = text.match(mentionRegex);
+    return matches ? matches.map((match) => match.slice(1)) : [];
+  };
+
+  const updateCommentStatus = (
+    commentId: string,
+    status: Comment["status"]
+  ) => {
+    setComments((prev) =>
+      prev.map((comment) =>
+        comment.id === commentId ? { ...comment, status } : comment
+      )
+    );
+  };
+
+  const deleteComment = (commentId: string) => {
+    console.log('Deleting comment:', commentId);
+    setComments((prev) => prev.filter((comment) => comment.id !== commentId));
+  };
+
+  const toggleCommentCollapse = (commentId: string) => {
+    setCollapsedComments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(commentId)) {
+        newSet.delete(commentId);
+      } else {
+        newSet.add(commentId);
       }
-      return newDiscussions;
+      return newSet;
     });
   };
-  const toggleLike = (postId: string) => {
-    setDiscussions((prev) => {
-      const newDiscussions = { ...prev };
-      // Find the post across all topics
-      for (const topicId in newDiscussions) {
-        const topicDiscussions = [...newDiscussions[topicId]];
-        const postIndex = topicDiscussions.findIndex((p) => p.id === postId);
-        if (postIndex !== -1) {
-          topicDiscussions[postIndex] = {
-            ...topicDiscussions[postIndex],
-            likes:
-              topicDiscussions[postIndex].likes +
-              (topicDiscussions[postIndex].likedByUser ? -1 : 1),
-            likedByUser: !topicDiscussions[postIndex].likedByUser,
-          };
-          newDiscussions[topicId] = topicDiscussions;
-          break;
-        }
-      }
-      return newDiscussions;
-    });
-  };
-  const toggleReplyExpansion = (postId: string) => {
-    setExpandedPost(expandedPost === postId ? null : postId);
-  };
-  const addReaction = (postId: string, emoji: string) => {
-    setDiscussions((prev) => {
-      const newDiscussions = { ...prev };
-      for (const topicId in newDiscussions) {
-        const topicDiscussions = [...newDiscussions[topicId]];
-        const postIndex = topicDiscussions.findIndex((p) => p.id === postId);
-        if (postIndex !== -1) {
-          const post = topicDiscussions[postIndex];
-          const reactions = { ...(post.reactions || {}) };
-          const currentReaction = reactions[emoji] || { count: 0, users: [] };
-          const hasUserReacted = currentReaction.users.includes("John Doe");
-          if (hasUserReacted) {
-            const newUsers = currentReaction.users.filter((user: string) => user !== "John Doe");
-            if (newUsers.length > 0) {
-              reactions[emoji] = { count: newUsers.length, users: newUsers };
-            } else {
-              delete reactions[emoji];
+
+  const toggleCommentPin = (commentId: string) => {
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
+
+    if (!comment.isPinned) {
+      // Comment is being pinned - find the closest document point to anchor to
+      let closestPointIndex = comment.anchoredToPointIndex || 0;
+      const currentSection = documentSectionsState.find(s => s.id === comment.sectionId);
+      
+      if (currentSection && documentRef.current) {
+        const commentElement = document.querySelector(`[data-comment-id="${commentId}"]`);
+        if (commentElement) {
+          const commentRect = commentElement.getBoundingClientRect();
+          const commentCenterY = commentRect.top + commentRect.height / 2;
+          
+          let minDistance = Infinity;
+          currentSection.content.forEach((_, index) => {
+            const pointElement = documentRef.current?.querySelector(`[data-point-index="${index}"]`);
+            if (pointElement) {
+              const pointRect = pointElement.getBoundingClientRect();
+              const distance = Math.abs(pointRect.top + pointRect.height / 2 - commentCenterY);
+              if (distance < minDistance) {
+                minDistance = distance;
+                closestPointIndex = index;
+              }
             }
-          } else {
-            reactions[emoji] = { 
-              count: currentReaction.count + 1, 
-              users: [...currentReaction.users, "John Doe"] 
+          });
+        }
+      }
+
+      setComments(prev => 
+        prev.map(c => 
+          c.id === commentId 
+            ? { 
+                ...c, 
+                isPinned: true, 
+                anchoredToPointIndex: closestPointIndex,
+                // Store relative position from the anchor point
+                position: (() => {
+                  const pointPos = getPointElementPosition(closestPointIndex);
+                  return pointPos ? {
+                    x: c.position.x - pointPos.x,
+                    y: c.position.y - pointPos.y
+                  } : c.position;
+                })()
+              }
+            : c
+        )
+      );
+      
+      // Collapse it to pin dot
+      collapsePinnedComment(commentId);
+    } else {
+      // Comment is being unpinned - clear anchor and restore absolute positioning
+      setComments(prev => 
+        prev.map(c => {
+          if (c.id === commentId) {
+            // Convert back to absolute position
+            const currentPos = c.anchoredToPointIndex !== undefined 
+              ? (() => {
+                  const pointPos = getPointElementPosition(c.anchoredToPointIndex);
+                  return pointPos ? {
+                    x: pointPos.x + c.position.x,
+                    y: pointPos.y + c.position.y
+                  } : c.position;
+                })()
+              : c.position;
+            
+            // Apply constraints to ensure comment stays within document boundaries
+            const constrainedPos = constrainCommentPosition(currentPos);
+            
+            return { 
+              ...c, 
+              isPinned: false, 
+              anchoredToPointIndex: undefined,
+              position: constrainedPos
             };
           }
-          topicDiscussions[postIndex] = {
-            ...post,
-            reactions: reactions
-          };
-          newDiscussions[topicId] = topicDiscussions;
-          break;
-        }
-      }
-      return newDiscussions;
-    });
-    setShowReactionPicker(null);
-  };
-  const getReactionEmojis = () => [
-    "👍", "❤️", "😊", "🔥", "🎉", "👏", "💯", "🚀"
-  ];
-  const getAllBookmarkedPosts = () => {
-    const allPosts = Object.values(discussions).flat();
-    return allPosts.filter(post => post.bookmarked);
-  };
-  const currentDiscussions = showBookmarks 
-    ? getAllBookmarkedPosts() 
-    : selectedTopic 
-      ? (discussions[selectedTopic] || [])
-      : Object.values(discussions).flat();
-  let filteredDiscussions = [...currentDiscussions];
-  if (!showBookmarks) {
-    if (activeFilter === "Most recent") {
-      filteredDiscussions.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
-    } else if (activeFilter === "Most replied") {
-      filteredDiscussions.sort((a, b) => b.replies.length - a.replies.length);
-    } else if (activeFilter === "Unanswered") {
-      filteredDiscussions = filteredDiscussions.filter(
-        (d) => d.replies.length === 0
+          return c;
+        })
       );
+      
+      // Clear timers and expand state
+      clearAutoCollapseTimer(commentId);
+      setExpandedPinnedComments(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(commentId);
+        return newSet;
+      });
     }
-  } else {
-    filteredDiscussions.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
-  }
-  const filteredTopics = trendingTopics.filter((topic) =>
-    topic.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const handleEmojiClick = (emoji: string) => {
-    setNewPostContent((prev) => prev + emoji);
-  };
-  const handleFormatText = (format: "bold" | "italic" | "link") => {
-    const textarea = newPostRef.current;
-    if (!textarea) return;
-    textarea.focus();
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = newPostContent.substring(start, end);
-    let formattedText = "";
-    let newCursorPos = start;
-    switch (format) {
-      case "bold":
-        if (selectedText) {
-          formattedText = `**${selectedText}**`;
-          newCursorPos = start + formattedText.length;
-        } else {
-          formattedText = "**bold text**";
-          newCursorPos = start + 2;
-        }
-        break;
-      case "italic":
-        if (selectedText) {
-          formattedText = `*${selectedText}*`;
-          newCursorPos = start + 1;
-        } else {
-          formattedText = "*italic text*";
-          newCursorPos = start + 1;
-        }
-        break;
-      case "link":
-        if (selectedText) {
-          formattedText = `[${selectedText}](https://example.com)`;
-          newCursorPos = start + formattedText.length - 18;
-        } else {
-          formattedText = "[Click here](https://example.com)";
-          newCursorPos = start + formattedText.length - 18;
-        }
-        break;
-    }
-    const newText =
-      newPostContent.substring(0, start) +
-      formattedText +
-      newPostContent.substring(end);
-    setNewPostContent(newText);
+    
+    // Clear selection when pinning/unpinning to reset opacity behavior
     setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
+      if (selectedComment?.id === commentId) {
+        setSelectedComment(null);
+      }
+      forceRerender((n) => n + 1);
     }, 10);
   };
-  const renderMarkdown = (text: string) => {
-    return text
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-      .replace(/\*(.*?)\*/g, "<em>$1</em>")
-      .replace(
-        /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-[#A55EEA] hover:text-[#FF6B9D] hover:underline transition-colors duration-200">$1</a>'
-      );
+
+  const scrollToComment = (commentId: string) => {
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment || !documentRef.current) return;
+
+    // If comment is pinned and collapsed as a pin dot, expand it first
+    if (comment.isPinned && !expandedPinnedComments.has(commentId)) {
+      expandPinnedComment(commentId);
+    }
+
+    // If comment is not in the currently selected section, switch to it first
+    if (comment.sectionId !== selectedSection) {
+      setSelectedSection(comment.sectionId);
+      // Wait for the section to render before scrolling
+      setTimeout(() => scrollToCommentPosition(comment), 100);
+    } else {
+      scrollToCommentPosition(comment);
+    }
   };
-  if (isLoading) {
-    return (
-      <div className="relative h-screen w-screen overflow-hidden text-[#FFFFFF]">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0F0F1A] via-[#1A1A2E] to-[#16213E]">
-          <div className="absolute top-10 left-10 w-96 h-96 bg-gradient-to-br from-[#A855F7] to-[#EC4899] rounded-full opacity-30 blur-3xl animate-pulse"></div>
-          <div className="absolute top-32 right-16 w-80 h-80 bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] rounded-full opacity-25 blur-3xl"></div>
-          <div className="absolute bottom-20 left-20 w-72 h-72 bg-gradient-to-br from-[#EF4444] to-[#F97316] rounded-full opacity-20 blur-3xl"></div>
-          <div className="absolute bottom-32 right-32 w-64 h-64 bg-gradient-to-br from-[#10B981] to-[#059669] rounded-full opacity-25 blur-3xl"></div>
-          </div>
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-        <div className="relative z-10 flex items-center justify-center h-screen">
-          <div className="text-center">
-            <div className="flex justify-center mb-8">
-              <div className="relative">
-                <div className="w-24 h-24 bg-black/30 backdrop-blur-xl border border-white/20 rounded-2xl flex items-center justify-center shadow-2xl animate-bounce">
-                  <FaComments className="w-12 h-12 text-[#A55EEA]" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] rounded-full animate-ping"></div>
-              </div>
-            </div>
-            <h1 className="text-5xl font-bold mb-2 tracking-wide bg-gradient-to-r from-[#A55EEA] via-[#FF6B9D] to-[#3B82F6] bg-clip-text text-transparent animate-pulse">
-            CommunityHub
-          </h1>
-            <div className="w-32 h-1 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] rounded-full mx-auto mb-6"></div>
-            <p className="text-xl text-white/80 mb-8">
-            Connecting developers worldwide
-          </p>
-            <div className="flex justify-center space-x-1">
-              <div className="w-2 h-2 bg-[#A55EEA] rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-[#A55EEA] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-              <div className="w-2 h-2 bg-[#A55EEA] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+
+  const scrollToCommentPosition = (comment: Comment) => {
+    if (!documentRef.current) return;
+
+    const documentContainer = documentRef.current;
+    
+    let targetX = comment.position.x;
+    let targetY = comment.position.y;
+    
+    // For pinned comments, use the calculated pin dot position
+    if (comment.isPinned && comment.anchoredToPointIndex !== undefined) {
+      const pinPos = calculatePinDotPosition(comment);
+      targetX = pinPos.x;
+      targetY = pinPos.y;
+    }
+    
+    // Calculate scroll position to center the target within the document panel
+    const scrollX = targetX - documentContainer.clientWidth / 2;
+    const scrollY = targetY - documentContainer.clientHeight / 2;
+
+    // Smooth scroll within the document container
+    documentContainer.scrollTo({
+      left: Math.max(0, scrollX),
+      top: Math.max(0, scrollY),
+      behavior: 'smooth'
+    });
+
+    // Highlight the comment temporarily
+    setSelectedComment(comment);
+    
+    // Add a brief highlight effect
+    setTimeout(() => {
+      const commentElement = document.querySelector(`[data-comment-id="${comment.id}"]`);
+      if (commentElement) {
+        commentElement.classList.add('highlight-comment');
+        setTimeout(() => {
+          commentElement.classList.remove('highlight-comment');
+          // Clear selection after highlight animation to restore normal opacity
+          setSelectedComment(null);
+        }, 2000);
+      }
+    }, 500);
+  };
+
+  const handleMentionInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setNewComment(value);
+
+    const lastWord = value.split(" ").pop() || "";
+    if (lastWord.startsWith("@")) {
+      setMentionSearch(lastWord.slice(1));
+      setShowMentionSuggestions(true);
+    } else {
+      setShowMentionSuggestions(false);
+    }
+  };
+
+  const insertMention = (userName: string) => {
+    const words = newComment.split(" ");
+    words[words.length - 1] = `@${userName}`;
+    setNewComment(words.join(" ") + " ");
+    setShowMentionSuggestions(false);
+    commentInputRef.current?.focus();
+  };
+
+  const filteredUsers = users.filter((user) =>
+    user.name.toLowerCase().includes(mentionSearch.toLowerCase())
+  );
+
+  const getStatusColor = (status: Comment["status"]) => {
+    switch (status) {
+      case "open":
+        return "bg-blue-500";
+      case "resolved":
+        return "bg-green-500";
+      case "pending":
+        return "bg-yellow-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
+  const getStatusText = (status: Comment["status"]) => {
+    switch (status) {
+      case "open":
+        return "Open";
+      case "resolved":
+        return "Resolved";
+      case "pending":
+        return "Pending Review";
+      default:
+        return "Unknown";
+    }
+  };
+
+  const poppinsFont = `\
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900&display=swap');\n\
+    html, body, #root, * {\n  font-family: 'Poppins', sans-serif !important;\n  font-synthesis: none;\n  -webkit-font-smoothing: antialiased;\n  -moz-osx-font-smoothing: grayscale;\n}\n`;
+
+  const [showDraggableComments, setShowDraggableComments] =
+    React.useState(true);
+  React.useEffect(() => {
+    function handleResize() {
+      setShowDraggableComments(window.innerWidth >= 768);
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <>
-      <div className="relative h-screen w-screen overflow-hidden text-[#FFFFFF]">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0F0F1A] via-[#1A1A2E] to-[#16213E]">
-          <div className="absolute top-10 left-10 w-96 h-96 bg-gradient-to-br from-[#A855F7] to-[#EC4899] rounded-full opacity-30 blur-3xl animate-pulse"></div>
-          <div className="absolute top-32 right-16 w-80 h-80 bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] rounded-full opacity-25 blur-3xl"></div>
-          <div className="absolute bottom-20 left-20 w-72 h-72 bg-gradient-to-br from-[#EF4444] to-[#F97316] rounded-full opacity-20 blur-3xl"></div>
-          <div className="absolute bottom-32 right-32 w-64 h-64 bg-gradient-to-br from-[#10B981] to-[#059669] rounded-full opacity-25 blur-3xl"></div>
-        </div>
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-        <div className="relative z-10 flex flex-col lg:flex-row h-full w-full">
-          <button
-            onClick={() => setShowSidebar(!showSidebar)}
-            className="lg:hidden fixed left-0 top-1/2 transform -translate-y-1/2 z-50 p-2 bg-black/20 backdrop-blur-md border border-white/10 rounded-r-lg hover:bg-white/10 transition cursor-pointer"
-          >
-            {showSidebar ? (
-                <FaChevronLeft className="text-white/60" />
-            ) : (
-                <FaChevronRight className="text-white/60" />
-            )}
-          </button>
-          {showWelcomeModal && (
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-black/30 backdrop-blur-xl border border-white/20 rounded-lg sm:rounded-2xl max-w-md w-full p-6 sm:p-8 text-center shadow-2xl">
-                <div className="flex justify-center mb-4">
-                  <div className="bg-[#A55EEA]/20 p-4 sm:p-6 rounded-full">
-                    <FaComments className="w-12 h-12 sm:w-16 sm:h-16 text-[#A55EEA]" />
-                  </div>
-                </div>
-                <h2 className="text-xl sm:text-2xl font-bold text-white mb-3">Welcome to CommunityHub!</h2>
-                <p className="text-sm sm:text-base text-white/60 mb-6 leading-relaxed">
-                  Join our vibrant community of developers. Share knowledge, ask questions, and connect.
-                </p>
-                <button
-                  onClick={() => setShowWelcomeModal(false)}
-                  className="w-full py-3 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white rounded-lg font-semibold hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 transition-colors cursor-pointer text-sm sm:text-base"
-                >
-                  Get Started
-                </button>
-              </div>
+      <style>{poppinsFont}</style>
+      <style>{`
+        /* Comment highlight animation */
+        .highlight-comment {
+          animation: highlight-pulse 2s ease-in-out;
+          z-index: 999 !important;
+        }
+
+        @keyframes highlight-pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            transform: scale(1);
+          }
+          50% {
+            box-shadow: 0 0 0 10px rgba(59, 130, 246, 0.2);
+            transform: scale(1.05);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            transform: scale(1);
+          }
+        }
+
+        /* Dark mode variant */
+        @media (prefers-color-scheme: dark) {
+          @keyframes highlight-pulse {
+            0% {
+              box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.7);
+              transform: scale(1);
+            }
+            50% {
+              box-shadow: 0 0 0 10px rgba(96, 165, 250, 0.2);
+              transform: scale(1.05);
+            }
+            100% {
+              box-shadow: 0 0 0 0 rgba(96, 165, 250, 0);
+              transform: scale(1);
+            }
+          }
+        }
+
+        /* Toast notification animations */
+        .toast-enter {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+
+        .toast-enter-active {
+          transform: translateX(0);
+          opacity: 1;
+          transition: transform 300ms ease-out, opacity 300ms ease-out;
+        }
+
+        .toast-exit {
+          transform: translateX(0);
+          opacity: 1;
+        }
+
+        .toast-exit-active {
+          transform: translateX(100%);
+          opacity: 0;
+          transition: transform 250ms ease-in, opacity 250ms ease-in;
+        }
+
+        /* Pin dot animations */
+        @keyframes pin-pulse {
+          0% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.1);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+
+        @keyframes zoom-in-smooth {
+          0% {
+            transform: scale(0.3) rotate(-2deg);
+            opacity: 0;
+            border-radius: 50%;
+          }
+          30% {
+            transform: scale(0.6) rotate(-1deg);
+            opacity: 0.3;
+            border-radius: 24px;
+          }
+          70% {
+            transform: scale(0.95) rotate(0deg);
+            opacity: 0.8;
+            border-radius: 16px;
+          }
+          100% {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+            border-radius: 16px;
+          }
+        }
+
+        .animate-in {
+          animation: zoom-in-smooth 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .animate-pulse-pin {
+          animation: pin-pulse 2s infinite;
+        }
+
+        /* Hide scrollbars for all scrollable areas */
+        .hide-scrollbar {
+          -ms-overflow-style: none;  /* Internet Explorer 10+ */
+          scrollbar-width: none;  /* Firefox */
+        }
+        
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;  /* Safari and Chrome */
+        }
+
+        /* Apply to all overflow areas */
+        .overflow-auto,
+        .overflow-y-auto,
+        .overflow-x-auto {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        
+        .overflow-auto::-webkit-scrollbar,
+        .overflow-y-auto::-webkit-scrollbar,
+        .overflow-x-auto::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+      <div
+        className={`h-screen w-screen transition-colors duration-300 font-sans relative flex flex-col ${
+          darkMode ? "text-[#E6EAF2]" : "text-[#1A2233]"
+        }`}
+        style={{
+          background: darkMode
+            ? "linear-gradient(135deg, #181C24 0%, #232B3E 100%)"
+            : "linear-gradient(135deg, #F6F8FB 0%, #E9F0FA 100%)",
+        }}
+      >
+        <div
+          className="pointer-events-none fixed inset-0 z-0"
+          aria-hidden="true"
+          style={{
+            background: darkMode
+              ? "radial-gradient(ellipse at 60% 20%, rgba(60,120,255,0.13) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, rgba(255,120,180,0.10) 0%, transparent 70%)"
+              : "radial-gradient(ellipse at 60% 20%, rgba(60,120,255,0.10) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, rgba(255,200,120,0.08) 0%, transparent 70%)",
+          }}
+        />
+        <header
+          className={`border-b transition-colors duration-300 shadow-md z-[200] relative w-full box-border flex-shrink-0 ${
+            darkMode
+              ? "border-[#232B3E] bg-gradient-to-r from-[#232B3E] to-[#1A2233]"
+              : "border-[#E3E7EB] bg-gradient-to-r from-[#F6F8FB] to-[#E3EFFF]"
+          }`}
+          style={{
+            boxShadow: darkMode
+              ? "0 2px 12px 0 rgba(30,40,80,0.22)"
+              : "0 2px 12px 0 rgba(60,120,200,0.10)",
+          }}
+        >
+          <div className="flex items-center justify-between px-4 sm:px-8 py-5 w-full">
+            <div className="flex items-center space-x-4 sm:space-x-6">
+              <h1
+                className={`text-3xl font-black tracking-tight select-none transition-colors duration-200 ${
+                  darkMode ? "text-[#5B8CFF]" : "text-[#1A4DFF]"
+                }`}
+              >
+                Document Review Pro
+              </h1>
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-semibold shadow-sm transition-colors duration-200 ${
+                  darkMode
+                    ? "bg-[#2E4D2F] text-[#B6F5C6]"
+                    : "bg-[#E6F9F0] text-[#1A7F5B]"
+                }`}
+              >
+                Live Collaboration
+              </span>
             </div>
-          )}
-          {showProfileModal && (
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-black/30 backdrop-blur-xl border border-white/20 rounded-lg sm:rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl sm:text-2xl font-bold text-white">Profile</h2>
-                  <button
-                    onClick={() => setShowProfileModal(false)}
-                    className="text-white/60 hover:text-white text-lg sm:text-xl cursor-pointer"
-                  >
-                    <FaTimes />
-                  </button>
-                </div>
-                <div className="text-center mb-6 sm:mb-8">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center text-white font-bold text-lg sm:text-2xl mx-auto mb-4">
-                    JD
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">John Doe</h3>
-                  <p className="text-sm sm:text-base text-white/60">Full Stack Developer</p>
-              </div>
-                <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
-                  {Object.entries(getUserStats()).map(([key, value]) => (
-                    <div key={key} className="text-center p-3 sm:p-4 bg-white/10 rounded-lg">
-                      <div className="text-lg sm:text-2xl font-bold text-white mb-1">{value}</div>
-                      <div className="text-xs sm:text-sm text-white/60 capitalize">{key}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-white/60">Joined</span>
-                    <span className="text-white">January 2024</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-white/60">Status</span>
-                    <span className="text-green-400">Online</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-white/60">Reputation</span>
-                    <span className="text-white">Advanced</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          {showSettingsModal && (
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-black/30 backdrop-blur-xl border border-white/20 rounded-lg sm:rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl sm:text-2xl font-bold text-white">Settings</h2>
-                    <button
-                    onClick={() => setShowSettingsModal(false)}
-                    className="text-white/60 hover:text-white text-lg sm:text-xl cursor-pointer"
-                  >
-                    ×
-                    </button>
-            </div>
-                <div className="space-y-5 sm:space-y-6">
-                  <div className="space-y-3 sm:space-y-4">
-                    <h3 className="text-base sm:text-lg font-semibold text-white">Notifications</h3>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm sm:text-base text-white/80">Push Notifications</span>
+            <div className="hidden sm:flex items-center space-x-4">
               <button
-                        onClick={() => setUserSettings(prev => ({ ...prev, notifications: !prev.notifications }))}
-                        className={`relative w-10 h-5 sm:w-12 sm:h-6 rounded-full transition-colors cursor-pointer ${
-                          userSettings.notifications ? 'bg-[#A55EEA]' : 'bg-white/20'
-                        }`}
-                      >
-                        <div className={`absolute top-0.5 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white transition-transform duration-200 ${
-                          userSettings.notifications ? 'translate-x-5 sm:translate-x-6' : 'translate-x-0.5'
-                        }`} />
+                onClick={() => setShowVersionModal(!showVersionModal)}
+                className={`px-6 py-3 rounded-xl font-semibold text-base transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 cursor-pointer ${
+                  showVersionModal
+                    ? darkMode
+                      ? "bg-blue-600 text-white border-2 border-blue-500"
+                      : "bg-blue-600 text-white border-2 border-blue-500"
+                    : darkMode
+                    ? "bg-slate-800 text-blue-200 border-2 border-slate-600 hover:bg-slate-700 hover:border-slate-500"
+                    : "bg-white text-blue-700 border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                }`}
+              >
+                {showVersionModal ? "Hide Changes" : "Show Changes"}
               </button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/80">Email Alerts</span>
-                  <button
-                        onClick={() => setUserSettings(prev => ({ ...prev, emailAlerts: !prev.emailAlerts }))}
-                        className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
-                          userSettings.emailAlerts ? 'bg-[#A55EEA]' : 'bg-white/20'
-                        }`}
-                      >
-                        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${
-                          userSettings.emailAlerts ? 'translate-x-6' : 'translate-x-0.5'
-                        }`} />
-                  </button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/80">Auto-save Drafts</span>
-                  <button
-                        onClick={() => setUserSettings(prev => ({ ...prev, autoSave: !prev.autoSave }))}
-                        className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
-                          userSettings.autoSave ? 'bg-[#A55EEA]' : 'bg-white/20'
-                        }`}
-                      >
-                        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${
-                          userSettings.autoSave ? 'translate-x-6' : 'translate-x-0.5'
-                        }`} />
-                  </button>
-                    </div>
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`p-3 rounded-xl border-2 transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 cursor-pointer ${
+                  darkMode
+                    ? "bg-slate-800 border-slate-600 hover:bg-slate-700 hover:border-slate-500"
+                    : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                }`}
+                aria-label="Toggle dark mode"
+                style={{
+                  minWidth: 48,
+                  minHeight: 48,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {darkMode ? (
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-yellow-300"
+                  >
+                    <circle cx="12" cy="12" r="5" fill="currentColor" />
+                    <g stroke="currentColor">
+                      <line x1="12" y1="1" x2="12" y2="3" />
+                      <line x1="12" y1="21" x2="12" y2="23" />
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                      <line x1="1" y1="12" x2="3" y2="12" />
+                      <line x1="21" y1="12" x2="23" y2="12" />
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                    </g>
+                  </svg>
+                ) : (
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-blue-700"
+                  >
+                    <path
+                      d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <div className="sm:hidden flex items-center relative">
+              <button
+                className={`p-3 rounded-xl border-2 transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 cursor-pointer ${
+                  darkMode
+                    ? "bg-slate-800 border-slate-600 hover:bg-slate-700 hover:border-slate-500"
+                    : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                }`}
+                aria-label="Open menu"
+                onClick={() => setBurgerOpen((v) => !v)}
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  className={`${darkMode ? "text-blue-200" : "text-blue-700"}`}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                </svg>
+              </button>
+              {burgerOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-[300] bg-black bg-opacity-20 transition-opacity"
+                    aria-hidden="true"
+                  ></div>
+                  <div
+                    ref={burgerMenuRef}
+                    className={`fixed right-4 top-[80px] z-[310] flex flex-col min-w-[200px] rounded-xl shadow-xl border ${
+                      darkMode
+                        ? "bg-slate-800 border-slate-600"
+                        : "bg-white border-gray-200"
+                    }`}
+                    tabIndex={-1}
+                    style={{ outline: "none" }}
+                  >
+                    <button
+                      onClick={() => {
+                        setDarkMode(!darkMode);
+                        setBurgerOpen(false);
+                      }}
+                      className={`px-5 py-4 text-left font-semibold rounded-xl transition-all duration-200 active:scale-95 cursor-pointer ${
+                        darkMode
+                          ? "bg-slate-800 text-blue-200 hover:bg-slate-700"
+                          : "bg-white text-blue-700 hover:bg-gray-50"
+                      } flex items-center gap-3`}
+                      aria-label={
+                        darkMode
+                          ? "Switch to light mode"
+                          : "Switch to dark mode"
+                      }
+                    >
+                      {darkMode ? (
+                        <svg
+                          width="22"
+                          height="22"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="text-yellow-300"
+                        >
+                          <circle cx="12" cy="12" r="5" fill="currentColor" />
+                          <g stroke="currentColor">
+                            <line x1="12" y1="1" x2="12" y2="3" />
+                            <line x1="12" y1="21" x2="12" y2="23" />
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                            <line x1="1" y1="12" x2="3" y2="12" />
+                            <line x1="21" y1="12" x2="23" y2="12" />
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                          </g>
+                        </svg>
+                      ) : (
+                        <svg
+                          width="22"
+                          height="22"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="text-blue-700"
+                        >
+                          <path
+                            d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      )}
+                      <span className="ml-2 font-semibold">
+                        {darkMode ? "Light Mode" : "Dark Mode"}
+                      </span>
+                    </button>
                   </div>
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white">Theme</h3>
-                    <div className="space-y-2">
-                      {['dark', 'light', 'auto'].map((theme) => (
-                  <button
-                          key={theme}
-                          onClick={() => setUserSettings(prev => ({ ...prev, theme }))}
-                          className={`w-full p-3 rounded-lg text-left transition-colors cursor-pointer ${
-                            userSettings.theme === theme 
-                              ? 'bg-[#A55EEA]/20 text-[#A55EEA] border border-[#A55EEA]/30' 
-                              : 'bg-white/10 text-white/60 hover:bg-white/20'
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+        <div className="flex flex-col lg:flex-row w-full max-w-[1600px] mx-auto gap-4 lg:gap-8 px-2 sm:px-4 md:px-6 box-border overflow-x-hidden flex-1 min-h-0">
+          <div
+            className={`w-full lg:w-1/4 border-b lg:border-b-0 lg:border-r lg:border-l transition-colors duration-300 relative z-10 rounded-2xl ${
+              darkMode
+                ? "border-[#3A4553] bg-gradient-to-b from-[#232B3E] to-[#1A2233]"
+                : "border-[#D1D9E6] bg-gradient-to-b from-[#F6F8FB] to-[#E3EFFF]"
+            }`}
+            style={{
+              boxShadow: darkMode
+                ? "2px 0 20px 0 rgba(30,40,80,0.18), -2px 0 20px 0 rgba(30,40,80,0.18), inset -1px 0 0 rgba(255,255,255,0.03), inset 1px 0 0 rgba(255,255,255,0.03)"
+                : "2px 0 20px 0 rgba(60,120,200,0.12), -2px 0 20px 0 rgba(60,120,200,0.12), inset -1px 0 0 rgba(255,255,255,0.4), inset 1px 0 0 rgba(255,255,255,0.4)",
+              borderRadius: 16,
+              margin: "8px 0 8px 0",
+              padding: 0,
+            }}
+          >
+            <div className="p-5 sm:p-6 md:p-7 h-full flex flex-col justify-start overflow-y-auto">
+              <h2
+                className={`text-xl font-black mb-6 tracking-wide uppercase letter-spacing-1 transition-colors duration-200 ${
+                  darkMode ? "text-[#5B8CFF]" : "text-[#1A4DFF]"
+                }`}
+              >
+                Document Sections
+              </h2>
+              <div className="space-y-3">
+                {documentSectionsState.map((section) => (
+                  <div
+                    key={section.id}
+                    onClick={() => {
+                      setSelectedSection(section.id);
+                      setSelectedComment(null);
+                    }}
+                    className={`p-4 rounded-xl cursor-pointer shadow-sm border transition-all duration-200 group relative ${
+                      selectedSection === section.id
+                        ? darkMode
+                          ? "bg-blue-950 border-blue-700 text-blue-100 shadow-md"
+                          : "bg-blue-50 border-blue-300 text-blue-900 shadow-md"
+                        : darkMode
+                        ? "bg-[#232B3E] border-[#2D3238] hover:bg-[#26304A] hover:border-blue-700"
+                        : "bg-[#F8FAFB] border-[#E3E7EB] hover:bg-blue-50 hover:border-blue-300"
+                    }`}
+                    style={{
+                      boxShadow:
+                        selectedSection === section.id
+                          ? darkMode
+                            ? "0 2px 12px 0 rgba(60,80,180,0.10)"
+                            : "0 2px 12px 0 rgba(80,140,255,0.10)"
+                          : undefined,
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-lg">{section.title}</span>
+                      <div className="flex items-center space-x-2">
+                        {section.hasChanges && (
+                          <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                        )}
+                        <span
+                          className={`text-xs px-2 py-1 rounded font-semibold ${
+                            darkMode
+                              ? "bg-[#26304A] text-blue-200"
+                              : "bg-[#E3EFFF] text-blue-800"
                           }`}
                         >
-                          <span className="capitalize">{theme}</span>
-                  </button>
-                      ))}
+                          v{section.version}
+                        </span>
+                      </div>
                     </div>
+                    <p
+                      className={`text-sm mt-1 leading-snug ${
+                        selectedSection === section.id
+                          ? darkMode
+                            ? "text-blue-100"
+                            : "text-blue-800"
+                          : darkMode
+                          ? "text-[#A0A4AA]"
+                          : "text-[#7A869A]"
+                      }`}
+                    >
+                      {section.content.join("\n").substring(0, 60)}...
+                    </p>
                   </div>
-                  <button
-                    onClick={() => {
-                      setShowSettingsModal(false);
-                      toast.success('Settings saved successfully');
-                    }}
-                    className="w-full py-3 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white rounded-lg font-semibold hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 transition-colors cursor-pointer"
-                  >
-                    Save Settings
-                  </button>
-                </div>
+                ))}
               </div>
-                </div>
-              )}
-                    <aside
-            className={`${showSidebar ? 'translate-x-0' : '-translate-x-full'
-              } lg:translate-x-0 fixed lg:relative inset-y-0 left-0 z-40 w-full sm:w-80 lg:w-72 xl:w-80 bg-black/30 backdrop-blur-xl border-r border-white/20 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl`}
+            </div>
+          </div>
+          <div
+            className="w-full lg:w-1/2 flex flex-col justify-stretch order-2 lg:order-none rounded-2xl"
+            style={{ margin: "8px 0 8px 0" }}
           >
-            <div className="overflow-auto flex-1">
-              <div className="px-4 sm:px-6 py-4 sm:py-6">
-                <div className="flex items-center gap-3 mb-0">
-                  <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-[#A55EEA] via-[#FF6B9D] to-[#3B82F6] bg-clip-text text-transparent">
-                    CommunityHub
-                  </h1>
-                </div>
-                <div className="mt-2 sm:mt-3 mb-4 sm:mb-6">
-                  <div className="w-12 sm:w-16 h-1 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] rounded-full"></div>
-            </div>
-                <div className="relative mb-4 sm:mb-6">
-                  <input
-                    type="text"
-                    placeholder="Search topics..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 sm:py-4 bg-white/10 border border-white/30 rounded-xl focus:outline-none focus:border-[#A55EEA] focus:ring-2 focus:ring-[#A55EEA]/20 text-sm sm:text-base text-white placeholder:text-white/60 transition-all duration-300 backdrop-blur-sm hover:bg-white/15"
-                  />
-                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 text-sm sm:text-base" />
-                </div>
-                <h2 className="text-sm font-semibold mb-4 text-white/60 uppercase tracking-wide">Trending Topics</h2>
-                <ul className="space-y-1">
-                  {filteredTopics
-                    .map((topic) => {
-                      const topicStats = dynamicTrendingTopics.topicStats.find(stat => stat.topic === topic.title);
-                      const trendingRank = topicStats ? dynamicTrendingTopics.topicStats.findIndex(stat => stat.topic === topic.title) + 1 : null;
-                      return { ...topic, trendingRank };
-                    })
-                    .sort((a, b) => {
-                      if (a.trendingRank && b.trendingRank) {
-                        return a.trendingRank - b.trendingRank;
+            <div
+              ref={documentRef}
+              className={`flex-1 overflow-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 transition-colors duration-300 rounded-2xl shadow-xl ${
+                darkMode
+                  ? "bg-gradient-to-b from-[#232B3E] to-[#181C24] border border-[#3A4553]"
+                  : "bg-gradient-to-b from-[#F6F8FB] to-[#E9F0FA] border border-[#D1D9E6]"
+              }`}
+              style={{
+                borderRadius: 24,
+                boxShadow: darkMode
+                  ? "0 4px 40px 0 rgba(30,40,80,0.20), inset 0 1px 0 rgba(255,255,255,0.05)"
+                  : "0 4px 40px 0 rgba(60,120,200,0.15), inset 0 1px 0 rgba(255,255,255,0.6)",
+                margin: 0,
+                minHeight: 0,
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "flex-start",
+              }}
+            >
+              {selectedSection && (
+                <div className="relative">
+                  <div className="mb-8">
+                    <h1
+                      className={`text-4xl font-black mb-3 tracking-tight leading-tight transition-colors duration-200 ${
+                        darkMode ? "text-[#FFD86B]" : "text-[#1A2233]"
+                      }`}
+                    >
+                      {
+                        documentSectionsState.find((s) => s.id === selectedSection)
+                          ?.title
                       }
-                      if (a.trendingRank && !b.trendingRank) {
-                        return -1;
-                      }
-                      if (!a.trendingRank && b.trendingRank) {
-                        return 1;
-                      }
-                      return a.id - b.id;
-                    })
-                    .map((topic) => {
-                    return (
-                    <li key={topic.id}>
+                    </h1>
+                    <div
+                      className={`prose prose-lg max-w-none ${
+                        darkMode ? "prose-invert" : ""
+                      }`}
+                    >
+                      <div className="space-y-4">
+                        {documentSectionsState.find((s) => s.id === selectedSection)
+                          ?.content.map((point, index) => {
+                            // Skip empty points in display but keep them in data structure
+                            if (point.trim() === '') {
+                              return null;
+                            }
+                            
+                            // Calculate display number by counting non-empty points up to this index
+                            const displayNumber = documentSectionsState.find((s) => s.id === selectedSection)
+                              ?.content.slice(0, index + 1)
+                              .filter(p => p.trim() !== '').length || index + 1;
+                            
+                            return (
+                              <div key={index} className="flex items-start space-x-3" data-point-index={index}>
+                                <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
+                                  darkMode 
+                                    ? "bg-blue-900/30 text-blue-300 border-blue-700" 
+                                    : "bg-blue-100 text-blue-700 border-blue-300"
+                                }`}>
+                                  {displayNumber}
+                                </span>
+                                <p className="text-lg leading-relaxed flex-1">
+                                  {point}
+                                </p>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Text Selection Popup */}
+                  {showEditPopup && (
+                    <div
+                      className={`absolute z-30 p-3 rounded-xl shadow-xl border backdrop-blur-sm ${
+                        darkMode
+                          ? "bg-slate-800/95 border-slate-600"
+                          : "bg-white/95 border-gray-300"
+                      }`}
+                      style={{
+                        left: editPopupPosition.x,
+                        top: editPopupPosition.y - 10,
+                        transform: "translateX(-50%) translateY(-100%)",
+                        boxShadow: darkMode
+                          ? "0 8px 32px 0 rgba(30,40,80,0.25)"
+                          : "0 8px 32px 0 rgba(60,120,200,0.15)",
+                      }}
+                    >
+                      <div className="flex items-center space-x-2">
                         <button
-                        onClick={() => {
-                          handleTopicChange(selectedTopic === topic.id ? null : topic.id);
-                        }}
-                        className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-left flex items-center gap-2 sm:gap-3 text-sm sm:text-base transition-all duration-300 cursor-pointer min-h-[48px] sm:min-h-[56px]
-                  ${topic.id === selectedTopic && !showBookmarks
-                            ? 'bg-white/10 border border-white/20 text-white font-medium backdrop-blur-sm shadow-lg'
-                            : 'hover:bg-white/5 text-white/60 hover:border-white/10 border border-transparent'
+                          onClick={startEditing}
+                          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 active:scale-95 border shadow-md cursor-pointer ${
+                            darkMode
+                              ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white border-blue-500 hover:from-blue-500 hover:to-blue-600"
+                              : "bg-gradient-to-r from-blue-500 to-blue-600 text-white border-blue-400 hover:from-blue-400 hover:to-blue-500"
                           }`}
-                      >
-                        <span className="text-base flex-shrink-0">{topic.icon}</span>
-                        <span className="truncate flex-1">{topic.title}</span>
-                        {topic.trendingRank && topic.trendingRank <= 5 && (
-                          <span className="text-xs bg-[#A55EEA]/20 text-[#A55EEA] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full flex-shrink-0">
-                            #{topic.trendingRank}
-                          </span>
-                        )}
+                          title="Edit selected text"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                          <span>Edit</span>
                         </button>
-                    </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </div>
-            <div className="relative px-3 sm:px-6 py-3 sm:py-4 border-t border-white/10">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <button
-                  onClick={() => setShowProfileModal(true)}
-                  className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer flex-1 min-w-0"
-                >
-                  <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center text-white font-semibold text-sm sm:text-base flex-shrink-0">
-                    JD
-                  </div>
-                  <div className="text-left flex-1 min-w-0">
-                    <p className="font-medium text-sm sm:text-base text-white truncate">John Doe</p>
-                    <p className="text-xs sm:text-sm text-white/60">Online</p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsTransitioning(true);
-                    setTimeout(() => {
-                      setShowBookmarks(!showBookmarks);
-                      setIsTransitioning(false);
-                    }, 150);
-                  }}
-                  className={`p-2 rounded-lg transition-colors cursor-pointer flex-shrink-0 ${
-                    showBookmarks 
-                      ? 'bg-[#A55EEA]/20 text-[#A55EEA]' 
-                      : 'hover:bg-white/10 text-white/60 hover:text-white'
-                  }`}
-                >
-                  <FaBookmark className="text-base sm:text-lg" />
-                </button>
-              </div>
-            </div>
-          </aside>
-          <main className="flex-1 flex flex-col overflow-auto lg:ml-0 text-[#FFFFFF]">
-            <div className="border-b border-white/20 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 bg-black/30 backdrop-blur-xl shadow-lg">
-              <div className="flex items-center gap-4">
-                <h1 className={`text-xl sm:text-2xl font-bold text-white mb-0 truncate transition-all duration-300 ${
-                  isTransitioning ? 'opacity-0 transform translate-y-1' : 'opacity-100 transform translate-y-0'
-                }`}>
-                  {showBookmarks 
-                    ? "Bookmarks" 
-                    : selectedTopic 
-                      ? trendingTopics.find((t) => t.id === selectedTopic)?.title || "Select a topic"
-                      : "All Posts"
-                  }
-                </h1>
-              </div>
-            </div>
-            <section className="flex-1 overflow-auto">
-              {!showBookmarks && (
-                <div className={`p-4 sm:p-6 lg:p-8 bg-black/30 backdrop-blur-xl shadow-lg create-post-section transition-all duration-300 ${
-                  isTransitioning ? 'opacity-0 transform translate-y-2' : 'opacity-100 transform translate-y-0'
-                }`}>
-                  <div className="flex flex-row gap-3 sm:gap-4">
-                    <div className="flex-shrink-0">
-                        <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center">
-                        <FaUser className="text-white text-sm sm:text-lg" />
+                        <button
+                          onClick={startCommenting}
+                          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 active:scale-95 border shadow-md cursor-pointer ${
+                            darkMode
+                              ? "bg-gradient-to-r from-purple-600 to-purple-700 text-white border-purple-500 hover:from-purple-500 hover:to-purple-600"
+                              : "bg-gradient-to-r from-purple-500 to-purple-600 text-white border-purple-400 hover:from-purple-400 hover:to-purple-500"
+                          }`}
+                          title="Add comment for selected text"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                          </svg>
+                          <span>Comment</span>
+                        </button>
                       </div>
                     </div>
-                    <div className="flex-1">
-                        <div className={`flex gap-3 sm:gap-4 ${isCreatePostExpanded ? 'flex-col' : 'flex-row items-start'}`}>
-                          <div className="relative flex-1">
-                        <textarea
-                          ref={newPostRef}
-                          value={newPostContent}
-                          onChange={(e) => setNewPostContent(e.target.value)}
-                              onFocus={() => setIsCreatePostExpanded(true)}
-                              onBlur={(e) => {
-                                setTimeout(() => {
-                                  if (!e.relatedTarget?.closest('.create-post-section') && !newPostContent.trim()) {
-                                    setIsCreatePostExpanded(false);
-                                  }
-                                }, 150);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                  e.preventDefault();
-                                  if (newPostContent.trim()) {
-                                    handleCreatePost();
-                                  }
-                                }
-                              }}
-                              placeholder={isCreatePostExpanded ? "Share your thoughts..." : "What's on your mind?"}
-                              className={`w-full bg-white/10 border border-white/30 rounded-lg sm:rounded-xl focus:outline-none focus:border-[#A55EEA] focus:ring-2 focus:ring-[#A55EEA]/20 text-sm sm:text-base text-white placeholder:text-white/60 transition-colors duration-300 backdrop-blur-sm hover:bg-white/15 ${!isCreatePostExpanded ? 'h-[48px] sm:h-[56px] px-3 sm:px-4 py-0 leading-[48px] sm:leading-[56px] resize-none' : 'p-3 sm:p-4'}`}
-                              rows={isCreatePostExpanded ? 3 : 1}
-                          maxLength={500}
-                        />
-                                                      {isCreatePostExpanded && (
-                            <div className="absolute bottom-2 right-2 text-xs text-white/60">
-                        {newPostContent.length}/500
+                  )}
+
+                  {/* Inline Text Editor */}
+                  {isEditing && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                      <div className={`max-w-2xl w-full mx-4 p-6 rounded-xl shadow-2xl ${
+                        darkMode
+                          ? "bg-slate-800 border border-slate-600"
+                          : "bg-white border border-gray-200"
+                      }`}>
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className={`text-lg font-semibold ${
+                            darkMode ? "text-white" : "text-gray-900"
+                          }`}>
+                            Edit Text
+                          </h3>
+                          <button
+                            onClick={cancelEdit}
+                            className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                              darkMode
+                                ? "hover:bg-slate-700 text-slate-400"
+                                : "hover:bg-gray-100 text-gray-500"
+                            }`}
+                          >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="mb-4">
+                          <label className={`block text-sm font-medium mb-2 ${
+                            darkMode ? "text-slate-300" : "text-gray-700"
+                          }`}>
+                            Selected text:
+                          </label>
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            className={`w-full h-32 p-3 rounded-lg border resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                              darkMode
+                                ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400"
+                                : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                            }`}
+                            placeholder="Enter your text..."
+                          />
+                        </div>
+                        <div className="flex justify-end space-x-3">
+                          <button
+                            onClick={cancelEdit}
+                            className={`px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
+                              darkMode
+                                ? "bg-slate-600 text-slate-200 hover:bg-slate-500"
+                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            }`}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={saveEdit}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer"
+                          >
+                            Save Changes
+                          </button>
+                        </div>
                       </div>
-                          )}
                     </div>
-                        {isCreatePostExpanded && (
-                          <div className=" space-y-3">
-                            <div>
-                              <label className="block text-sm font-medium text-white/80 mb-2">
-                                Topic
-                              </label>
-                              <select
-                                value={selectedTopicForPost}
-                                onChange={(e) => setSelectedTopicForPost(parseInt(e.target.value))}
-                                className="w-full p-2 bg-white/10 border border-white/30 rounded-lg focus:outline-none focus:border-[#A55EEA] focus:ring-2 focus:ring-[#A55EEA]/20 text-white"
+                  )}
+
+                  {showDraggableComments &&
+                    comments
+                      .filter(
+                        (comment) => comment.sectionId === selectedSection
+                      )
+                      .map((comment) => {
+                        const isPinnedAndCollapsed = comment.isPinned && !expandedPinnedComments.has(comment.id);
+                        
+                        if (isPinnedAndCollapsed) {
+                          // Render pin dot for collapsed pinned comments
+                          const originalPos = calculatePinDotPosition(comment);
+                          const adjustedPos = adjustPinDotPosition(originalPos, comment.id);
+                          const isRepositioned = originalPos.x !== adjustedPos.x || originalPos.y !== adjustedPos.y;
+                          
+                          return (
+                            <React.Fragment key={comment.id}>
+                              {/* Connection line if pin dot was repositioned */}
+                              {isRepositioned && (
+                                <svg
+                                  className="absolute pointer-events-none z-10"
+                                  style={{
+                                    left: Math.min(originalPos.x, adjustedPos.x),
+                                    top: Math.min(originalPos.y, adjustedPos.y),
+                                    width: Math.abs(adjustedPos.x - originalPos.x) + 24,
+                                    height: Math.abs(adjustedPos.y - originalPos.y) + 24,
+                                  }}
+                                >
+                                  <line
+                                    x1={originalPos.x - Math.min(originalPos.x, adjustedPos.x)}
+                                    y1={originalPos.y - Math.min(originalPos.y, adjustedPos.y)}
+                                    x2={adjustedPos.x - Math.min(originalPos.x, adjustedPos.x)}
+                                    y2={adjustedPos.y - Math.min(originalPos.y, adjustedPos.y)}
+                                    stroke={darkMode ? "#FCD34D" : "#F59E0B"}
+                                    strokeWidth="1"
+                                    strokeDasharray="2,2"
+                                    opacity="0.6"
+                                  />
+                                </svg>
+                              )}
+                              
+                              {/* Pin dot */}
+                              <div
+                                data-comment-id={comment.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  expandPinnedComment(comment.id);
+                                  // Don't auto-select when expanding from pin dot to allow normal opacity behavior
+                                  if (selectedComment?.id === comment.id) {
+                                    setSelectedComment(null);
+                                  }
+                                }}
+                                className={`absolute w-6 h-6 rounded-full cursor-pointer flex items-center justify-center transition-all duration-300 hover:scale-125 z-20 animate-pulse-pin ${
+                                  darkMode 
+                                    ? "bg-yellow-800 border-2 border-yellow-600 text-yellow-300 shadow-lg shadow-yellow-600/30" 
+                                    : "bg-yellow-400 border-2 border-yellow-500 text-yellow-800 shadow-lg shadow-yellow-400/30"
+                                }${isRepositioned ? ' ring-2 ring-yellow-400/50' : ''}`}
+                                style={{
+                                  left: adjustedPos.x,
+                                  top: adjustedPos.y,
+                                }}
+                                title={`Pinned comment by ${comment.author.name}${
+                                  comment.endPointIndex !== undefined 
+                                    ? ` (spans multiple points)` 
+                                    : ''
+                                }${isRepositioned ? ' (repositioned to avoid overlap)' : ''}`}
                               >
-                                {trendingTopics.map((topic) => (
-                                  <option key={topic.id} value={topic.id} className="bg-gray-800 text-white">
-                                    {topic.title}
-                                  </option>
-                                ))}
-                              </select>
-                              <p className="text-xs text-white/60 mt-1">
-                                Select the topic for your post
-                              </p>
+                                <PiPushPinFill size={12} />
+                              </div>
+                            </React.Fragment>
+                          );
+                        }
+
+                        // Render full comment card
+                        return (
+                          <div
+                            key={comment.id}
+                            data-comment-id={comment.id}
+                            onMouseDown={(e) => {
+                              // Don't start dragging if clicking on the collapse button, delete button, pin button, or if it's a pin dot click
+                              if ((e.target as HTMLElement).closest('.collapse-button') || 
+                                  (e.target as HTMLElement).closest('.delete-button') ||
+                                  (e.target as HTMLElement).closest('.pin-button') ||
+                                  (e.target as HTMLElement).closest('.pin-dot-click')) {
+                                return;
+                              }
+                              handleCommentMouseDown(e, comment);
+                            }}
+                            onClick={(e) => {
+                              // Check if clicked on the collapse button or pin button
+                              if ((e.target as HTMLElement).closest('.collapse-button') || (e.target as HTMLElement).closest('.pin-button')) {
+                                return;
+                              }
+                              
+                              // Handle pin dot collapse click
+                              if ((e.target as HTMLElement).closest('.pin-dot-click')) {
+                                e.stopPropagation();
+                                collapsePinnedComment(comment.id);
+                                setSelectedComment(null);
+                                return;
+                              }
+                              
+                              if (comment.isPinned) {
+                                if (expandedPinnedComments.has(comment.id)) {
+                                  // If already expanded, either select it or toggle back to pin dot
+                                  if (selectedComment?.id === comment.id) {
+                                    // If already selected, collapse back to pin dot
+                                    collapsePinnedComment(comment.id);
+                                    setSelectedComment(null);
+                                  } else {
+                                    // If not selected, select it for interaction
+                                    setSelectedComment(comment);
+                                    handlePinnedCommentInteraction(comment.id);
+                                  }
+                                } else {
+                                  // Just expand, don't select to allow normal opacity behavior
+                                  handlePinnedCommentInteraction(comment.id);
+                                }
+                              } else {
+                                setSelectedComment(comment);
+                              }
+                            }}
+                            onMouseEnter={() => {
+                              if (comment.isPinned) {
+                                handlePinnedCommentInteraction(comment.id);
+                              }
+                            }}
+                            className={`absolute ${comment.isPinned ? 'cursor-pointer' : 'cursor-move'} p-5 rounded-2xl shadow-xl border-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 z-20 ${
+                              comment.isPinned && expandedPinnedComments.has(comment.id)
+                                ? "animate-in zoom-in-95 duration-300"
+                                : ""
+                            } ${
+                              draggedCommentId === comment.id
+                                ? "opacity-100"
+                                : selectedComment?.id === comment.id
+                                ? "opacity-100 hover:shadow-2xl scale-105 transition-all duration-300"
+                                : "opacity-30 hover:opacity-100 hover:shadow-2xl hover:scale-105 transition-all duration-300"
+                            } ${
+                            darkMode
+                              ? "bg-[#23272B] border-blue-900 text-[#E6EAF2]"
+                              : "bg-white border-blue-300 text-[#1A2233]"
+                          }${
+                            draggedCommentId === comment.id
+                              ? " pointer-events-none"
+                              : ""
+                            }${
+                              comment.isPinned
+                                ? darkMode
+                                  ? " border-yellow-600 shadow-yellow-600/20"
+                                  : " border-yellow-400 shadow-yellow-400/20"
+                              : ""
+                          }`}
+                          style={{
+                            left:
+                              draggedCommentId === comment.id &&
+                              dragPosRef.current
+                                ? (() => {
+                                    const constrainedPos = constrainCommentPosition(dragPosRef.current!);
+                                    return constrainedPos.x;
+                                  })()
+                                : comment.isPinned && comment.anchoredToPointIndex !== undefined
+                                ? (() => {
+                                    const pinPos = calculatePinDotPosition(comment);
+                                    const constrainedPos = constrainCommentPosition(pinPos);
+                                    return constrainedPos.x;
+                                  })()
+                                : (() => {
+                                    const constrainedPos = constrainCommentPosition(comment.position);
+                                    return constrainedPos.x;
+                                  })(),
+                            top:
+                              draggedCommentId === comment.id &&
+                              dragPosRef.current
+                                ? (() => {
+                                    const constrainedPos = constrainCommentPosition(dragPosRef.current!);
+                                    return constrainedPos.y;
+                                  })()
+                                : comment.isPinned && comment.anchoredToPointIndex !== undefined
+                                ? (() => {
+                                    const pinPos = calculatePinDotPosition(comment);
+                                    const constrainedPos = constrainCommentPosition(pinPos);
+                                    return constrainedPos.y;
+                                  })()
+                                : (() => {
+                                    const constrainedPos = constrainCommentPosition(comment.position);
+                                    return constrainedPos.y;
+                                  })(),
+                            width: "320px",
+                            zIndex: draggedCommentId === comment.id ? 999 : 20,
+                            boxShadow: darkMode
+                              ? "0 4px 24px 0 rgba(60,80,180,0.18)"
+                              : "0 4px 24px 0 rgba(80,140,255,0.12)",
+                          }}
+                          tabIndex={0}
+                        >
+                          {/* Comment Position Indicator - always visible */}
+                          <div className={`absolute -top-2 -right-2 w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 ${
+                            selectedComment?.id === comment.id
+                              ? "opacity-100"
+                              : "opacity-60"
+                          } ${getStatusColor(comment.status)} border-white shadow-md`}>
+                          </div>
+                          
+                          {/* Pin Indicator */}
+                          {comment.isPinned && (
+                            <div 
+                              className={`pin-dot-click absolute -top-2 -left-2 w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 cursor-pointer hover:scale-110 ${
+                                darkMode 
+                                  ? "bg-yellow-800 text-yellow-300 border-yellow-600" 
+                                  : "bg-yellow-400 text-yellow-800 border-yellow-500"
+                              } border-white shadow-md`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                collapsePinnedComment(comment.id);
+                                setSelectedComment(null);
+                              }}
+                              title="Click to collapse to pin dot"
+                            >
+                              <PiPushPinFill size={10} />
+                            </div>
+                          )}
+                          
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center space-x-3">
+                              <div
+                                className={`w-9 h-9 rounded-full flex items-center justify-center text-base font-bold shadow-sm border-2 ${
+                                  darkMode
+                                    ? "bg-blue-900 text-blue-200 border-blue-700"
+                                    : "bg-blue-100 text-blue-800 border-blue-300"
+                                }`}
+                              >
+                                {comment.author.avatar}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-base">
+                                  {comment.author.name}
+                                </p>
+                                <p
+                                  className={`text-xs ${
+                                    darkMode
+                                      ? "text-[#A0A4AA]"
+                                      : "text-[#7A869A]"
+                                  }`}
+                                >
+                                  {comment.timestamp.toLocaleTimeString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <div
+                                className={`w-3 h-3 rounded-full mt-1 ${getStatusColor(
+                                  comment.status
+                                )}`}
+                              ></div>
+                              <button
+                                className={`pin-button p-1 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 cursor-pointer ${
+                                  comment.isPinned
+                                    ? darkMode
+                                      ? "bg-yellow-800/30 text-yellow-400 hover:bg-yellow-800/50"
+                                      : "bg-yellow-100/70 text-yellow-600 hover:bg-yellow-200/70"
+                                    : darkMode
+                                      ? "hover:bg-blue-800/30 text-slate-400 hover:text-slate-200"
+                                      : "hover:bg-blue-100/70 text-slate-600 hover:text-slate-800"
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleCommentPin(comment.id);
+                                  // Blur the button to remove any focus states
+                                  (e.target as HTMLElement).blur();
+                                }}
+                                aria-label={comment.isPinned ? "Unpin comment" : "Pin comment"}
+                              >
+                                {comment.isPinned ? (
+                                  <PiPushPinSlashFill size={16} />
+                                ) : (
+                                  <PiPushPinFill size={16} />
+                                )}
+                              </button>
+                              <button
+                                className={`collapse-button p-1 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 cursor-pointer ${
+                                  darkMode 
+                                    ? "hover:bg-blue-800/30" 
+                                    : "hover:bg-blue-100/70"
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleCommentCollapse(comment.id);
+                                }}
+                                aria-label={collapsedComments.has(comment.id) ? "Expand comment" : "Collapse comment"}
+                              >
+                                {collapsedComments.has(comment.id) ? (
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                  </svg>
+                                ) : (
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                  </svg>
+                                )}
+                              </button>
+                              {comment.author.id === users[0].id && (
+                                <button
+                                  className={`delete-button p-1 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 cursor-pointer ${
+                                    darkMode 
+                                      ? "hover:bg-red-800/30 text-red-400" 
+                                      : "hover:bg-red-100/70 text-red-600"
+                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    console.log('Delete button clicked for comment:', comment.id);
+                                    deleteComment(comment.id);
+                                  }}
+                                  aria-label="Delete comment"
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                  </svg>
+                                </button>
+                              )}
                             </div>
                           </div>
-                        )}
-                        {!isCreatePostExpanded && (
-                            <button
-                              onClick={handleCreatePost}
-                              disabled={!newPostContent.trim()}
-                              className={`px-4 sm:px-6 rounded-lg sm:rounded-xl font-semibold transition-colors duration-300 flex items-center justify-center gap-2 flex-shrink-0 h-[48px] sm:h-[56px] border border-transparent ${newPostContent.trim()
-                                ? "bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 cursor-pointer shadow-lg"
-                                : "bg-white/10 text-white/40 cursor-not-allowed"
-                                }`}
-                            >
-                              <FaPaperPlane className="text-sm sm:text-base" />
-                              <span className="text-sm sm:text-base">Post</span>
-                            </button>
+                          {!collapsedComments.has(comment.id) && (
+                            <>
+                              <p className="text-sm mb-3 leading-snug font-medium">
+                                {comment.content}
+                              </p>
+                              <div className="flex items-center justify-between mt-2">
+                                <div className="flex space-x-1">
+                                  {comment.mentions.map((mention) => (
+                                    <span
+                                      key={mention}
+                                      className={`px-2 py-1 rounded text-xs font-semibold shadow-sm ${
+                                        darkMode
+                                          ? "bg-blue-900 text-blue-200"
+                                          : "bg-blue-50 text-blue-800"
+                                      }`}
+                                    >
+                                      @{mention}
+                                    </span>
+                                  ))}
+                                </div>
+                                <select
+                                  value={comment.status}
+                                  onChange={(e) =>
+                                    updateCommentStatus(
+                                      comment.id,
+                                      e.target.value as Comment["status"]
+                                    )
+                                  }
+                                  className={`text-xs rounded px-2 py-1 border font-semibold shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 transition-all duration-200 ${
+                                    darkMode
+                                      ? "bg-[#232B3E] border-blue-900 text-blue-200"
+                                      : "bg-white border-blue-200 text-blue-800"
+                                  }`}
+                                >
+                                  <option value="open">Open</option>
+                                  <option value="pending">Pending</option>
+                                  <option value="resolved">Resolved</option>
+                                </select>
+                              </div>
+                            </>
                           )}
                         </div>
-                        <div className={`transition-all duration-300 ease-in-out ${!showEmojiPicker ? 'overflow-hidden' : ''} ${
-                          isCreatePostExpanded ? 'max-h-24 opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0'
-                        }`}>
-                          <div className="flex justify-between items-center gap-4">
-                        <div className="flex gap-2">
-                          <div className="relative emoji-picker-container">
-                            <button
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                              className={`p-2 rounded-lg transition-all duration-200 cursor-pointer ${
-                                showEmojiPicker 
-                                  ? 'bg-gradient-to-r from-[#A55EEA]/20 to-[#FF6B9D]/20 text-[#A55EEA] border border-[#A55EEA]/30' 
-                                  : 'hover:bg-white/10 text-white/60 hover:text-white border border-transparent'
-                              }`}
-                            >
-                              <FaSmile />
-                            </button>
-                            {showEmojiPicker && (
-                              <div className="absolute bottom-12 left-0 bg-gradient-to-br from-[#1A1A2E] to-[#0F0F1A] backdrop-blur-xl border border-[#A55EEA]/30 rounded-xl shadow-2xl p-3 z-20 w-72 transform animate-in fade-in-0 zoom-in-95 duration-200">
-                                <div className="flex items-center justify-between mb-3">
-                                  <h3 className="text-xs font-semibold text-white flex items-center gap-2">
-                                    <FaSmile className="text-[#A55EEA] text-xs" />
-                                    Pick emoji
-                                  </h3>
-                                  <button
-                                    onClick={() => setShowEmojiPicker(false)}
-                                    className="text-white/60 hover:text-white transition-colors hover:bg-white/10 rounded-full w-5 h-5 flex items-center justify-center"
-                                  >
-                                    <FaTimes className="text-xs" />
-                                  </button>
-                                </div>
-                                <div className="grid grid-cols-8 gap-1">
-                                  {["😊", "👍", "❤️", "🎉", "🔥", "💡", "🚀", "⭐", "😄", "👏", "💪", "🎯", "✨", "🌟", "💎", "🏆"].map(
-                                    (emoji) => (
-                                      <button
-                                        key={emoji}
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => handleEmojiClick(emoji)}
-                                        className="relative p-2 rounded-lg text-lg cursor-pointer transition-all duration-200 flex items-center justify-center w-8 h-8 hover:scale-110 active:scale-95 hover:bg-[#A55EEA]/20 hover:shadow-lg"
-                                        style={{ fontSize: '18px', lineHeight: '1' }}
-                                      >
-                                        <span role="img" aria-label={`Insert ${emoji}`}>
-                                          {emoji}
-                                        </span>
-                                      </button>
-                                    )
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          <button onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormatText("bold")} className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white cursor-pointer transition-colors"><FaBold /></button>
-                          <button onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormatText("italic")} className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white cursor-pointer transition-colors"><FaItalic /></button>
-                          <button onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormatText("link")} className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white cursor-pointer transition-colors"><FaLink /></button>
-                        </div>
-                        <button
-                          onClick={handleCreatePost}
-                          disabled={!newPostContent.trim()}
-                              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 h-[48px] ${newPostContent.trim()
-                                ? "bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 cursor-pointer shadow-lg"
-                                : "bg-white/10 text-white/40 cursor-not-allowed"
-                                }`}
-                            >
-                              <FaPaperPlane className="text-base" />
-                              <span className="text-base">Post</span>
-                        </button>
-                      </div>
-                    </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          </div>
+          <div
+            className={`w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l lg:border-r transition-colors duration-300 relative z-10 rounded-2xl ${
+              darkMode
+                ? "border-[#3A4553] bg-gradient-to-b from-[#232B3E] to-[#1A2233]"
+                : "border-[#D1D9E6] bg-gradient-to-b from-[#F6F8FB] to-[#E3EFFF]"
+            }`}
+            style={{
+              boxShadow: darkMode
+                ? "-2px 0 20px 0 rgba(30,40,80,0.18), 2px 0 20px 0 rgba(30,40,80,0.18), inset 1px 0 0 rgba(255,255,255,0.03), inset -1px 0 0 rgba(255,255,255,0.03)"
+                : "-2px 0 20px 0 rgba(60,120,200,0.12), 2px 0 20px 0 rgba(60,120,200,0.12), inset 1px 0 0 rgba(255,255,255,0.4), inset -1px 0 0 rgba(255,255,255,0.4)",
+              borderRadius: 16,
+              margin: "8px 0 8px 0",
+              padding: 0,
+            }}
+          >
+            <div className="p-5 sm:p-6 md:p-7 h-full flex flex-col justify-start overflow-y-auto">
+              <div className="mb-6 flex-shrink-0">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                    darkMode ? "bg-gradient-to-br from-blue-600 to-blue-700" : "bg-gradient-to-br from-blue-500 to-blue-600"
+                  }`}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h2
+                      className={`text-xl font-black tracking-wide uppercase letter-spacing-1 transition-colors duration-200 ${
+                        darkMode ? "text-[#FFD86B]" : "text-[#1A4DFF]"
+                      }`}
+                    >
+                      Feedback
+                    </h2>
+                    <p className={`text-xs ${
+                      darkMode ? "text-[#A0A4AA]" : "text-[#7A869A]"
+                    }`}>
+                      Manage annotations & reviews
+                    </p>
                   </div>
                 </div>
-                  </div>
-              )}
-              {!showBookmarks && (
-                <div className="px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-2">
-                  <div className={`flex flex-wrap gap-2 transition-all duration-300 ${
-                    isTransitioning ? 'opacity-0 transform translate-y-1' : 'opacity-100 transform translate-y-0'
+                <div className="ml-13">
+                  <span className={`text-xs px-3 py-1.5 rounded-full font-semibold shadow-sm ${
+                    darkMode ? "bg-blue-900/50 text-blue-200 border border-blue-700" : "bg-blue-100 text-blue-800 border border-blue-200"
                   }`}>
-                    {filters.map((filter) => (
+                    {comments.filter(c => c.sectionId === selectedSection).length} annotations
+                  </span>
+                </div>
+              </div>
+              <div className="mb-7 flex-shrink-0">
+                <textarea
+                  ref={commentInputRef}
+                  value={newComment}
+                  onChange={handleMentionInput}
+                  placeholder="Add a comment... Use @ to mention someone"
+                  className={`w-full p-3 rounded-xl border resize-none transition-colors duration-200 shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 font-medium ${
+                    darkMode
+                      ? "bg-gradient-to-r from-[#232B3E] to-[#26304A] border-[#2D3238] text-[#E3E7EB] placeholder-[#7A869A]"
+                      : "bg-gradient-to-r from-[#F8FAFB] to-[#E3EFFF] border-[#E3E7EB] text-[#23272B] placeholder-[#7A869A]"
+                  }`}
+                  rows={3}
+                />
+                {showMentionSuggestions && (
+                  <div
+                    className={`mt-2 rounded-xl border shadow-lg font-medium ${
+                      darkMode
+                        ? "bg-gradient-to-r from-[#232B3E] to-[#26304A] border-[#2D3238]"
+                        : "bg-gradient-to-r from-[#F8FAFB] to-[#E3EFFF] border-[#E3E7EB]"
+                    }`}
+                  >
+                    {filteredUsers.map((user) => (
                       <button
-                        key={filter}
-                        className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all duration-300 cursor-pointer flex items-center gap-2 border
-              ${activeFilter === filter
-                            ? "bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white border-white/20 shadow-lg"
-                            : "bg-white/10 text-white/60 hover:bg-white/20 hover:border-white/30 border-white/20 backdrop-blur-sm"
-                          }`}
-                        onClick={() => handleFilterChange(filter)}
+                        key={user.id}
+                        onClick={() => insertMention(user.name)}
+                        className={`w-full p-2 text-left hover:bg-blue-600 hover:text-white dark:hover:bg-blue-900 transition-colors duration-200 flex items-center space-x-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 cursor-pointer`}
                       >
-                        <span>{filter}</span>
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm border-2 ${
+                            darkMode
+                              ? "bg-blue-900 text-blue-200 border-blue-700"
+                              : "bg-blue-100 text-blue-800 border-blue-300"
+                          }`}
+                        >
+                          {user.avatar}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">{user.name}</p>
+                          <p
+                            className={`text-xs ${
+                              darkMode ? "text-[#A0A4AA]" : "text-[#7A869A]"
+                            }`}
+                          >
+                            {user.role}
+                          </p>
+                        </div>
                       </button>
                     ))}
                   </div>
-                </div>
-              )}
-              <div className="px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-6 lg:pb-8">
-              {(() => {
-                                if (filteredDiscussions.length === 0) {
-                  return (
-                    <div className={`flex flex-col items-center justify-center h-full text-white/60 py-12 sm:py-16 transition-all duration-300 ${
-                      isTransitioning ? 'opacity-0 transform translate-y-2' : 'opacity-100 transform translate-y-0'
+                )}
+                <button
+                  onClick={addComment}
+                  disabled={!newComment.trim() || !selectedSection}
+                  className={`w-full mt-3 px-4 py-2 rounded-xl font-semibold transition-all duration-200 shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 active:scale-95 ${
+                    newComment.trim() && selectedSection
+                      ? `cursor-pointer ${darkMode
+                        ? "bg-pink-700 text-white hover:bg-pink-600"
+                        : "bg-pink-600 text-white hover:bg-pink-700"}`
+                      : `cursor-not-allowed ${darkMode
+                      ? "bg-[#2D3238] text-[#7A869A]"
+                      : "bg-[#E3E7EB] text-[#A0A4AA]"}`
+                  }`}
+                >
+                  Add Comment
+                </button>
+              </div>
+              <div className="space-y-5 flex-1 overflow-y-auto">
+                {/* Filter Controls */}
+                <div className={`p-4 rounded-xl border shadow-sm ${
+                  darkMode ? "bg-gradient-to-br from-[#232B3E] to-[#1A2233] border-[#2D3238]" : "bg-gradient-to-br from-[#F8FAFB] to-[#E3EFFF] border-[#E3E7EB]"
+                }`}>
+                  <div className="flex items-center space-x-2 mb-4">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${
+                      darkMode ? "text-blue-400" : "text-blue-600"
                     }`}>
-                      <div className="bg-white/10 border border-white/20 rounded-xl w-16 h-16 sm:w-20 sm:h-20 mb-4 sm:mb-6 flex items-center justify-center">
-                        {showBookmarks ? (
-                          <FaBookmark className="text-2xl sm:text-3xl text-[#A55EEA]" />
-                        ) : (
-                          <FaComments className="text-2xl sm:text-3xl text-[#A55EEA]" />
-                        )}
+                      <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46"/>
+                    </svg>
+                    <h3 className="font-bold text-sm tracking-wide uppercase letter-spacing-1 transition-colors duration-200">
+                      Filter & Sort
+                    </h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-xs font-semibold mb-2 block">Status Filter:</label>
+                      <div className="flex flex-wrap gap-1">
+                        {["all", "open", "pending", "resolved"].map((status) => (
+                          <button
+                            key={status}
+                            onClick={() => setStatusFilter(status === "all" ? null : status as Comment["status"])}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 shadow-sm cursor-pointer ${
+                              statusFilter === (status === "all" ? null : status)
+                                ? darkMode
+                                  ? "bg-blue-600 text-white shadow-blue-600/25"
+                                  : "bg-blue-600 text-white shadow-blue-600/25"
+                                : darkMode
+                                ? "bg-[#2D3238] text-[#A0A4AA] hover:bg-[#26304A] border border-[#2D3238]"
+                                : "bg-white text-[#7A869A] hover:bg-blue-50 border border-[#E3E7EB]"
+                            }`}
+                          >
+                            {status === "all" ? "All" : status.charAt(0).toUpperCase() + status.slice(1)}
+                          </button>
+                        ))}
                       </div>
-                      <h3 className="text-lg sm:text-xl font-semibold mb-2 text-white text-center px-4">
-                        {showBookmarks ? "No bookmarked posts" : "No discussions yet"}
-                      </h3>
-                      <p className="mb-4 sm:mb-6 text-sm sm:text-base text-white/60 text-center px-4">
-                        {showBookmarks
-                          ? "Start bookmarking posts to see them here!"
-                          : "Be the first to start a conversation!"}
-                      </p>
-                      {!showBookmarks && (
-                        <button
-                          onClick={() => newPostRef.current?.focus()}
-                          className="px-4 sm:px-6 py-2.5 sm:py-3 bg-[#A55EEA]/20 text-[#A55EEA] rounded-lg hover:bg-[#A55EEA]/30 transition-colors cursor-pointer font-medium text-sm sm:text-base"
-                        >
-                          Create a post
-                        </button>
-                      )}
                     </div>
-                  );
-                }
-                return (
-                  <ul className={`space-y-6 sm:space-y-8 max-w-4xl mx-auto transition-all duration-300 ${
-                    isTransitioning ? 'opacity-0 transform translate-y-2' : 'opacity-100 transform translate-y-0'
-                  }`}>
-                    {filteredDiscussions.map((d) => (
-                      <li
-                        key={d.id}
-                        className="bg-black/30 backdrop-blur-xl border border-white/20 rounded-lg sm:rounded-xl p-4 sm:p-6 lg:p-8 shadow-xl hover:shadow-2xl hover:bg-black/40 transition-all duration-300"
+                    <div>
+                      <label className="text-xs font-semibold mb-2 block">Sort by:</label>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className={`w-full text-xs rounded-lg px-3 py-1.5 border font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 transition-colors duration-200 ${
+                          darkMode
+                            ? "bg-[#232B3E] border-[#2D3238] text-[#E6EAF2] hover:border-blue-600"
+                            : "bg-white border-[#E3E7EB] text-[#1A2233] hover:border-blue-400"
+                        }`}
                       >
-                        <div className="flex gap-3 sm:gap-4">
-                          <div className="flex justify-center sm:block">
-                            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center text-white font-semibold text-sm sm:text-base">
-                              {d.author.charAt(0).toUpperCase()}
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <span className="font-semibold text-sm sm:text-base text-white">{d.author}</span>
-                              <span className="text-xs sm:text-sm text-white/60">{formatRelativeTime(d.timestamp)}</span>
-                              {d.replies.length > 0 ? (
-                                <span className="px-2 py-0.5 bg-[#2EA043]/20 text-[#2EA043] text-xs sm:text-sm rounded-full">Answered</span>
-                              ) : (
-                                <span className="px-2 py-0.5 bg-[#FB8500]/20 text-[#FB8500] text-xs sm:text-sm rounded-full">Unanswered</span>
-                              )}
-                            </div>
-                            <div
-                              className="text-white mb-4 text-sm sm:text-base leading-relaxed"
-                              dangerouslySetInnerHTML={{
-                                __html: renderMarkdown(d.content),
-                              }}
-                            ></div>
-                            {d.topic && (
-                              <div className="mb-4">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-white/60">Topic:</span>
-                                  <span className="px-2 py-1 bg-white/10 text-white/80 text-xs rounded-full">
-                                    {d.topic}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                            <div className="flex items-center gap-3 sm:gap-4 text-white/60 text-sm sm:text-base flex-wrap">
-                              <button onClick={() => toggleLike(d.id)} className="flex items-center gap-1 hover:text-[#F85149] cursor-pointer">
-                                {d.likedByUser ? <FaHeart className="text-[#F85149]" /> : <FaRegHeart />}
-                                <span>{d.likes}</span>
-                              </button>
-                              <button onClick={() => toggleReplyExpansion(d.id)} className="flex items-center gap-1 hover:text-[#A55EEA] cursor-pointer">
-                                <FaReply />
-                                <span>
-                                  {expandedPost === d.id ? "Hide" : "View"} {d.replies.length} {d.replies.length === 1 ? "reply" : "replies"}
-                                </span>
-                              </button>
-                              <div className="relative reaction-picker-container">
-                                <button 
-                                  onClick={() => setShowReactionPicker(showReactionPicker === d.id ? null : d.id)}
-                                  className="flex items-center gap-1 hover:text-[#A55EEA] cursor-pointer"
-                                >
-                                  <FaSmile />
-                                  <span>React</span>
-                                </button>
-                                {showReactionPicker === d.id && (
-                                  <div className="absolute bottom-8 left-0 bg-gradient-to-br from-[#1A1A2E] to-[#0F0F1A] backdrop-blur-xl border border-[#A55EEA]/30 rounded-xl shadow-2xl p-3 z-20 transform animate-in fade-in-0 zoom-in-95 duration-200">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <h3 className="text-xs font-semibold text-white flex items-center gap-1">
-                                        <FaSmile className="text-[#A55EEA] text-xs" />
-                                        React
-                                      </h3>
-                                      <button
-                                        onClick={() => setShowReactionPicker(null)}
-                                        className="text-white/60 hover:text-white transition-colors hover:bg-white/10 rounded-full w-5 h-5 flex items-center justify-center"
-                                      >
-                                        <FaTimes className="text-xs" />
-                                      </button>
-                                    </div>
-                                    <div className="flex gap-1">
-                                      {getReactionEmojis().map((emoji) => (
-                                        <button
-                                          key={emoji}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            addReaction(d.id, emoji);
-                                          }}
-                                          className="relative flex items-center justify-center w-8 h-8 rounded-lg text-lg transition-all duration-200 cursor-pointer hover:scale-110 active:scale-95 hover:bg-[#A55EEA]/20 hover:shadow-lg"
-                                          style={{ fontSize: '18px', lineHeight: '1' }}
-                                        >
-                                          <span role="img" aria-label={`React with ${emoji}`}>
-                                            {emoji}
-                                          </span>
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              <button onClick={() => toggleBookmark(d.id)} className="ml-auto flex items-center gap-1 hover:text-[#A55EEA] cursor-pointer">
-                                {d.bookmarked ? <FaBookmark className="text-[#A55EEA]" /> : <FaRegBookmark />}
-                                <span>{d.bookmarked ? "Bookmarked" : "Bookmark"}</span>
-                              </button>
-                            </div>
-                            {d.reactions && Object.keys(d.reactions).length > 0 && (
-                              <div className="flex flex-wrap gap-2 mt-4">
-                                {Object.entries(d.reactions).map(([emoji, reaction]) => (
-                                  <button
-                                    key={emoji}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      addReaction(d.id, emoji);
-                                    }}
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 ${
-                                      reaction.users.includes("John Doe")
-                                        ? "bg-[#A55EEA]/30 text-[#A55EEA] border-2 border-[#A55EEA]/50 shadow-lg"
-                                        : "bg-white/15 text-white/80 hover:bg-white/25 border-2 border-white/20 hover:border-white/30"
-                                    }`}
-                                  >
-                                    <span className="text-lg" style={{ fontSize: '18px', lineHeight: '1' }}>
-                                      {emoji}
-                                    </span>
-                                    <span className="text-sm font-semibold">{reaction.count}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                            {expandedPost === d.id && (
-                              <div className="mt-6">
-                                {d.replies.length > 0 && (
-                                  <div className="mb-4">
-                                    <div className="flex items-center justify-between mb-4">
-                                      <h4 className="font-bold text-xl text-white">Replies</h4>
-                                      {d.replies.length > 3 && (
-                                        <span className="text-sm text-white/60 px-2 py-1 bg-white/10 rounded-full">
-                                          {d.replies.length} replies
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div 
-                                      className={`space-y-4 ${d.replies.length > 3 ? 'overflow-y-auto pr-2 replies-scroll pb-2' : ''}`} 
-                                      style={d.replies.length > 3 ? { maxHeight: '240px' } : {}}
-                                      id={`replies-container-${d.id}`}
-                                    >
-                                      {[...d.replies].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).map((reply) => (
-                                        <div 
-                                          key={reply.id} 
-                                          className={`flex flex-row gap-3 rounded-xl p-3 -m-3 ${
-                                            newCommentId === reply.id ? 'new-comment-highlight' : ''
-                                          }`} 
-                                          id={`reply-${reply.id}`}
-                                        >
-                                          <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white/60 text-sm">
-                                            {reply.author === "John Doe" ? "JD" : reply.author.charAt(0)}
-                                          </div>
-                                          <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                              <span className="font-medium text-base text-white">
-                                                {reply.author}
-                                              </span>
-                                              <span className="text-sm text-white/60">
-                                                {formatRelativeTime(reply.timestamp)}
-                                              </span>
-                                            </div>
-                                            <p className="text-white text-base leading-relaxed">
-                                              {renderMarkdown(reply.content)}
-                                            </p>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                <div className="flex gap-3 mt-4">
-                                  <div className="flex-shrink-0">
-                                    <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
-                                      <FaUser className="text-white/60" />
-                                    </div>
-                                  </div>
-                                  <div className="flex-1">
-                                    <textarea
-                                      ref={(el) => {
-                                        replyRefs.current[d.id] = el;
-                                      }}
-                                      value={replyContent[d.id] || ""}
-                                      onChange={(e) =>
-                                        setReplyContent((prev) => ({
-                                          ...prev,
-                                          [d.id]: e.target.value,
-                                        }))
-                                      }
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                          e.preventDefault();
-                                          if (replyContent[d.id]?.trim()) {
-                                            handleReply(d.id);
-                                          }
-                                        }
-                                      }}
-                                      placeholder="Write a reply..."
-                                      className="w-full p-3 border border-white/30 rounded-xl focus:outline-none focus:border-[#A55EEA] focus:ring-2 focus:ring-[#A55EEA]/20 bg-white/10 text-white placeholder:text-white/60 transition-all duration-300 backdrop-blur-sm hover:bg-white/15"
-                                      rows={2}
-                                    />
-                                    <div className="flex justify-end mt-2">
-                                      <button
-                                        onClick={() => handleReply(d.id)}
-                                        className="px-4 py-2 bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] text-white rounded-lg text-base font-medium hover:from-[#A55EEA]/90 hover:to-[#FF6B9D]/90 transition cursor-pointer h-[40px] flex items-center gap-2"
-                                      >
-                                        <FaPaperPlane className="text-sm" />
-                                        Reply
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                        <option value="timestamp">Newest First</option>
+                        <option value="timestamp-asc">Oldest First</option>
+                        <option value="status">Status</option>
+                        <option value="author">Author</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Statistics */}
+                <div className={`p-4 rounded-xl border shadow-sm ${
+                  darkMode ? "bg-gradient-to-br from-[#232B3E] to-[#1A2233] border-[#2D3238]" : "bg-gradient-to-br from-[#F8FAFB] to-[#E3EFFF] border-[#E3E7EB]"
+                }`}>
+                  <div className="flex items-center space-x-2 mb-4">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${
+                      darkMode ? "text-green-400" : "text-green-600"
+                    }`}>
+                      <line x1="18" y1="20" x2="18" y2="10"/>
+                      <line x1="12" y1="20" x2="12" y2="4"/>
+                      <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                    <h3 className="font-bold text-sm tracking-wide uppercase letter-spacing-1 transition-colors duration-200">
+                      Statistics
+                    </h3>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className={`flex-1 text-center p-3 rounded-lg border ${
+                      darkMode ? "bg-blue-900/20 border-blue-700/50" : "bg-blue-50 border-blue-200"
+                    }`}>
+                      <div className={`text-2xl font-bold mb-1 ${
+                        darkMode ? "text-blue-400" : "text-blue-600"
+                      }`}>
+                        {comments.filter(c => c.sectionId === selectedSection && c.status === "open").length}
+                      </div>
+                      <div className={`text-xs font-semibold ${
+                        darkMode ? "text-blue-300" : "text-blue-700"
+                      }`}>Open</div>
+                    </div>
+                    <div className={`flex-1 text-center p-3 rounded-lg border ${
+                      darkMode ? "bg-yellow-900/20 border-yellow-700/50" : "bg-yellow-50 border-yellow-200"
+                    }`}>
+                      <div className={`text-2xl font-bold mb-1 ${
+                        darkMode ? "text-yellow-400" : "text-yellow-600"
+                      }`}>
+                        {comments.filter(c => c.sectionId === selectedSection && c.status === "pending").length}
+                      </div>
+                      <div className={`text-xs font-semibold ${
+                        darkMode ? "text-yellow-300" : "text-yellow-700"
+                      }`}>Pending</div>
+                    </div>
+                    <div className={`flex-1 text-center p-3 rounded-lg border ${
+                      darkMode ? "bg-green-900/20 border-green-700/50" : "bg-green-50 border-green-200"
+                    }`}>
+                      <div className={`text-2xl font-bold mb-1 ${
+                        darkMode ? "text-green-400" : "text-green-600"
+                      }`}>
+                        {comments.filter(c => c.sectionId === selectedSection && c.status === "resolved").length}
+                      </div>
+                      <div className={`text-xs font-semibold ${
+                        darkMode ? "text-green-300" : "text-green-700"
+                      }`}>Resolved</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${
+                      darkMode ? "text-purple-400" : "text-purple-600"
+                    }`}>
+                      <path d="M9 12l2 2 4-4"/>
+                      <path d="M21 12c-1 0-2-1-2-2s1-2 2-2 2 1 2 2-1 2-2 2z"/>
+                      <path d="M3 12c1 0 2-1 2-2s-1-2-2-2-2 1-2 2 1 2 2 2z"/>
+                    </svg>
+                    <h3 className="font-bold text-base tracking-wide uppercase letter-spacing-1 transition-colors duration-200">
+                      Annotations ({filteredComments.length})
+                    </h3>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex space-x-1">
+                      {["open", "pending", "resolved"].map((status) => (
+                        <div
+                          key={status}
+                          className={`w-2.5 h-2.5 rounded-full ${getStatusColor(
+                            status as Comment["status"]
+                          )}`}
+                          title={getStatusText(status as Comment["status"])}
+                        />
+                      ))}
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                      darkMode ? "bg-purple-900/50 text-purple-200" : "bg-purple-100 text-purple-800"
+                    }`}>
+                      {filteredComments.length}
+                    </span>
+                  </div>
+                </div>
+                {filteredComments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    onClick={() => {
+                      scrollToComment(comment.id);
+                    }}
+                    className={`p-4 rounded-xl cursor-pointer transition-all duration-200 shadow-md border group relative ${
+                      selectedComment?.id === comment.id
+                        ? darkMode
+                          ? "bg-blue-950 border-blue-700 text-blue-100 shadow-lg"
+                          : "bg-blue-50 border-blue-300 text-blue-900 shadow-lg"
+                        : darkMode
+                        ? "bg-[#232B3E] border-[#2D3238] hover:bg-[#26304A] hover:border-blue-700"
+                        : "bg-[#F8FAFB] border-[#E3E7EB] hover:bg-blue-50 hover:border-blue-300"
+                    }`}
+                    style={{
+                      boxShadow:
+                        selectedComment?.id === comment.id
+                          ? darkMode
+                            ? "0 2px 12px 0 rgba(60,80,180,0.10)"
+                            : "0 2px 12px 0 rgba(80,140,255,0.10)"
+                          : undefined,
+                    }}
+                    tabIndex={0}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shadow-sm border-2 ${
+                            darkMode
+                              ? "bg-blue-900 text-blue-200 border-blue-700"
+                              : "bg-blue-100 text-blue-800 border-blue-300"
+                          }`}
+                        >
+                          {comment.author.avatar}
                         </div>
-                      </li>
-                    ))}
-                  </ul>
-                );
-              })()}
-              </div>
-            </section>
-          </main>
-          <button
-            onClick={() => setShowRightSidebar(!showRightSidebar)}
-              className="lg:hidden fixed right-0 top-1/2 transform -translate-y-1/2 z-50 p-2 bg-black/20 backdrop-blur-md rounded-l-lg border border-white/10 border-r-0 hover:bg-white/10 transition-all duration-200 cursor-pointer"
-          >
-            {showRightSidebar ? (
-                <FaChevronRight className="text-white/60 text-sm" />
-            ) : (
-                <FaChevronLeft className="text-white/60 text-sm" />
-            )}
-          </button>
-          <aside
-            className={`${showRightSidebar ? "translate-x-0" : "translate-x-full"
-              } lg:translate-x-0 fixed lg:relative inset-y-0 right-0 z-40 w-full sm:w-80 lg:w-72 xl:w-80 bg-black/30 backdrop-blur-xl border-l border-white/20 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl`}
-          >
-            <div className="overflow-auto flex-1">
-              <div className="px-4 sm:px-6 py-4 sm:py-6">
-                <h2 className="text-lg sm:text-2xl font-bold mb-4 sm:mb-6 text-white flex items-center">
-                  <span className="bg-[#A55EEA]/20 p-1 rounded mr-2">
-                    <FaCrown className="text-[#A55EEA] text-sm sm:text-base" />
-                  </span>
-                  Moderators
-                </h2>
-                <ul className="space-y-3 sm:space-y-4">
-                  {moderators.map((mod) => (
-                    <li
-                      key={mod.name}
-                      className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 hover:bg-white/5 rounded-lg transition-colors"
-                    >
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-[#A55EEA] to-[#FF6B9D] flex items-center justify-center text-white text-sm sm:text-base flex-shrink-0">
-                        {mod.name.charAt(0)}
+                        <span className="font-semibold text-sm">
+                          {comment.author.name}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm sm:text-base truncate text-white">
-                          {mod.name}
-                        </p>
-                        <p className="text-xs sm:text-sm text-white/60 truncate">
-                          {mod.role}
-                        </p>
-                      </div>
-                      <span className="text-xs sm:text-sm px-2 py-1 bg-[#2EA043]/20 text-[#2EA043] rounded-full flex-shrink-0">
-                        Online
+                      <div
+                        className={`w-2 h-2 rounded-full mt-1 ${getStatusColor(
+                          comment.status
+                        )}`}
+                      ></div>
+                    </div>
+                    <p className="text-sm mb-2 line-clamp-2 font-medium">
+                      {comment.content}
+                    </p>
+                    <div className="flex items-center justify-between mt-1">
+                      <span
+                        className={`text-xs font-semibold ${
+                          selectedComment?.id === comment.id
+                            ? darkMode
+                              ? "text-blue-100"
+                              : "text-blue-700"
+                            : darkMode
+                            ? "text-[#A0A4AA]"
+                            : "text-[#7A869A]"
+                        }`}
+                      >
+                        {comment.timestamp.toLocaleDateString()}
                       </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="px-4 sm:px-6 py-4 sm:py-6">
-                <h2 className="text-lg sm:text-2xl font-bold mb-4 sm:mb-6 text-white flex items-center">
-                  <span className="bg-[#A55EEA]/20 p-1 rounded mr-2">
-                    <FaUser className="text-[#A55EEA] text-sm sm:text-base" />
-                  </span>
-                  Active Now
-                </h2>
-                <ul className="space-y-2 sm:space-y-3">
-                  {activeUsers.map((user) => (
-                    <li
-                      key={user.name}
-                      className="flex items-center gap-2 sm:gap-3 p-2 hover:bg-white/5 rounded-lg transition-colors"
-                    >
-                      <div className="relative flex-shrink-0">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white/60 text-xs sm:text-sm">
-                          {user.name.charAt(0)}
-                        </div>
-                        <div className="absolute bottom-0 right-0 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-[#2EA043] rounded-full border-2 border-black/20"></div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm sm:text-base truncate text-white">
-                          {user.name}
-                        </p>
-                      </div>
-                      <span className="text-xs sm:text-sm text-white/60 flex-shrink-0">
-                        {user.activity}
+                      <span
+                        className={`text-xs px-2 py-1 rounded font-semibold shadow-sm ${
+                          darkMode
+                            ? "bg-[#26304A] text-blue-200"
+                            : "bg-[#E3EFFF] text-blue-800"
+                        }`}
+                      >
+                        {
+                          documentSectionsState.find(
+                            (s) => s.id === comment.sectionId
+                          )?.title
+                        }
                       </span>
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            <footer className="px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-white/60">
-              <p className="font-semibold text-sm sm:text-base mb-0 bg-gradient-to-r from-[#A55EEA] via-[#FF6B9D] to-[#3B82F6] bg-clip-text text-transparent">CommunityHub v1.0</p>
-              <p className="mt-1">Connecting developers worldwide</p>
-              <p className="mt-2">
-                {new Date().getFullYear()} All rights reserved
-              </p>
-            </footer>
-          </aside>
+          </div>
         </div>
       </div>
-      <Toaster position="top-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: "rgba(0, 0, 0, 0.3)",
-            backdropFilter: "blur(16px)",
-            color: "#FFFFFF",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
-            borderRadius: "12px",
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
-          },
-          success: {
-            style: {
-              background: "linear-gradient(135deg, rgba(165, 94, 234, 0.2), rgba(255, 107, 157, 0.2))",
-              backdropFilter: "blur(16px)",
-              border: "1px solid rgba(165, 94, 234, 0.3)",
-            },
-            iconTheme: {
-              primary: "#A55EEA",
-              secondary: "#FFFFFF",
-            },
-          },
-          error: {
-            style: {
-              background: "rgba(239, 68, 68, 0.2)",
-              backdropFilter: "blur(16px)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-            },
-            iconTheme: {
-              primary: "#ef4444",
-              secondary: "#FFFFFF",
-            },
-          },
-        }}
-      />
-      <style>{`
-             @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
-              body {
-                font-family: 'Poppins', sans-serif;
-              }
-              *::-webkit-scrollbar {
-                display: none;
-              }
-              * {
-                -ms-overflow-style: none;
-                scrollbar-width: none;
-              }
-              .replies-scroll {
-                scroll-behavior: smooth;
-              }
-              .replies-scroll::-webkit-scrollbar {
-                width: 6px;
-              }
-              .replies-scroll::-webkit-scrollbar-track {
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 3px;
-                margin: 4px 0;
-              }
-              .replies-scroll::-webkit-scrollbar-thumb {
-                background: rgba(165, 94, 234, 0.6);
-                border-radius: 3px;
-                min-height: 20px;
-              }
-              .replies-scroll::-webkit-scrollbar-thumb:hover {
-                background: rgba(165, 94, 234, 0.8);
-              }
-              @keyframes highlight-new-comment {
-                0% { 
-                  background: rgba(165, 94, 234, 0.3);
-                  border-radius: 12px;
-                  box-shadow: 0 0 0 2px rgba(165, 94, 234, 0.2);
-                }
-                100% { 
-                  background: transparent;
-                  border-radius: 12px;
-                  box-shadow: 0 0 0 0px rgba(165, 94, 234, 0);
-                }
-              }
-              .new-comment-highlight {
-                animation: highlight-new-comment 2s ease-out;
-                border-radius: 12px;
-              }
-              `}
-      </style>
+      
+      {/* Version Changes Modal */}
+      {showVersionModal && (
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 overflow-hidden">
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"
+            onClick={() => setShowVersionModal(false)}
+          />
+          <div className={`relative w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-2xl shadow-2xl border z-[1101] ${
+            darkMode 
+              ? "bg-gradient-to-b from-[#1A2233] to-[#0F1419] border-slate-600 text-white" 
+              : "bg-gradient-to-b from-white to-[#F8FAFC] border-slate-300 text-slate-900"
+          }`}>
+            <div className={`sticky top-0 p-6 border-b rounded-t-2xl backdrop-blur-sm z-[1102] ${
+              darkMode 
+                ? "border-slate-600 bg-[#1A2233]/95" 
+                : "border-slate-300 bg-white/95"
+            }`}>
+              <div className="flex items-center justify-between">
+                <h2 className={`text-2xl font-black tracking-tight ${
+                  darkMode ? "text-slate-100" : "text-slate-900"
+                }`}>
+                  Version Changes
+                </h2>
+                <button
+                  onClick={() => setShowVersionModal(false)}
+                  className={`p-2 rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 cursor-pointer z-[1103] ${
+                    darkMode 
+                      ? "hover:bg-slate-700 text-slate-300 hover:text-white" 
+                      : "hover:bg-slate-100 text-slate-600 hover:text-slate-900"
+                  }`}
+                  aria-label="Close modal"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+              <p className={`text-sm mt-2 ${
+                darkMode ? "text-slate-400" : "text-slate-600"
+              }`}>
+                Showing changes for: {documentSectionsState.find(s => s.id === selectedSection)?.title}
+              </p>
+            </div>
+            
+            <div className="p-6 space-y-4 relative z-[1101]">
+              {versionChanges
+                .filter(change => change.sectionId === selectedSection)
+                .map(change => (
+                  <div key={change.id} className={`p-5 rounded-xl border shadow-lg ${
+                    change.type === "added"
+                      ? darkMode 
+                        ? "bg-green-950/30 border-green-800/50 text-green-200" 
+                        : "bg-green-50 border-green-300 text-green-900"
+                      : change.type === "removed"
+                      ? darkMode 
+                        ? "bg-red-950/30 border-red-800/50 text-red-200" 
+                        : "bg-red-50 border-red-300 text-red-900"
+                      : darkMode 
+                        ? "bg-amber-950/30 border-amber-800/50 text-amber-200" 
+                        : "bg-amber-50 border-amber-300 text-amber-900"
+                  }`}>
+                    <div className="flex items-center gap-3 mb-3">
+                      {change.type === "added" && (
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          darkMode 
+                            ? "bg-green-900/40 text-green-400" 
+                            : "bg-green-200 text-green-700"
+                        }`}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                        </div>
+                      )}
+                      {change.type === "removed" && (
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          darkMode 
+                            ? "bg-red-900/40 text-red-400" 
+                            : "bg-red-200 text-red-700"
+                        }`}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                        </div>
+                      )}
+                      {change.type === "modified" && (
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          darkMode 
+                            ? "bg-amber-900/40 text-amber-400" 
+                            : "bg-amber-200 text-amber-700"
+                        }`}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                        </div>
+                      )}
+                      <div>
+                        <h3 className={`font-bold text-lg capitalize ${
+                          change.type === "added" 
+                            ? darkMode ? "text-green-300" : "text-green-800"
+                            : change.type === "removed"
+                            ? darkMode ? "text-red-300" : "text-red-800"
+                            : darkMode ? "text-amber-300" : "text-amber-800"
+                        }`}>
+                          {change.type} Content
+                        </h3>
+                        <p className={`text-sm ${
+                          change.type === "added" 
+                            ? darkMode ? "text-green-400" : "text-green-700"
+                            : change.type === "removed"
+                            ? darkMode ? "text-red-400" : "text-red-700"
+                            : darkMode ? "text-amber-400" : "text-amber-700"
+                        }`}>
+                          {change.content}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Version Comparison Overlay */}
+                    <div className={`p-4 rounded-lg border ${
+                        darkMode ? "bg-slate-900/50 border-slate-700" : "bg-slate-50 border-slate-200"
+                    }`}>
+                      <div className="flex items-center justify-between mb-3">
+                          <h4 className={`font-semibold text-sm ${
+                            darkMode ? "text-slate-200" : "text-slate-800"
+                          }`}>Version Comparison</h4>
+                          <span className={`text-xs px-3 py-1.5 rounded-full font-semibold ${
+                          change.type === "added" 
+                              ? darkMode ? "bg-green-900/70 text-green-300" : "bg-green-200 text-green-800"
+                            : change.type === "removed"
+                              ? darkMode ? "bg-red-900/70 text-red-300" : "bg-red-200 text-red-800"
+                              : darkMode ? "bg-amber-900/70 text-amber-300" : "bg-amber-200 text-amber-800"
+                        }`}>
+                            Point {change.pointNumber}
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {change.type === "added" && (
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-3">
+                                                             <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                 darkMode 
+                                   ? "bg-green-900/40 text-green-400" 
+                                   : "bg-green-200 text-green-800"
+                               }`}>
+                                 <span className="text-sm font-bold">
+                                   {change.pointNumber}
+                                 </span>
+                              </div>
+                              <div className="flex-1">
+                                 <div className={`p-4 rounded-lg border-l-4 ${
+                                   darkMode 
+                                     ? "bg-green-950/20 border-green-700/60 text-green-200" 
+                                     : "bg-green-50 border-green-400 text-green-900"
+                                }`}>
+                                   <div className="flex items-center gap-2 mb-2">
+                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${
+                                       darkMode ? "text-green-500" : "text-green-600"
+                                     }`}>
+                                       <line x1="12" y1="5" x2="12" y2="19" />
+                                       <line x1="5" y1="12" x2="19" y2="12" />
+                                     </svg>
+                                     <span className="font-semibold text-sm">Added to Point {change.pointNumber}</span>
+                                   </div>
+                                  <p className="text-sm leading-relaxed">{change.newContent}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {change.type === "removed" && (
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-3">
+                                                             <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                 darkMode 
+                                   ? "bg-red-900/40 text-red-400" 
+                                   : "bg-red-200 text-red-800"
+                               }`}>
+                                 <span className="text-sm font-bold">
+                                   {change.pointNumber}
+                                 </span>
+                              </div>
+                              <div className="flex-1">
+                                 <div className={`p-4 rounded-lg border-l-4 ${
+                                   darkMode 
+                                     ? "bg-red-950/20 border-red-700/60 text-red-200" 
+                                     : "bg-red-50 border-red-400 text-red-900"
+                                }`}>
+                                   <div className="flex items-center gap-2 mb-2">
+                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${
+                                       darkMode ? "text-red-500" : "text-red-600"
+                                     }`}>
+                                       <line x1="5" y1="12" x2="19" y2="12" />
+                                     </svg>
+                                     <span className="font-semibold text-sm">Removed from Point {change.pointNumber}</span>
+                                   </div>
+                                  <p className="text-sm leading-relaxed line-through opacity-75">{change.oldContent}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {change.type === "modified" && (
+                          <div className="space-y-3">
+                            <div className="flex items-start gap-3">
+                                                             <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                 darkMode 
+                                   ? "bg-amber-900/40 text-amber-400" 
+                                   : "bg-amber-200 text-amber-800"
+                               }`}>
+                                 <span className="text-sm font-bold">
+                                   {change.pointNumber}
+                                 </span>
+                              </div>
+                              <div className="flex-1">
+                                 <div className={`p-4 rounded-lg border-l-4 ${
+                                   darkMode 
+                                     ? "bg-red-950/20 border-red-700/60 text-red-200" 
+                                     : "bg-red-50 border-red-400 text-red-900"
+                                }`}>
+                                   <div className="flex items-center gap-2 mb-2">
+                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${
+                                       darkMode ? "text-red-500" : "text-red-600"
+                                     }`}>
+                                       <line x1="5" y1="12" x2="19" y2="12" />
+                                     </svg>
+                                     <span className="font-semibold text-sm">Previous Version (Point {change.pointNumber})</span>
+                                   </div>
+                                  <p className="text-sm leading-relaxed line-through opacity-75">{change.oldContent}</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                               <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                 darkMode 
+                                   ? "bg-amber-900/40 text-amber-400" 
+                                   : "bg-amber-200 text-amber-800"
+                               }`}>
+                                 <span className="text-sm font-bold">
+                                   {change.pointNumber}
+                                 </span>
+                              </div>
+                              <div className="flex-1">
+                                 <div className={`p-4 rounded-lg border-l-4 ${
+                                   darkMode 
+                                     ? "bg-green-950/20 border-green-700/60 text-green-200" 
+                                     : "bg-green-50 border-green-400 text-green-900"
+                                }`}>
+                                   <div className="flex items-center gap-2 mb-2">
+                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${
+                                       darkMode ? "text-green-500" : "text-green-600"
+                                     }`}>
+                                       <line x1="12" y1="5" x2="12" y2="19" />
+                                       <line x1="5" y1="12" x2="19" y2="12" />
+                                     </svg>
+                                     <span className="font-semibold text-sm">Updated Version (Point {change.pointNumber})</span>
+                                   </div>
+                                  <p className="text-sm leading-relaxed">{change.newContent}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              
+              {versionChanges.filter(change => change.sectionId === selectedSection).length === 0 && (
+                <div className={`text-center py-8 ${
+                  darkMode ? "text-slate-400" : "text-slate-600"
+                }`}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4 opacity-50">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  <p className={`text-lg font-semibold ${
+                    darkMode ? "text-slate-300" : "text-slate-700"
+                  }`}>No changes found</p>
+                  <p className="text-sm">This section has no version changes to display.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-4 right-4 z-[1100] animate-in slide-in-from-right-full duration-300 ease-out">
+          <div className={`flex items-center p-4 rounded-xl shadow-2xl border max-w-sm backdrop-blur-sm ${
+            darkMode 
+              ? "bg-slate-800/95 border-slate-600 text-white shadow-slate-900/50" 
+              : "bg-white/95 border-gray-300 text-gray-900 shadow-gray-900/20"
+          }`}>
+            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mr-3 ${
+              darkMode ? "bg-yellow-800/30 text-yellow-400" : "bg-yellow-100 text-yellow-600"
+            }`}>
+              <PiPushPinFill size={16} />
+            </div>
+            <div className="flex-1">
+              <p className={`text-sm font-medium ${
+                darkMode ? "text-slate-200" : "text-gray-800"
+              }`}>
+                {toastMessage}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowToast(false)}
+              className={`ml-2 p-1 rounded-lg transition-colors cursor-pointer ${
+                darkMode 
+                  ? "hover:bg-slate-600 text-slate-400 hover:text-slate-200" 
+                  : "hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+              }`}
+              aria-label="Close notification"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 };
-export default CommunityDashboard;
+
+export default DocumentReviewTool;
